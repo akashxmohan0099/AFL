@@ -1,0 +1,207 @@
+match_id,year,quarter,time,team,player,score_type,score
+142020200817,2020,1st,2m 49s,Richmond,Jack Riewoldt,goal,1.0.6- 0.0.0
+142020200817,2020,1st,8m 25s,Richmond,Jack Riewoldt,behind,1.1.7- 0.0.0
+142020200817,2020,1st,10m 58s,Gold Coast,Rushed,behind,1.1.7- 0.1.1
+142020200817,2020,1st,14m 51s,Gold Coast,Sam Flanders,goal,1.1.7- 1.1.7
+142020200817,2020,1st,19m 7s,Richmond,Mabior Chol,goal,2.1.13- 1.1.7
+142020200817,2020,1st,24m 51s,Gold Coast,Ben King,goal,2.1.13- 2.1.13
+142020200817,2020,2nd,1m 16s,Gold Coast,Ben King,behind,2.1.13- 2.2.14
+142020200817,2020,2nd,3m 7s,Gold Coast,Rushed,behind,2.1.13- 2.3.15
+142020200817,2020,2nd,4m 44s,Gold Coast,Rushed,behind,2.1.13- 2.4.16
+142020200817,2020,2nd,5m 46s,Gold Coast,Alex Sexton,goal,2.1.13- 3.4.22
+142020200817,2020,2nd,14m 51s,Richmond,Jack Riewoldt,behind,2.2.14- 3.4.22
+142020200817,2020,2nd,15m 49s,Gold Coast,Noah Anderson,behind,2.2.14- 3.5.23
+142020200817,2020,2nd,17m 23s,Gold Coast,Jack Lukosius,behind,2.2.14- 3.6.24
+142020200817,2020,3rd,1m 25s,Gold Coast,Brandon Ellis,behind,2.2.14- 3.7.25
+142020200817,2020,3rd,5m 37s,Gold Coast,Hugh Greenwood,behind,2.2.14- 3.8.26
+142020200817,2020,3rd,7m 50s,Richmond,Jack Riewoldt,goal,3.2.20- 3.8.26
+142020200817,2020,3rd,17m 5s,Richmond,Tom Lynch,goal,4.2.26- 3.8.26
+142020200817,2020,3rd,18m 41s,Richmond,Marlion Pickett,goal,5.2.32- 3.8.26
+142020200817,2020,Final,1m 21s,Richmond,Marlion Pickett,behind,5.3.33- 3.8.26
+142020200817,2020,Final,8m 6s,Gold Coast,Brandon Ellis,goal,5.3.33- 4.8.32
+142020200817,2020,Final,11m 44s,Richmond,Kamdyn McIntosh,goal,6.3.39- 4.8.32
+142020200817,2020,Final,15m 6s,Richmond,Tom Lynch,goal,7.3.45- 4.8.32
+142020200817,2020,Final,19m 3s,Richmond,Tom Lynch,behind,7.4.46- 4.8.32
+142020200817,2020,Final,20m 26s,Richmond,Rushed,behind,7.5.47- 4.8.32
+142020200817,2020,Final,22m 40s,Richmond,Ivan Soldo,goal,8.5.53- 4.8.32
+031620210530,2021,1st,0m 42s,Sydney,Will Hayward,goal,1.0.6- 0.0.0
+031620210530,2021,1st,1m 58s,Sydney,Sam Wicks,behind,1.1.7- 0.0.0
+031620210530,2021,1st,3m 25s,Carlton,Harry McKay,behind,1.1.7- 0.1.1
+031620210530,2021,1st,5m 24s,Carlton,Harry McKay,goal,1.1.7- 1.1.7
+031620210530,2021,1st,7m 26s,Sydney,Rushed,behind,1.2.8- 1.1.7
+031620210530,2021,1st,9m 22s,Sydney,Dane Rampe,behind,1.3.9- 1.1.7
+031620210530,2021,1st,13m 16s,Carlton,Jack Silvagni,behind,1.3.9- 1.2.8
+031620210530,2021,1st,14m 55s,Carlton,Zac Williams,goal,1.3.9- 2.2.14
+031620210530,2021,1st,16m 13s,Carlton,Matthew Owies,behind,1.3.9- 2.3.15
+031620210530,2021,1st,17m 31s,Carlton,Jack Silvagni,goal,1.3.9- 3.3.21
+031620210530,2021,1st,20m 44s,Carlton,Eddie Betts,goal,1.3.9- 4.3.27
+031620210530,2021,1st,23m 28s,Sydney,Josh Kennedy,goal,2.3.15- 4.3.27
+031620210530,2021,1st,25m 19s,Sydney,Luke Parker,goal,3.3.21- 4.3.27
+031620210530,2021,1st,29m 7s,Sydney,Isaac Heeney,goal,4.3.27- 4.3.27
+031620210530,2021,1st,31m 26s,Sydney,Lance Franklin,goal,5.3.33- 4.3.27
+031620210530,2021,2nd,1m 1s,Carlton,Eddie Betts,goal,5.3.33- 5.3.33
+031620210530,2021,2nd,3m 9s,Carlton,Patrick Cripps,goal,5.3.33- 6.3.39
+031620210530,2021,2nd,4m 56s,Carlton,Harry McKay,goal,5.3.33- 7.3.45
+031620210530,2021,2nd,8m 13s,Sydney,Lance Franklin,goal,6.3.39- 7.3.45
+031620210530,2021,2nd,10m 49s,Carlton,Harry McKay,goal,6.3.39- 8.3.51
+031620210530,2021,2nd,14m 20s,Carlton,Rushed,behind,6.3.39- 8.4.52
+031620210530,2021,2nd,21m 33s,Carlton,Rushed,behind,6.3.39- 8.5.53
+031620210530,2021,2nd,22m 55s,Sydney,Isaac Heeney,goal,7.3.45- 8.5.53
+031620210530,2021,2nd,25m 51s,Sydney,Lance Franklin,goal,8.3.51- 8.5.53
+031620210530,2021,2nd,30m 24s,Sydney,Rushed,behind,8.4.52- 8.5.53
+031620210530,2021,3rd,3m 33s,Carlton,Rushed,behind,8.4.52- 8.6.54
+031620210530,2021,3rd,4m 30s,Sydney,Tom Papley,goal,9.4.58- 8.6.54
+031620210530,2021,3rd,10m 7s,Sydney,Sam Wicks,behind,9.5.59- 8.6.54
+031620210530,2021,3rd,12m 19s,Sydney,Will Hayward,goal,10.5.65- 8.6.54
+031620210530,2021,3rd,14m 41s,Carlton,Patrick Cripps,goal,10.5.65- 9.6.60
+031620210530,2021,3rd,17m 5s,Carlton,Tom De Koning,goal,10.5.65- 10.6.66
+031620210530,2021,3rd,19m 32s,Carlton,Harry McKay,behind,10.5.65- 10.7.67
+031620210530,2021,3rd,23m 20s,Sydney,Rushed,behind,10.6.66- 10.7.67
+031620210530,2021,3rd,25m 3s,Sydney,Isaac Heeney,goal,11.6.72- 10.7.67
+031620210530,2021,3rd,26m 18s,Carlton,Eddie Betts,behind,11.6.72- 10.8.68
+031620210530,2021,3rd,28m 59s,Carlton,Tom De Koning,behind,11.6.72- 10.9.69
+031620210530,2021,Final,1m 30s,Sydney,Josh Kennedy,goal,12.6.78- 10.9.69
+031620210530,2021,Final,2m 42s,Sydney,Isaac Heeney,behind,12.7.79- 10.9.69
+031620210530,2021,Final,3m 13s,Sydney,Rushed,behind,12.8.80- 10.9.69
+031620210530,2021,Final,4m 23s,Sydney,Sam Wicks,goal,13.8.86- 10.9.69
+031620210530,2021,Final,8m 47s,Sydney,Tom Papley,goal,14.8.92- 10.9.69
+031620210530,2021,Final,13m 58s,Carlton,Harry McKay,behind,14.8.92- 10.10.70
+031620210530,2021,Final,16m 39s,Carlton,Harry McKay,behind,14.8.92- 10.11.71
+031620210530,2021,Final,18m 54s,Carlton,Patrick Cripps,goal,14.8.92- 11.11.77
+031620210530,2021,Final,21m 27s,Sydney,Rushed,behind,14.9.93- 11.11.77
+031620210530,2021,Final,22m 29s,Sydney,Tom Papley,goal,15.9.99- 11.11.77
+031620210530,2021,Final,24m 21s,Sydney,Hayden McLean,behind,15.10.100- 11.11.77
+031620210530,2021,Final,25m 24s,Carlton,Harry McKay,behind,15.10.100- 11.12.78
+111420220424,2022,1st,2m 4s,Richmond,Shai Bolton,goal,1.0.6- 0.0.0
+111420220424,2022,1st,4m 20s,Melbourne,Bayley Fritsch,behind,1.0.6- 0.1.1
+111420220424,2022,1st,5m 32s,Richmond,Dion Prestia,behind,1.1.7- 0.1.1
+111420220424,2022,1st,9m 24s,Melbourne,Max Gawn,behind,1.1.7- 0.2.2
+111420220424,2022,1st,12m 11s,Melbourne,Rushed,behind,1.1.7- 0.3.3
+111420220424,2022,1st,14m 12s,Richmond,Tom Lynch,goal,2.1.13- 0.3.3
+111420220424,2022,1st,15m 50s,Melbourne,Max Gawn,behind,2.1.13- 0.4.4
+111420220424,2022,1st,17m 0s,Melbourne,Kysaiah Pickett,behind,2.1.13- 0.5.5
+111420220424,2022,1st,23m 57s,Melbourne,Tom Sparrow,behind,2.1.13- 0.6.6
+111420220424,2022,1st,26m 37s,Richmond,Toby Nankervis,behind,2.2.14- 0.6.6
+111420220424,2022,1st,28m 20s,Melbourne,Ben Brown,goal,2.2.14- 1.6.12
+111420220424,2022,1st,30m 52s,Melbourne,Sam Weideman,goal,2.2.14- 2.6.18
+111420220424,2022,2nd,3m 1s,Richmond,Jason Castagna,behind,2.3.15- 2.6.18
+111420220424,2022,2nd,4m 32s,Melbourne,Charlie Spargo,behind,2.3.15- 2.7.19
+111420220424,2022,2nd,6m 3s,Melbourne,Kysaiah Pickett,behind,2.3.15- 2.8.20
+111420220424,2022,2nd,8m 43s,Melbourne,Clayton Oliver,behind,2.3.15- 2.9.21
+111420220424,2022,2nd,10m 3s,Melbourne,Alex Neal-Bullen,behind,2.3.15- 2.10.22
+111420220424,2022,2nd,13m 25s,Melbourne,Ben Brown,behind,2.3.15- 2.11.23
+111420220424,2022,2nd,15m 43s,Melbourne,Charlie Spargo,goal,2.3.15- 3.11.29
+111420220424,2022,2nd,19m 51s,Richmond,Jack Graham,goal,3.3.21- 3.11.29
+111420220424,2022,2nd,21m 5s,Melbourne,Charlie Spargo,behind,3.3.21- 3.12.30
+111420220424,2022,2nd,22m 12s,Richmond,Jack Riewoldt,goal,4.3.27- 3.12.30
+111420220424,2022,2nd,26m 3s,Richmond,Liam Baker,goal,5.3.33- 3.12.30
+111420220424,2022,3rd,0m 37s,Richmond,Tom Lynch,goal,6.3.39- 3.12.30
+111420220424,2022,3rd,2m 15s,Melbourne,Ed Langdon,behind,6.3.39- 3.13.31
+111420220424,2022,3rd,3m 12s,Melbourne,Alex Neal-Bullen,behind,6.3.39- 3.14.32
+111420220424,2022,3rd,3m 57s,Richmond,Shai Bolton,behind,6.4.40- 3.14.32
+111420220424,2022,3rd,5m 56s,Melbourne,Sam Weideman,goal,6.4.40- 4.14.38
+111420220424,2022,3rd,10m 1s,Melbourne,Tom Sparrow,behind,6.4.40- 4.15.39
+111420220424,2022,3rd,13m 7s,Melbourne,Rushed,behind,6.4.40- 4.16.40
+111420220424,2022,3rd,13m 58s,Melbourne,Ed Langdon,goal,6.4.40- 5.16.46
+111420220424,2022,3rd,15m 52s,Melbourne,Bayley Fritsch,goal,6.4.40- 6.16.52
+111420220424,2022,3rd,19m 7s,Melbourne,Bayley Fritsch,goal,6.4.40- 7.16.58
+111420220424,2022,3rd,21m 6s,Melbourne,Christian Petracca,goal,6.4.40- 8.16.64
+111420220424,2022,3rd,23m 37s,Melbourne,Bayley Fritsch,behind,6.4.40- 8.17.65
+111420220424,2022,3rd,24m 54s,Richmond,Jack Riewoldt,goal,7.4.46- 8.17.65
+111420220424,2022,3rd,26m 58s,Melbourne,Christian Petracca,behind,7.4.46- 8.18.66
+111420220424,2022,3rd,29m 21s,Melbourne,Jayden Hunt,behind,7.4.46- 8.19.67
+111420220424,2022,Final,1m 59s,Melbourne,Ben Brown,behind,7.4.46- 8.20.68
+111420220424,2022,Final,4m 50s,Melbourne,Sam Weideman,goal,7.4.46- 9.20.74
+111420220424,2022,Final,10m 35s,Melbourne,Rushed,behind,7.4.46- 9.21.75
+111420220424,2022,Final,14m 17s,Richmond,Jack Riewoldt,behind,7.5.47- 9.21.75
+111420220424,2022,Final,19m 32s,Melbourne,Christian Petracca,behind,7.5.47- 9.22.76
+111420220424,2022,Final,20m 16s,Richmond,Daniel Rioli,goal,8.5.53- 9.22.76
+111420220424,2022,Final,28m 0s,Richmond,Rushed,behind,8.6.54- 9.22.76
+050720230721,2023,1st,0m 18s,Essendon,Peter Wright,goal,1.0.6- 0.0.0
+050720230721,2023,1st,1m 39s,Western Bulldogs,Rushed,behind,1.0.6- 0.1.1
+050720230721,2023,1st,4m 51s,Essendon,Kyle Langford,goal,2.0.12- 0.1.1
+050720230721,2023,1st,8m 19s,Western Bulldogs,Caleb Poulter,behind,2.0.12- 0.2.2
+050720230721,2023,1st,18m 58s,Western Bulldogs,Anthony Scott,goal,2.0.12- 1.2.8
+050720230721,2023,1st,21m 17s,Essendon,Matt Guelfi,behind,2.1.13- 1.2.8
+050720230721,2023,1st,22m 20s,Western Bulldogs,Marcus Bontempelli,behind,2.1.13- 1.3.9
+050720230721,2023,1st,24m 56s,Essendon,Peter Wright,goal,3.1.19- 1.3.9
+050720230721,2023,1st,26m 34s,Essendon,Kyle Langford,behind,3.2.20- 1.3.9
+050720230721,2023,2nd,1m 14s,Western Bulldogs,Jamarra Ugle-Hagan,goal,3.2.20- 2.3.15
+050720230721,2023,2nd,3m 40s,Western Bulldogs,Marcus Bontempelli,goal,3.2.20- 3.3.21
+050720230721,2023,2nd,6m 40s,Western Bulldogs,Cody Weightman,goal,3.2.20- 4.3.27
+050720230721,2023,2nd,11m 40s,Essendon,Rushed,behind,3.3.21- 4.3.27
+050720230721,2023,2nd,16m 45s,Western Bulldogs,Aaron Naughton,goal,3.3.21- 5.3.33
+050720230721,2023,2nd,19m 31s,Essendon,Kyle Langford,goal,4.3.27- 5.3.33
+050720230721,2023,2nd,21m 50s,Western Bulldogs,Tom Liberatore,behind,4.3.27- 5.4.34
+050720230721,2023,2nd,23m 5s,Western Bulldogs,Rhylee West,goal,4.3.27- 6.4.40
+050720230721,2023,2nd,24m 32s,Western Bulldogs,Aaron Naughton,behind,4.3.27- 6.5.41
+050720230721,2023,2nd,27m 11s,Western Bulldogs,Jamarra Ugle-Hagan,goal,4.3.27- 7.5.47
+050720230721,2023,2nd,29m 21s,Essendon,Zach Merrett,goal,5.3.33- 7.5.47
+050720230721,2023,3rd,11m 25s,Western Bulldogs,Aaron Naughton,behind,5.3.33- 7.6.48
+050720230721,2023,3rd,12m 58s,Essendon,Peter Wright,goal,6.3.39- 7.6.48
+050720230721,2023,3rd,17m 36s,Western Bulldogs,Marcus Bontempelli,goal,6.3.39- 8.6.54
+050720230721,2023,3rd,19m 58s,Essendon,Kyle Langford,behind,6.4.40- 8.6.54
+050720230721,2023,3rd,21m 39s,Western Bulldogs,Oskar Baker,goal,6.4.40- 9.6.60
+050720230721,2023,3rd,24m 25s,Essendon,Nik Cox,behind,6.5.41- 9.6.60
+050720230721,2023,3rd,26m 53s,Western Bulldogs,Marcus Bontempelli,behind,6.5.41- 9.7.61
+050720230721,2023,Final,1m 19s,Essendon,Matt Guelfi,goal,7.5.47- 9.7.61
+050720230721,2023,Final,2m 40s,Essendon,Peter Wright,behind,7.6.48- 9.7.61
+050720230721,2023,Final,5m 2s,Western Bulldogs,Cody Weightman,goal,7.6.48- 10.7.67
+050720230721,2023,Final,7m 28s,Western Bulldogs,Bailey Smith,behind,7.6.48- 10.8.68
+050720230721,2023,Final,12m 38s,Western Bulldogs,Jamarra Ugle-Hagan,goal,7.6.48- 11.8.74
+050720230721,2023,Final,15m 55s,Western Bulldogs,Jamarra Ugle-Hagan,behind,7.6.48- 11.9.75
+050720230721,2023,Final,19m 3s,Western Bulldogs,Rushed,behind,7.6.48- 11.10.76
+050720230721,2023,Final,20m 22s,Essendon,Jake Stringer,behind,7.7.49- 11.10.76
+050720230721,2023,Final,21m 46s,Western Bulldogs,Adam Treloar,goal,7.7.49- 12.10.82
+050720230721,2023,Final,23m 53s,Western Bulldogs,Rushed,behind,7.7.49- 12.11.83
+050720230721,2023,Final,26m 48s,Western Bulldogs,Cody Weightman,goal,7.7.49- 13.11.89
+050720230721,2023,Final,30m 41s,Western Bulldogs,Jamarra Ugle-Hagan,behind,7.7.49- 13.12.90
+141820240414,2024,1st,1m 3s,Richmond,Mykelti Lefau,goal,0.0.0- 1.0.6
+141820240414,2024,1st,3m 53s,Richmond,Shai Bolton,goal,0.0.0- 2.0.12
+141820240414,2024,1st,5m 36s,Richmond,Shai Bolton,behind,0.0.0- 2.1.13
+141820240414,2024,1st,6m 57s,West Coast,Jake Waterman,behind,0.1.1- 2.1.13
+141820240414,2024,1st,11m 59s,Richmond,Shai Bolton,goal,0.1.1- 3.1.19
+141820240414,2024,1st,15m 17s,Richmond,Liam Baker,goal,0.1.1- 4.1.25
+141820240414,2024,1st,19m 26s,Richmond,Maurice Rioli,behind,0.1.1- 4.2.26
+141820240414,2024,1st,20m 25s,Richmond,Jayden Short,behind,0.1.1- 4.3.27
+141820240414,2024,1st,25m 5s,West Coast,Jack Darling,goal,1.1.7- 4.3.27
+141820240414,2024,1st,26m 45s,West Coast,Harley Reid,goal,2.1.13- 4.3.27
+141820240414,2024,1st,28m 34s,West Coast,Jake Waterman,goal,3.1.19- 4.3.27
+141820240414,2024,2nd,2m 34s,West Coast,Jack Williams,goal,4.1.25- 4.3.27
+141820240414,2024,2nd,4m 5s,West Coast,Jake Waterman,goal,5.1.31- 4.3.27
+141820240414,2024,2nd,8m 41s,Richmond,Shai Bolton,goal,5.1.31- 5.3.33
+141820240414,2024,2nd,12m 20s,West Coast,Jamie Cripps,goal,6.1.37- 5.3.33
+141820240414,2024,2nd,14m 35s,West Coast,Jack Petruccelle,goal,7.1.43- 5.3.33
+141820240414,2024,2nd,15m 52s,Richmond,Marlion Pickett,behind,7.1.43- 5.4.34
+141820240414,2024,2nd,17m 37s,Richmond,Hugo Ralphsmith,behind,7.1.43- 5.5.35
+141820240414,2024,2nd,18m 42s,West Coast,Elliot Yeo,goal,8.1.49- 5.5.35
+141820240414,2024,2nd,21m 23s,Richmond,Rushed,behind,8.1.49- 5.6.36
+141820240414,2024,2nd,21m 49s,West Coast,Jake Waterman,goal,9.1.55- 5.6.36
+141820240414,2024,2nd,23m 5s,Richmond,Liam Baker,behind,9.1.55- 5.7.37
+141820240414,2024,2nd,24m 3s,Richmond,Tyler Sonsie,goal,9.1.55- 6.7.43
+141820240414,2024,2nd,25m 45s,Richmond,Maurice Rioli,goal,9.1.55- 7.7.49
+141820240414,2024,2nd,28m 12s,West Coast,Jake Waterman,goal,10.1.61- 7.7.49
+141820240414,2024,2nd,32m 47s,West Coast,Jack Petruccelle,goal,11.1.67- 7.7.49
+141820240414,2024,2nd,36m 57s,West Coast,Bailey Williams,behind,11.2.68- 7.7.49
+141820240414,2024,3rd,1m 55s,West Coast,Tim Kelly,behind,11.3.69- 7.7.49
+141820240414,2024,3rd,3m 51s,West Coast,Elliot Yeo,goal,12.3.75- 7.7.49
+141820240414,2024,3rd,6m 16s,West Coast,Jake Waterman,behind,12.4.76- 7.7.49
+141820240414,2024,3rd,11m 13s,West Coast,Jake Waterman,goal,13.4.82- 7.7.49
+141820240414,2024,3rd,13m 6s,West Coast,Jamie Cripps,goal,14.4.88- 7.7.49
+141820240414,2024,3rd,15m 57s,West Coast,Jake Waterman,goal,15.4.94- 7.7.49
+141820240414,2024,3rd,20m 7s,West Coast,Jack Darling,behind,15.5.95- 7.7.49
+141820240414,2024,3rd,22m 50s,West Coast,Rushed,behind,15.6.96- 7.7.49
+141820240414,2024,3rd,24m 12s,Richmond,Dustin Martin,goal,15.6.96- 8.7.55
+141820240414,2024,3rd,27m 19s,West Coast,Tom Cole,behind,15.7.97- 8.7.55
+141820240414,2024,3rd,28m 58s,West Coast,Tyler Brockman,behind,15.8.98- 8.7.55
+141820240414,2024,3rd,30m 9s,Richmond,Mykelti Lefau,behind,15.8.98- 8.8.56
+141820240414,2024,Final,2m 55s,Richmond,Mykelti Lefau,goal,15.8.98- 9.8.62
+141820240414,2024,Final,8m 23s,Richmond,Seth Campbell,behind,15.8.98- 9.9.63
+141820240414,2024,Final,10m 40s,West Coast,Campbell Chesser,goal,16.8.104- 9.9.63
+141820240414,2024,Final,13m 12s,West Coast,Rushed,behind,16.9.105- 9.9.63
+141820240414,2024,Final,14m 10s,West Coast,Elliot Yeo,behind,16.10.106- 9.9.63
+141820240414,2024,Final,14m 42s,West Coast,Tim Kelly,behind,16.11.107- 9.9.63
+141820240414,2024,Final,16m 45s,Richmond,Mykelti Lefau,goal,16.11.107- 10.9.69
+141820240414,2024,Final,23m 29s,West Coast,Jack Petruccelle,behind,16.12.108- 10.9.69
+141820240414,2024,Final,25m 22s,Richmond,Mykelti Lefau,behind,16.12.108- 10.10.70
+141820240414,2024,Final,27m 23s,West Coast,Jamie Cripps,behind,16.13.109- 10.10.70

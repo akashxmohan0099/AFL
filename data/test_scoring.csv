@@ -1,0 +1,46 @@
+match_id,year,quarter,time,team,player,score_type,score
+111620240307,2024,1st,2m 53s,Melbourne,"Gawn, Max",behind,0.0.0- 0.1.1
+111620240307,2024,1st,5m 16s,Sydney,"Florent, Oliver",goal,1.0.6- 0.1.1
+111620240307,2024,1st,7m 9s,Melbourne,"Viney, Jack",goal,1.0.6- 1.1.7
+111620240307,2024,1st,9m 26s,Melbourne,"Spargo, Charlie",behind,1.0.6- 1.2.8
+111620240307,2024,1st,11m 18s,Sydney,Rushed,behind,1.1.7- 1.2.8
+111620240307,2024,1st,14m 12s,Sydney,Rushed,behind,1.2.8- 1.2.8
+111620240307,2024,1st,17m 17s,Sydney,"Heeney, Isaac",goal,2.2.14- 1.2.8
+111620240307,2024,1st,18m 25s,Melbourne,"Schache, Josh",behind,2.2.14- 1.3.9
+111620240307,2024,1st,20m 33s,Sydney,Rushed,behind,2.3.15- 1.3.9
+111620240307,2024,1st,21m 39s,Melbourne,"Fritsch, Bayley",behind,2.3.15- 1.4.10
+111620240307,2024,1st,23m 28s,Melbourne,Rushed,behind,2.3.15- 1.5.11
+111620240307,2024,1st,25m 30s,Sydney,"Papley, Tom",goal,3.3.21- 1.5.11
+111620240307,2024,1st,28m 15s,Melbourne,"Schache, Josh",behind,3.3.21- 1.6.12
+111620240307,2024,2nd,6m 47s,Sydney,"McInerney, Justin",goal,4.3.27- 1.6.12
+111620240307,2024,2nd,14m 52s,Melbourne,"Neal-Bullen, Alex",behind,4.3.27- 1.7.13
+111620240307,2024,2nd,20m 45s,Melbourne,"Petracca, Christian",behind,4.3.27- 1.8.14
+111620240307,2024,2nd,30m 7s,Melbourne,"Langdon, Ed",goal,4.3.27- 2.8.20
+111620240307,2024,3rd,1m 17s,Melbourne,"Fritsch, Bayley",goal,4.3.27- 3.8.26
+111620240307,2024,3rd,4m 26s,Sydney,"Fox, Robbie",behind,4.4.28- 3.8.26
+111620240307,2024,3rd,5m 8s,Sydney,"Papley, Tom",behind,4.5.29- 3.8.26
+111620240307,2024,3rd,10m 9s,Sydney,"McLean, Hayden",behind,4.6.30- 3.8.26
+111620240307,2024,3rd,13m 18s,Sydney,"McLean, Hayden",goal,5.6.36- 3.8.26
+111620240307,2024,3rd,17m 1s,Melbourne,"Fritsch, Bayley",goal,5.6.36- 4.8.32
+111620240307,2024,3rd,18m 21s,Sydney,"Amartey, Joel",behind,5.7.37- 4.8.32
+111620240307,2024,3rd,19m 16s,Melbourne,"Fritsch, Bayley",goal,5.7.37- 5.8.38
+111620240307,2024,3rd,22m 53s,Sydney,"McLean, Hayden",goal,6.7.43- 5.8.38
+111620240307,2024,3rd,24m 29s,Sydney,"Rowbottom, James",behind,6.8.44- 5.8.38
+111620240307,2024,3rd,28m 3s,Melbourne,"Viney, Jack",goal,6.8.44- 6.8.44
+111620240307,2024,3rd,29m 17s,Sydney,"Rowbottom, James",behind,6.9.45- 6.8.44
+111620240307,2024,3rd,30m 50s,Sydney,"Hayward, Will",goal,7.9.51- 6.8.44
+111620240307,2024,3rd,32m 2s,Melbourne,"Petracca, Christian",goal,7.9.51- 7.8.50
+111620240307,2024,3rd,36m 14s,Sydney,"McLean, Hayden",behind,7.10.52- 7.8.50
+111620240307,2024,Final,3m 9s,Sydney,"Gulden, Errol",behind,7.11.53- 7.8.50
+111620240307,2024,Final,4m 33s,Sydney,Rushed,behind,7.12.54- 7.8.50
+111620240307,2024,Final,6m 8s,Sydney,"Warner, Chad",goal,8.12.60- 7.8.50
+111620240307,2024,Final,7m 57s,Sydney,"Hayward, Will",goal,9.12.66- 7.8.50
+111620240307,2024,Final,11m 11s,Sydney,"Wicks, Sam",goal,10.12.72- 7.8.50
+111620240307,2024,Final,12m 35s,Sydney,"Warner, Chad",behind,10.13.73- 7.8.50
+111620240307,2024,Final,13m 54s,Sydney,"Fox, Robbie",goal,11.13.79- 7.8.50
+111620240307,2024,Final,15m 49s,Melbourne,"van Rooyen, Jacob",goal,11.13.79- 8.8.56
+111620240307,2024,Final,21m 31s,Sydney,"Heeney, Isaac",behind,11.14.80- 8.8.56
+111620240307,2024,Final,25m 57s,Sydney,"McDonald, Logan",goal,12.14.86- 8.8.56
+111620240307,2024,Final,28m 27s,Melbourne,Rushed,behind,12.14.86- 8.9.57
+111620240307,2024,Final,30m 6s,Melbourne,"Petracca, Christian",behind,12.14.86- 8.10.58
+111620240307,2024,Final,33m 32s,Melbourne,"Fritsch, Bayley",goal,12.14.86- 9.10.64
