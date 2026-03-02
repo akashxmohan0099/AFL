@@ -11,18 +11,37 @@ Usage:
     python pipeline.py --evaluate                          # Eval on validation set
     python pipeline.py --clean                             # Clean raw data only
     python pipeline.py --features                          # Build features only
+    python pipeline.py --backtest --year 2024              # Walk-forward backtest
+    python pipeline.py --diagnose --year 2024              # Diagnostic report on backtest
+    python pipeline.py --sequential --year 2025 --reset-calibration
 """
 
 import argparse
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+from scipy.stats import poisson as poisson_dist
+from sklearn.metrics import roc_auc_score
 
 import config
-from clean import build_player_matches, load_player_stats
+from clean import build_player_games, load_player_stats
 from features import build_features
-from model import AFLScoringModel
+from model import AFLScoringModel, AFLDisposalModel, AFLGameWinnerModel
+from store import LearningStore
+
+
+def _new_run_id(prefix=None):
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    if prefix:
+        return f"{prefix}_{ts}"
+    return ts
+
+
+def _set_global_seed():
+    np.random.seed(config.RANDOM_SEED)
 
 
 def cmd_scrape(args):
@@ -38,7 +57,7 @@ def cmd_scrape(args):
 def cmd_clean(args):
     """Clean and normalize raw data into player_matches.parquet."""
     print("Cleaning raw data...")
-    df = build_player_matches(save=True)
+    df = build_player_games(save=True)
     print(f"Cleaned dataset: {df.shape[0]} rows, {df.shape[1]} columns")
     return df
 
@@ -81,13 +100,23 @@ def cmd_predict(args, model=None, feature_df=None):
             print("No trained model found. Run --train first.")
             return
 
+    # Load disposal model (optional — predictions work without it)
+    disp_model = None
+    try:
+        disp_model = AFLDisposalModel()
+        disp_model.load()
+    except (FileNotFoundError, Exception):
+        print("  (Disposal model not available — skipping disposal thresholds)")
+
     # Load fixture file for the upcoming round
     fixture_path = config.FIXTURES_DIR / f"round_{round_num}_{year}.csv"
 
     if fixture_path.exists():
         fixtures = pd.read_csv(fixture_path)
         print(f"Loaded fixtures from {fixture_path}")
-        predictions = _predict_from_fixtures(model, fixtures, year, round_num)
+        predictions = _predict_from_fixtures(
+            model, fixtures, year, round_num, disp_model=disp_model
+        )
     else:
         # If no fixture file, predict from the most recent data we have
         # (useful for evaluating past rounds)
@@ -109,7 +138,31 @@ def cmd_predict(args, model=None, feature_df=None):
             return
 
         print(f"Predicting Round {round_num}, {year} ({len(round_df)} player rows)...")
-        predictions = model.predict(round_df, model.feature_cols)
+        predictions = model.predict_distributions(
+            round_df, store=None, feature_cols=model.feature_cols
+        )
+
+        # Merge disposal predictions if available
+        if disp_model is not None:
+            try:
+                disp_preds = disp_model.predict_distributions(
+                    round_df, store=None, feature_cols=disp_model.feature_cols
+                )
+                predictions = _merge_predictions(predictions, disp_preds)
+            except Exception as e:
+                print(f"  Warning: Disposal predictions failed: {e}")
+
+    # Derive P(2+) and P(3+) goals from PMF columns
+    if "p_goals_0" in predictions.columns and "p_goals_1" in predictions.columns:
+        predictions["p_2plus_goals"] = (
+            1 - predictions["p_goals_0"] - predictions["p_goals_1"]
+        ).clip(0, 1)
+        if "p_goals_2" in predictions.columns:
+            predictions["p_3plus_goals"] = (
+                1 - predictions["p_goals_0"]
+                - predictions["p_goals_1"]
+                - predictions["p_goals_2"]
+            ).clip(0, 1)
 
     # Save predictions
     config.ensure_dirs()
@@ -117,22 +170,51 @@ def cmd_predict(args, model=None, feature_df=None):
     predictions.to_csv(out_path, index=False)
     print(f"\nPredictions saved to {out_path}")
 
+    # Save threshold CSV
+    _save_threshold_csv(predictions, round_num, config.PREDICTIONS_DIR)
+
+    # Save to LearningStore
+    store = LearningStore(run_id=getattr(args, "run_id", None))
+    store.save_predictions(year, round_num, predictions)
+    print(f"  Predictions also saved to LearningStore")
+
     # Display top predicted scorers
     print(f"\n{'='*70}")
     print(f"TOP PREDICTED SCORERS — Round {round_num}, {year}")
     print(f"{'='*70}")
     top = predictions.head(20)
     for _, row in top.iterrows():
+        p_sc = row.get("p_scorer", 0)
         print(
             f"  {row['player']:30s} {row['team']:15s} vs {row['opponent']:15s} "
-            f"GL={row['predicted_goals']:.2f} BH={row['predicted_behinds']:.2f} "
+            f"P={p_sc:.2f} GL={row['predicted_goals']:.2f} BH={row['predicted_behinds']:.2f} "
             f"Score={row['predicted_score']:.1f}"
         )
+
+    # Full team sheet display grouped by team
+    if "team" in predictions.columns and "p_scorer" in predictions.columns:
+        print(f"\n{'='*70}")
+        print(f"TEAM SHEETS — Round {round_num}, {year}")
+        print(f"{'='*70}")
+        for team_name, team_df in predictions.groupby("team", observed=True):
+            team_sorted = team_df.sort_values("p_scorer", ascending=False)
+            opp = team_sorted["opponent"].iloc[0] if "opponent" in team_sorted.columns else "?"
+            print(f"\n  {team_name} vs {opp}")
+            print(f"  {'Player':30s}  {'P(scorer)':>9s}  {'Pred GL':>7s}  {'Pred BH':>7s}  {'Score':>6s}")
+            for _, row in team_sorted.iterrows():
+                print(
+                    f"  {row['player']:30s}  {row['p_scorer']:9.3f}  "
+                    f"{row['predicted_goals']:7.2f}  {row['predicted_behinds']:7.2f}  "
+                    f"{row['predicted_score']:6.1f}"
+                )
+
+    # Threshold probability table
+    _display_threshold_probabilities(predictions, round_num, year)
 
     return predictions
 
 
-def _predict_from_fixtures(model, fixtures, year, round_num):
+def _predict_from_fixtures(model, fixtures, year, round_num, disp_model=None):
     """Build features for upcoming fixtures and generate predictions.
 
     Fixture CSV columns: team, opponent, venue, date, is_home
@@ -157,7 +239,8 @@ def _predict_from_fixtures(model, fixtures, year, round_num):
             players = [p.strip() for p in str(fixture["players"]).split(",")]
         else:
             # Use most recent team sheet
-            recent = stats[stats["team"] == team].sort_values("date_iso")
+            date_col = "date" if "date" in stats.columns else "date_iso"
+            recent = stats[stats["team"] == team].sort_values(date_col)
             last_match = recent["match_id"].iloc[-1] if len(recent) > 0 else None
             if last_match:
                 players = recent[recent["match_id"] == last_match]["player"].tolist()
@@ -168,7 +251,7 @@ def _predict_from_fixtures(model, fixtures, year, round_num):
         for player in players:
             player_history = stats[
                 (stats["player"] == player) & (stats["team"] == team)
-            ].sort_values("date_iso")
+            ].sort_values(date_col)
 
             if len(player_history) < 1:
                 continue
@@ -178,7 +261,6 @@ def _predict_from_fixtures(model, fixtures, year, round_num):
             last_row = player_history.iloc[-1:].copy()
             last_row["venue"] = venue
             last_row["opponent"] = opponent
-            last_row["round"] = str(round_num)
             last_row["round_number"] = round_num
             last_row["year"] = year
             last_row["is_home"] = fixture.get("is_home", 1)
@@ -193,8 +275,1713 @@ def _predict_from_fixtures(model, fixtures, year, round_num):
     # Build features for these rows
     pred_df = build_features(pred_df, save=False)
 
-    # Predict
-    return model.predict(pred_df, model.feature_cols)
+    # Predict with full distributions
+    predictions = model.predict_distributions(
+        pred_df, store=None, feature_cols=model.feature_cols
+    )
+
+    # Merge disposal predictions if available
+    if disp_model is not None:
+        try:
+            disp_preds = disp_model.predict_distributions(
+                pred_df, store=None, feature_cols=disp_model.feature_cols
+            )
+            predictions = _merge_predictions(predictions, disp_preds)
+        except Exception as e:
+            print(f"  Warning: Disposal predictions failed: {e}")
+
+    return predictions
+
+
+# ------------------------------------------------------------------
+# Threshold probability helpers
+# ------------------------------------------------------------------
+
+def _fmt_prob(p):
+    """Format a probability for threshold display."""
+    if pd.isna(p) or p < 0.01:
+        return "  -  "
+    return f"{p:5.2f}"
+
+
+def _display_threshold_probabilities(preds, round_num, year):
+    """Display per-player threshold probabilities grouped by match."""
+    has_goals = "p_2plus_goals" in preds.columns
+    has_disp = "p_15plus_disp" in preds.columns
+
+    if not has_goals and not has_disp:
+        return
+
+    print(f"\n{'='*70}")
+    print(f"PLAYER THRESHOLD PROBABILITIES — Round {round_num}, {year}")
+    print(f"{'='*70}")
+
+    # Group by match using sorted team pairs (works for both fixture and
+    # historical paths regardless of match_id values)
+    preds = preds.copy()
+    preds["_match_key"] = preds.apply(
+        lambda r: tuple(sorted([str(r["team"]), str(r["opponent"])])), axis=1
+    )
+
+    for _, match_df in preds.groupby("_match_key", sort=False):
+        match_sorted = match_df.sort_values("p_scorer", ascending=False)
+
+        # Match header
+        teams = match_sorted[["team", "opponent"]].drop_duplicates()
+        team1 = teams.iloc[0]["team"]
+        team2 = teams.iloc[0]["opponent"]
+        venue = match_sorted["venue"].iloc[0] if "venue" in match_sorted.columns else ""
+        venue_str = f"  ({venue})" if venue else ""
+        print(f"\n  {team1} vs {team2}{venue_str}")
+
+        # Column header
+        header = f"  {'Player':30s}"
+        if has_goals:
+            header += f"  {'1+GL':>5s}  {'2+GL':>5s}  {'3+GL':>5s}"
+        if has_disp:
+            header += f"  {'15+DI':>5s}  {'20+DI':>5s}  {'25+DI':>5s}  {'30+DI':>5s}"
+        print(header)
+
+        for _, row in match_sorted.iterrows():
+            line = f"  {row['player']:30s}"
+            if has_goals:
+                line += f"  {_fmt_prob(row.get('p_scorer', 0))}"
+                line += f"  {_fmt_prob(row.get('p_2plus_goals', 0))}"
+                line += f"  {_fmt_prob(row.get('p_3plus_goals', 0))}"
+            if has_disp:
+                line += f"  {_fmt_prob(row.get('p_15plus_disp', 0))}"
+                line += f"  {_fmt_prob(row.get('p_20plus_disp', 0))}"
+                line += f"  {_fmt_prob(row.get('p_25plus_disp', 0))}"
+                line += f"  {_fmt_prob(row.get('p_30plus_disp', 0))}"
+            print(line)
+
+
+def _save_threshold_csv(preds, round_num, out_dir):
+    """Save a threshold-focused CSV with goal and disposal probabilities."""
+    cols = ["player", "team", "opponent", "venue"]
+    # Goal thresholds
+    for c in ["p_scorer", "p_2plus_goals", "p_3plus_goals"]:
+        if c in preds.columns:
+            cols.append(c)
+    # Disposal thresholds (skip 10+ — nearly everyone hits it)
+    for t in [15, 20, 25, 30]:
+        col = f"p_{t}plus_disp"
+        if col in preds.columns:
+            cols.append(col)
+    # Point estimates
+    for c in ["predicted_goals", "predicted_disposals"]:
+        if c in preds.columns:
+            cols.append(c)
+
+    available_cols = [c for c in cols if c in preds.columns]
+    threshold_df = preds[available_cols].copy()
+
+    # Rename p_scorer to p_1plus_goals for clarity in the CSV
+    if "p_scorer" in threshold_df.columns:
+        threshold_df = threshold_df.rename(columns={"p_scorer": "p_1plus_goals"})
+
+    sort_col = "p_1plus_goals" if "p_1plus_goals" in threshold_df.columns else "player"
+    threshold_df = threshold_df.sort_values(sort_col, ascending=False).reset_index(drop=True)
+
+    out_path = out_dir / f"round_{round_num}_thresholds.csv"
+    threshold_df.to_csv(out_path, index=False)
+    print(f"  Threshold probabilities saved to {out_path}")
+
+
+def _update_calibration_for_round(store, pred_goals, actual_goals, scorer_prob):
+    """Update calibration state with data from a single backtest round."""
+    # Bucket predictions into probability bins and track hit rates
+    buckets = np.arange(0.05, 1.0, 0.1).round(2)
+    rows = []
+
+    # 1+ goals calibration
+    for bucket in buckets:
+        lo = bucket - 0.05
+        hi = bucket + 0.05
+        mask = (scorer_prob >= lo) & (scorer_prob < hi)
+        if mask.sum() > 0:
+            rows.append({
+                "target": "1plus_goals",
+                "probability_bucket": float(bucket),
+                "predicted": int(mask.sum()),
+                "occurred": int((actual_goals[mask] >= 1).sum()),
+            })
+
+    # 2+ goals calibration (use Poisson CDF on pred_goals)
+    from scipy.stats import poisson as poisson_dist
+    p_2plus = np.array([1 - poisson_dist.cdf(1, max(mu, 0.01)) for mu in pred_goals])
+    for bucket in buckets:
+        lo = bucket - 0.05
+        hi = bucket + 0.05
+        mask = (p_2plus >= lo) & (p_2plus < hi)
+        if mask.sum() > 0:
+            rows.append({
+                "target": "2plus_goals",
+                "probability_bucket": float(bucket),
+                "predicted": int(mask.sum()),
+                "occurred": int((actual_goals[mask] >= 2).sum()),
+            })
+
+    if rows:
+        cal_df = pd.DataFrame(rows)
+        store.update_calibration(cal_df)
+
+
+def cmd_backtest(args):
+    """Walk-forward backtesting: for each round in the target season,
+    train on all prior data, predict that round, and record accuracy."""
+    import json
+    from analysis import _compute_threshold_metrics
+
+    year = args.year
+    if not year:
+        print("Error: --backtest requires --year YYYY")
+        return
+
+    run_id = getattr(args, "run_id", None) or _new_run_id(prefix=f"backtest_{year}")
+
+    feat_path = config.FEATURES_DIR / "feature_matrix.parquet"
+    if not feat_path.exists():
+        print("No feature matrix found. Run --features first.")
+        return
+
+    feat_cols_path = config.FEATURES_DIR / "feature_columns.json"
+    if not feat_cols_path.exists():
+        print("No feature_columns.json found. Run --features first.")
+        return
+
+    feature_df = pd.read_parquet(feat_path)
+    with open(feat_cols_path) as f:
+        feature_cols = json.load(f)
+
+    # Check we have enough training history
+    min_train_year = year - config.BACKTEST_TRAIN_MIN_YEARS
+    available_years = sorted(feature_df["year"].unique())
+    if not any(y <= min_train_year for y in available_years):
+        print(f"Not enough history for backtesting year {year}.")
+        print(f"  Need data from at least {min_train_year}, have: {available_years}")
+        return
+
+    # Get rounds in the target season
+    season_df = feature_df[feature_df["year"] == year].copy()
+    if season_df.empty:
+        print(f"No data for season {year}.")
+        return
+
+    rounds = sorted(season_df["round_number"].dropna().unique())
+    print(f"\nWalk-forward backtest for {year}")
+    print(f"  Rounds to test: {len(rounds)}")
+    print(f"  Training data starts: {min(available_years)}")
+    print(f"  Run ID: {run_id}")
+    print()
+
+    results = []
+    player_rows = []
+    store = LearningStore(run_id=run_id)
+    all_p_1plus = []
+    all_p_2plus = []
+    all_p_3plus = []
+    all_actual_goals = []
+
+    for rnd in rounds:
+        rnd_int = int(rnd)
+
+        # Train set: all data before this round in this year + all prior years
+        train_mask = (
+            (feature_df["year"] < year)
+            | ((feature_df["year"] == year) & (feature_df["round_number"] < rnd))
+        )
+        train_df = feature_df[train_mask].copy()
+
+        # Test set: this round only
+        test_mask = (feature_df["year"] == year) & (feature_df["round_number"] == rnd)
+        test_df = feature_df[test_mask].copy()
+
+        if len(train_df) < 20 or test_df.empty:
+            continue
+
+        # Train model
+        model = AFLScoringModel()
+        model.train_backtest(train_df, feature_cols)
+
+        # Predict
+        from model import _prepare_features
+        X_test_raw, X_test_clean, X_test_scaled = _prepare_features(
+            test_df, feature_cols, scaler=model.scaler
+        )
+        pred_goals, scorer_prob, lambda_if_scorer = model._ensemble_predict(
+            X_test_raw, X_test_scaled, "goals"
+        )
+        pred_behinds, _, _ = model._ensemble_predict(X_test_raw, X_test_scaled, "behinds")
+
+        actual_goals = test_df["GL"].values
+        actual_behinds = test_df["BH"].values
+        baseline = test_df["career_goal_avg_pre"].fillna(0).values
+
+        mae = float(np.mean(np.abs(actual_goals - pred_goals)))
+        baseline_mae = float(np.mean(np.abs(actual_goals - baseline)))
+        improvement = ((baseline_mae - mae) / baseline_mae * 100) if baseline_mae > 0 else 0.0
+        mean_pred = float(pred_goals.mean())
+        mean_actual = float(actual_goals.mean())
+
+        # Ranking metrics: scorer AUC and precision@20
+        actual_scored = (actual_goals >= 1).astype(int)
+        try:
+            scorer_auc = roc_auc_score(actual_scored, scorer_prob)
+        except ValueError:
+            scorer_auc = float("nan")
+
+        # Precision@20: of top 20 by P(scorer), how many actually scored?
+        if len(scorer_prob) >= 20:
+            top20_idx = np.argsort(scorer_prob)[::-1][:20]
+            precision_at_20 = float(actual_scored[top20_idx].mean())
+        else:
+            precision_at_20 = float("nan")
+
+        # Probabilistic thresholds for calibration diagnostics
+        lam = np.clip(lambda_if_scorer, 0.01, None)
+        p_1plus = np.clip(scorer_prob, 0, 1)
+        p_2plus = np.clip(scorer_prob * (1 - poisson_dist.cdf(1, lam)), 0, 1)
+        p_3plus = np.clip(scorer_prob * (1 - poisson_dist.cdf(2, lam)), 0, 1)
+        all_p_1plus.append(p_1plus)
+        all_p_2plus.append(p_2plus)
+        all_p_3plus.append(p_3plus)
+        all_actual_goals.append(actual_goals)
+
+        # Collect player-level predictions
+        n_train = len(train_df)
+        error = pred_goals - actual_goals
+        abs_error = np.abs(error)
+        baseline_abs_error = np.abs(baseline - actual_goals)
+        beat_baseline = (abs_error < baseline_abs_error).astype(int)
+
+        rnd_players = pd.DataFrame({
+            "player": test_df["player"].values,
+            "team": test_df["team"].values,
+            "opponent": test_df["opponent"].values,
+            "venue": test_df["venue"].values,
+            "round": rnd_int,
+            "year": year,
+            "is_home": test_df["is_home"].values if "is_home" in test_df.columns else 0,
+            "player_role": test_df["player_role"].values if "player_role" in test_df.columns else "general",
+            "p_scorer": np.round(scorer_prob, 4),
+            "predicted_goals": np.round(pred_goals, 4),
+            "predicted_behinds": np.round(pred_behinds, 4),
+            "actual_goals": actual_goals,
+            "actual_behinds": actual_behinds,
+            "career_goal_avg": baseline,
+            "error": np.round(error, 4),
+            "abs_error": np.round(abs_error, 4),
+            "baseline_abs_error": np.round(baseline_abs_error, 4),
+            "beat_baseline": beat_baseline,
+            "n_train": n_train,
+        })
+        player_rows.append(rnd_players)
+
+        # --- LearningStore: save predictions, outcomes, diagnostics ---
+        pred_record = pd.DataFrame({
+            "player": test_df["player"].values,
+            "team": test_df["team"].values,
+            "opponent": test_df["opponent"].values,
+            "p_scorer": np.round(scorer_prob, 4),
+            "predicted_goals": np.round(pred_goals, 4),
+            "predicted_behinds": np.round(pred_behinds, 4),
+        })
+        store.save_predictions(year, rnd_int, pred_record)
+
+        outcome_record = pd.DataFrame({
+            "player": test_df["player"].values,
+            "team": test_df["team"].values,
+            "actual_goals": actual_goals,
+            "actual_behinds": actual_behinds,
+        })
+        store.save_outcomes(year, rnd_int, outcome_record)
+
+        diag_record = pd.DataFrame({
+            "player": test_df["player"].values,
+            "team": test_df["team"].values,
+            "error": np.round(error, 4),
+            "abs_error": np.round(abs_error, 4),
+            "beat_baseline": beat_baseline,
+            "mae": mae,
+            "baseline_mae": baseline_mae,
+        })
+        store.save_diagnostics(year, rnd_int, diag_record)
+
+        # Update calibration: bucket predictions and track hit rates
+        _update_calibration_for_round(store, pred_goals, actual_goals, scorer_prob)
+
+        results.append({
+            "round": rnd_int,
+            "n_players": len(test_df),
+            "n_train": len(train_df),
+            "mae": round(mae, 4),
+            "baseline_mae": round(baseline_mae, 4),
+            "improvement_pct": round(improvement, 1),
+            "mean_predicted": round(mean_pred, 3),
+            "mean_actual": round(mean_actual, 3),
+            "scorer_auc": round(scorer_auc, 4) if not np.isnan(scorer_auc) else None,
+            "precision_at_20": round(precision_at_20, 4) if not np.isnan(precision_at_20) else None,
+        })
+
+        auc_str = f"AUC={scorer_auc:.3f}" if not np.isnan(scorer_auc) else "AUC=N/A"
+        print(f"  Round {rnd_int:3d}  n={len(test_df):4d}  "
+              f"MAE={mae:.4f}  baseline={baseline_mae:.4f}  "
+              f"improv={improvement:+.1f}%  {auc_str}  "
+              f"pred={mean_pred:.3f}  actual={mean_actual:.3f}")
+
+    if not results:
+        print("No rounds had enough data for backtesting.")
+        return
+
+    # Summary
+    results_df = pd.DataFrame(results)
+
+    overall_mae = results_df["mae"].mean()
+    overall_baseline = results_df["baseline_mae"].mean()
+    overall_improv = ((overall_baseline - overall_mae) / overall_baseline * 100) if overall_baseline > 0 else 0.0
+
+    # Ranking summary
+    auc_values = results_df["scorer_auc"].dropna()
+    p20_values = results_df["precision_at_20"].dropna()
+    overall_auc = auc_values.mean() if len(auc_values) > 0 else float("nan")
+    overall_p20 = p20_values.mean() if len(p20_values) > 0 else float("nan")
+
+    print(f"\n{'='*70}")
+    print(f"BACKTEST SUMMARY — {year}")
+    print(f"{'='*70}")
+    print(f"  Rounds tested:     {len(results)}")
+    print(f"  Overall MAE:       {overall_mae:.4f}")
+    print(f"  Baseline MAE:      {overall_baseline:.4f}")
+    print(f"  Improvement:       {overall_improv:+.1f}%")
+    print(f"  Mean predicted GL: {results_df['mean_predicted'].mean():.3f}")
+    print(f"  Mean actual GL:    {results_df['mean_actual'].mean():.3f}")
+    if not np.isnan(overall_auc):
+        print(f"  Scorer AUC:        {overall_auc:.4f}")
+    if not np.isnan(overall_p20):
+        print(f"  Precision@20:      {overall_p20:.4f}")
+
+    # Proper calibration diagnostics
+    print(f"\n  Calibration diagnostics (bucketed reliability):")
+    if all_actual_goals:
+        actual = np.concatenate(all_actual_goals)
+        threshold_payload = [
+            ("1plus_goals", np.concatenate(all_p_1plus), (actual >= 1).astype(int)),
+            ("2plus_goals", np.concatenate(all_p_2plus), (actual >= 2).astype(int)),
+            ("3plus_goals", np.concatenate(all_p_3plus), (actual >= 3).astype(int)),
+        ]
+        for name, preds, y in threshold_payload:
+            metrics = _compute_threshold_metrics(preds, y)
+            if not metrics:
+                continue
+            print(
+                f"    {name:12s}  Brier={metrics['brier_score']:.4f}  "
+                f"LogLoss={metrics['log_loss']:.4f}  BaseRate={metrics['base_rate']:.4f}  n={metrics['n']}"
+            )
+            for b in metrics.get("calibration_curve", []):
+                print(
+                    f"      [{b['bin_lower']:.2f}, {b['bin_upper']:.2f}]  "
+                    f"pred={b['predicted_mean']:.3f}  obs={b['observed_mean']:.3f}  n={b['count']}"
+                )
+
+    # Save round-level results
+    config.ensure_dirs()
+    out_path = config.BACKTEST_DIR / f"backtest_{year}.csv"
+    results_df.to_csv(out_path, index=False)
+    print(f"\n  Results saved to {out_path}")
+
+    # Save player-level predictions
+    if player_rows:
+        players_df = pd.concat(player_rows, ignore_index=True)
+        players_path = config.BACKTEST_DIR / f"backtest_{year}_players.csv"
+        players_df.to_csv(players_path, index=False)
+        print(f"  Player-level predictions saved to {players_path}")
+
+    # Print learning store summary
+    summary = store.get_learning_summary(year)
+    print(f"\n  LearningStore: {summary['prediction_rounds']} prediction rounds, "
+          f"{summary['outcome_rounds']} outcome rounds, "
+          f"{summary['diagnostic_rounds']} diagnostic rounds saved")
+    print(f"  LearningStore run_id: {summary.get('run_id')}")
+
+    # Save feature importances from the final model
+    if model is not None and model.goals_gbt is not None and hasattr(model.goals_gbt, "feature_importances_"):
+        importances = model.goals_gbt.feature_importances_
+        imp_df = pd.DataFrame({
+            "feature": feature_cols,
+            "importance": importances,
+        }).sort_values("importance", ascending=False).reset_index(drop=True)
+        imp_path = config.BACKTEST_DIR / f"backtest_{year}_importances.csv"
+        imp_df.to_csv(imp_path, index=False)
+        print(f"  Feature importances saved to {imp_path}")
+
+
+def cmd_diagnose(args):
+    """Read player-level backtest CSV and print a full diagnostic report."""
+    year = args.year
+    if not year:
+        print("Error: --diagnose requires --year YYYY")
+        return
+
+    players_path = config.BACKTEST_DIR / f"backtest_{year}_players.csv"
+    if not players_path.exists():
+        print(f"No player-level backtest data for {year}.")
+        print(f"Run: python pipeline.py --backtest --year {year}")
+        return
+
+    df = pd.read_csv(players_path)
+    imp_path = config.BACKTEST_DIR / f"backtest_{year}_importances.csv"
+    imp_df = pd.read_csv(imp_path) if imp_path.exists() else None
+
+    print(f"\n{'='*70}")
+    print(f"DIAGNOSTIC REPORT — {year} Backtest")
+    print(f"{'='*70}")
+
+    _diagnose_overall(df)
+    _diagnose_round_trend(df)
+    _diagnose_by_role(df)
+    _diagnose_by_actual_goals(df)
+    _diagnose_home_away(df)
+    _diagnose_over_predictions(df)
+    _diagnose_under_predictions(df)
+    _diagnose_player_consistency(df)
+    _diagnose_feature_importance(imp_df)
+    _diagnose_ranking(df)
+    _diagnose_refinement_suggestions(df, imp_df)
+
+
+# ------------------------------------------------------------------
+# Diagnose helpers
+# ------------------------------------------------------------------
+
+def _diagnose_overall(df):
+    """Section 1: Overall Accuracy."""
+    print(f"\n--- Section 1: Overall Accuracy ---")
+    n = len(df)
+    mae = df["abs_error"].mean()
+    rmse = np.sqrt((df["error"] ** 2).mean())
+    baseline_mae = df["baseline_abs_error"].mean()
+    improvement = ((baseline_mae - mae) / baseline_mae * 100) if baseline_mae > 0 else 0.0
+    beat_pct = df["beat_baseline"].mean() * 100
+    mean_pred = df["predicted_goals"].mean()
+    mean_actual = df["actual_goals"].mean()
+    cal_ratio = mean_pred / mean_actual if mean_actual > 0 else float("inf")
+
+    print(f"  Total predictions:    {n}")
+    print(f"  MAE:                  {mae:.4f}")
+    print(f"  RMSE:                 {rmse:.4f}")
+    print(f"  Baseline MAE:         {baseline_mae:.4f}")
+    print(f"  Improvement:          {improvement:+.1f}%")
+    print(f"  % beating baseline:   {beat_pct:.1f}%")
+    print(f"  Mean predicted:       {mean_pred:.3f}")
+    print(f"  Mean actual:          {mean_actual:.3f}")
+    print(f"  Calibration ratio:    {cal_ratio:.3f} (1.0 = perfect)")
+
+
+def _diagnose_round_trend(df):
+    """Section 2: Round-by-Round Trend."""
+    print(f"\n--- Section 2: Round-by-Round Trend ---")
+    rnd_stats = df.groupby("round").agg(
+        n=("abs_error", "count"),
+        mae=("abs_error", "mean"),
+        baseline_mae=("baseline_abs_error", "mean"),
+        n_train=("n_train", "first"),
+    ).reset_index()
+
+    print(f"  {'Round':>5s}  {'n':>5s}  {'MAE':>7s}  {'Baseline':>8s}  {'n_train':>7s}")
+    for _, row in rnd_stats.iterrows():
+        print(f"  {int(row['round']):5d}  {int(row['n']):5d}  {row['mae']:.4f}  "
+              f"{row['baseline_mae']:.4f}  {int(row['n_train']):7d}")
+
+    # Trend assessment: correlate round number with MAE
+    if len(rnd_stats) >= 4:
+        rounds_arr = rnd_stats["round"].values.astype(float)
+        mae_arr = rnd_stats["mae"].values
+        corr = np.corrcoef(rounds_arr, mae_arr)[0, 1]
+        if corr < -0.3:
+            print(f"  Trend: IMPROVING over the season (r={corr:.2f}) — model learns from in-season data")
+        elif corr > 0.3:
+            print(f"  Trend: WORSENING over the season (r={corr:.2f}) — possible overfitting or drift")
+        else:
+            print(f"  Trend: STABLE across rounds (r={corr:.2f})")
+
+
+def _diagnose_by_role(df):
+    """Section 3: Accuracy by Player Role."""
+    print(f"\n--- Section 3: Accuracy by Player Role ---")
+    roles = df["player_role"].unique()
+    if len(roles) == 1 and roles[0] == "general":
+        print("  All players classified as 'general' — need more match history for role classification.")
+        print(f"  {'Role':>15s}  {'n':>6s}  {'MAE':>7s}  {'BasMAE':>7s}  {'Improv':>7s}")
+        n = len(df)
+        mae = df["abs_error"].mean()
+        bl = df["baseline_abs_error"].mean()
+        imp = ((bl - mae) / bl * 100) if bl > 0 else 0.0
+        print(f"  {'general':>15s}  {n:6d}  {mae:.4f}  {bl:.4f}  {imp:+.1f}%")
+        return
+
+    print(f"  {'Role':>15s}  {'n':>6s}  {'MAE':>7s}  {'BasMAE':>7s}  {'Improv':>7s}")
+    for role in sorted(df["player_role"].unique()):
+        sub = df[df["player_role"] == role]
+        n = len(sub)
+        if n < 10:
+            continue
+        mae = sub["abs_error"].mean()
+        bl = sub["baseline_abs_error"].mean()
+        imp = ((bl - mae) / bl * 100) if bl > 0 else 0.0
+        print(f"  {role:>15s}  {n:6d}  {mae:.4f}  {bl:.4f}  {imp:+.1f}%")
+
+
+def _diagnose_by_actual_goals(df):
+    """Section 4: Accuracy by Actual Goals Scored."""
+    print(f"\n--- Section 4: Accuracy by Actual Goals Scored ---")
+    buckets = [
+        (0, "0 goals", df["actual_goals"] == 0),
+        (1, "1 goal", df["actual_goals"] == 1),
+        (2, "2 goals", df["actual_goals"] == 2),
+        (3, "3+ goals", df["actual_goals"] >= 3),
+    ]
+
+    total = len(df)
+    print(f"  {'Bucket':>10s}  {'n':>6s}  {'%':>6s}  {'MAE':>7s}  {'AvgPred':>7s}  {'AvgAct':>7s}  {'Bias':>7s}")
+    for _, label, mask in buckets:
+        sub = df[mask]
+        n = len(sub)
+        if n < 5:
+            continue
+        pct = n / total * 100
+        mae = sub["abs_error"].mean()
+        avg_pred = sub["predicted_goals"].mean()
+        avg_act = sub["actual_goals"].mean()
+        bias = avg_pred - avg_act
+        print(f"  {label:>10s}  {n:6d}  {pct:5.1f}%  {mae:.4f}  {avg_pred:.3f}  {avg_act:.3f}  {bias:+.3f}")
+
+    zero_pct = (df["actual_goals"] == 0).mean() * 100
+    print(f"\n  Zero-inflation: {zero_pct:.1f}% of all player-rounds scored 0 goals")
+
+
+def _diagnose_home_away(df):
+    """Section 5: Home vs Away."""
+    print(f"\n--- Section 5: Home vs Away ---")
+    if "is_home" not in df.columns:
+        print("  No is_home column available.")
+        return
+
+    for label, val in [("Home", 1), ("Away", 0)]:
+        sub = df[df["is_home"] == val]
+        if len(sub) < 10:
+            continue
+        mae = sub["abs_error"].mean()
+        bl = sub["baseline_abs_error"].mean()
+        avg_pred = sub["predicted_goals"].mean()
+        avg_act = sub["actual_goals"].mean()
+        print(f"  {label:>6s}  n={len(sub):5d}  MAE={mae:.4f}  baseline={bl:.4f}  "
+              f"pred={avg_pred:.3f}  actual={avg_act:.3f}")
+
+
+def _diagnose_over_predictions(df):
+    """Section 6: Top 10 Over-Predictions."""
+    print(f"\n--- Section 6: Top 10 Over-Predictions ---")
+    top = df.nlargest(10, "error")
+    print(f"  {'Player':30s}  {'Rnd':>3s}  {'Pred':>5s}  {'Actual':>6s}  {'Error':>6s}  {'Team':15s}  {'vs':15s}")
+    for _, row in top.iterrows():
+        print(f"  {row['player']:30s}  {int(row['round']):3d}  {row['predicted_goals']:5.2f}  "
+              f"{int(row['actual_goals']):6d}  {row['error']:+5.2f}  {row['team']:15s}  {row['opponent']:15s}")
+
+
+def _diagnose_under_predictions(df):
+    """Section 7: Top 10 Under-Predictions."""
+    print(f"\n--- Section 7: Top 10 Under-Predictions ---")
+    top = df.nsmallest(10, "error")
+    print(f"  {'Player':30s}  {'Rnd':>3s}  {'Pred':>5s}  {'Actual':>6s}  {'Error':>6s}  {'Team':15s}  {'vs':15s}")
+    for _, row in top.iterrows():
+        print(f"  {row['player']:30s}  {int(row['round']):3d}  {row['predicted_goals']:5.2f}  "
+              f"{int(row['actual_goals']):6d}  {row['error']:+5.2f}  {row['team']:15s}  {row['opponent']:15s}")
+
+
+def _diagnose_player_consistency(df):
+    """Section 8: Player Consistency — who does the model nail vs miss."""
+    print(f"\n--- Section 8: Player Consistency ---")
+    player_stats = df.groupby("player").agg(
+        n=("abs_error", "count"),
+        mae=("abs_error", "mean"),
+        mean_error=("error", "mean"),
+        baseline_mae=("baseline_abs_error", "mean"),
+    ).reset_index()
+    player_stats = player_stats[player_stats["n"] >= 2]
+
+    if player_stats.empty:
+        print("  Not enough multi-appearance players.")
+        return
+
+    player_stats["improvement"] = (
+        (player_stats["baseline_mae"] - player_stats["mae"]) / player_stats["baseline_mae"] * 100
+    ).fillna(0)
+
+    # Best predicted players (lowest MAE, min 3 appearances)
+    frequent = player_stats[player_stats["n"] >= 3].copy()
+    if len(frequent) >= 5:
+        print(f"\n  Best predicted (lowest MAE, 3+ appearances):")
+        print(f"  {'Player':30s}  {'n':>3s}  {'MAE':>7s}  {'Bias':>7s}")
+        for _, row in frequent.nsmallest(5, "mae").iterrows():
+            print(f"  {row['player']:30s}  {int(row['n']):3d}  {row['mae']:.4f}  {row['mean_error']:+.3f}")
+
+        print(f"\n  Worst predicted (highest MAE, 3+ appearances):")
+        print(f"  {'Player':30s}  {'n':>3s}  {'MAE':>7s}  {'Bias':>7s}")
+        for _, row in frequent.nlargest(5, "mae").iterrows():
+            print(f"  {row['player']:30s}  {int(row['n']):3d}  {row['mae']:.4f}  {row['mean_error']:+.3f}")
+
+        # Systematic bias: players consistently over- or under-predicted
+        biased = frequent[frequent["mean_error"].abs() > 0.3]
+        if not biased.empty:
+            print(f"\n  Systematic bias (|mean error| > 0.3):")
+            print(f"  {'Player':30s}  {'n':>3s}  {'Bias':>7s}  {'Direction':>12s}")
+            for _, row in biased.reindex(biased["mean_error"].abs().sort_values(ascending=False).index).head(10).iterrows():
+                direction = "over-pred" if row["mean_error"] > 0 else "under-pred"
+                print(f"  {row['player']:30s}  {int(row['n']):3d}  {row['mean_error']:+.3f}  {direction:>12s}")
+
+
+def _diagnose_feature_importance(imp_df):
+    """Section 9: Feature Importance."""
+    print(f"\n--- Section 9: Feature Importance ---")
+    if imp_df is None or imp_df.empty:
+        print("  No feature importance data available.")
+        return
+
+    # Top 20 features
+    top = imp_df.head(20)
+    print(f"  Top 20 GBT features:")
+    print(f"  {'#':>3s}  {'Feature':45s}  {'Importance':>10s}")
+    for i, (_, row) in enumerate(top.iterrows(), 1):
+        print(f"  {i:3d}  {row['feature']:45s}  {row['importance']:.4f}")
+
+    # Category-level aggregation
+    categories = {
+        "career": ["career_", "age_", "is_first_year"],
+        "rolling_form": ["player_gl_avg_", "player_bh_avg_", "player_di_avg_",
+                         "player_mk_avg_", "player_tk_avg_", "player_if50_avg_",
+                         "player_cl_avg_", "player_ho_avg_", "player_ga_avg_",
+                         "player_mi_avg_", "player_cm_avg_", "player_cp_avg_",
+                         "player_ff_avg_", "player_rb_avg_", "player_one_pct_avg_",
+                         "player_accuracy_", "player_gl_streak", "player_gl_trend",
+                         "season_goals_total", "days_since_last"],
+        "venue": ["venue_", "player_gl_at_venue", "player_bh_at_venue", "player_gl_venue_diff"],
+        "opponent": ["opp_", "player_vs_opp"],
+        "team": ["team_", "player_goal_share"],
+        "scoring_pattern": ["player_q", "player_late_scorer", "player_multi_goal"],
+        "role": ["role_", "forward_score"],
+        "teammate": ["teammate_"],
+        "matchup": ["opp_key_defenders", "opp_defender_strength"],
+        "interaction": ["interact_"],
+    }
+
+    print(f"\n  Category-level importance:")
+    cat_totals = {}
+    total_imp = imp_df["importance"].sum()
+    for cat_name, prefixes in categories.items():
+        cat_imp = imp_df[imp_df["feature"].apply(
+            lambda f: any(f.startswith(p) or p in f for p in prefixes)
+        )]["importance"].sum()
+        cat_totals[cat_name] = cat_imp
+
+    # Add "other" for unmatched
+    matched = sum(cat_totals.values())
+    cat_totals["other"] = total_imp - matched
+
+    for cat, imp in sorted(cat_totals.items(), key=lambda x: -x[1]):
+        pct = imp / total_imp * 100 if total_imp > 0 else 0
+        if pct < 0.5:
+            continue
+        print(f"  {cat:20s}  {pct:5.1f}%")
+
+
+def _diagnose_ranking(df):
+    """Section 10: Ranking Performance — P(scorer) evaluation."""
+    print(f"\n--- Section 10: Ranking Performance ---")
+    if "p_scorer" not in df.columns:
+        print("  No p_scorer column — skipping ranking diagnosis.")
+        return
+
+    actual_scored = (df["actual_goals"] >= 1).astype(int)
+
+    # Overall scorer AUC
+    try:
+        overall_auc = roc_auc_score(actual_scored, df["p_scorer"])
+        print(f"  Overall Scorer AUC: {overall_auc:.4f}")
+    except ValueError:
+        print("  Overall Scorer AUC: N/A (single class)")
+        overall_auc = None
+
+    # Per-round AUC trend
+    print(f"\n  Per-round AUC:")
+    print(f"  {'Round':>5s}  {'AUC':>7s}  {'P@10':>6s}  {'P@20':>6s}")
+    for rnd in sorted(df["round"].unique()):
+        rnd_df = df[df["round"] == rnd]
+        rnd_scored = (rnd_df["actual_goals"] >= 1).astype(int)
+        try:
+            rnd_auc = roc_auc_score(rnd_scored, rnd_df["p_scorer"])
+        except ValueError:
+            rnd_auc = float("nan")
+
+        # Precision@10 and @20 per round
+        rnd_sorted = rnd_df.sort_values("p_scorer", ascending=False)
+        p_at_10 = (rnd_sorted.head(10)["actual_goals"] >= 1).mean() if len(rnd_sorted) >= 10 else float("nan")
+        p_at_20 = (rnd_sorted.head(20)["actual_goals"] >= 1).mean() if len(rnd_sorted) >= 20 else float("nan")
+
+        auc_s = f"{rnd_auc:.4f}" if not np.isnan(rnd_auc) else "  N/A "
+        p10_s = f"{p_at_10:.3f}" if not np.isnan(p_at_10) else " N/A "
+        p20_s = f"{p_at_20:.3f}" if not np.isnan(p_at_20) else " N/A "
+        print(f"  {int(rnd):5d}  {auc_s}  {p10_s}  {p20_s}")
+
+    # Top false positives: high P(scorer) but didn't score
+    non_scorers = df[df["actual_goals"] == 0].sort_values("p_scorer", ascending=False)
+    if len(non_scorers) >= 5:
+        print(f"\n  Top 10 False Positives (high P(scorer), scored 0):")
+        print(f"  {'Player':30s}  {'Rnd':>3s}  {'P(scorer)':>9s}  {'Team':15s}  {'vs':15s}")
+        for _, row in non_scorers.head(10).iterrows():
+            print(f"  {row['player']:30s}  {int(row['round']):3d}  {row['p_scorer']:9.3f}  "
+                  f"{row['team']:15s}  {row['opponent']:15s}")
+
+    # Top misses: scored but low P(scorer)
+    scorers = df[df["actual_goals"] >= 1].sort_values("p_scorer", ascending=True)
+    if len(scorers) >= 5:
+        print(f"\n  Top 10 Misses (scored but low P(scorer)):")
+        print(f"  {'Player':30s}  {'Rnd':>3s}  {'P(scorer)':>9s}  {'Actual GL':>9s}  {'Team':15s}")
+        for _, row in scorers.head(10).iterrows():
+            print(f"  {row['player']:30s}  {int(row['round']):3d}  {row['p_scorer']:9.3f}  "
+                  f"{int(row['actual_goals']):9d}  {row['team']:15s}")
+
+
+def _diagnose_refinement_suggestions(df, imp_df):
+    """Section 10: Auto-generated refinement suggestions."""
+    print(f"\n--- Section 10: Refinement Suggestions ---")
+    suggestions = []
+
+    # 1. Calibration bias
+    mean_pred = df["predicted_goals"].mean()
+    mean_actual = df["actual_goals"].mean()
+    cal_ratio = mean_pred / mean_actual if mean_actual > 0 else 1.0
+    if cal_ratio < 0.85:
+        suggestions.append(
+            f"CALIBRATION: Model under-predicts (ratio={cal_ratio:.3f}). "
+            f"Consider reducing Poisson alpha or increasing GBT weight."
+        )
+    elif cal_ratio > 1.15:
+        suggestions.append(
+            f"CALIBRATION: Model over-predicts (ratio={cal_ratio:.3f}). "
+            f"Consider increasing Poisson alpha or reducing GBT weight."
+        )
+
+    # 2. Zero-inflation handling
+    zero_mask = df["actual_goals"] == 0
+    if zero_mask.any():
+        zero_pred_mean = df.loc[zero_mask, "predicted_goals"].mean()
+        if zero_pred_mean > 0.4:
+            suggestions.append(
+                f"ZERO-INFLATION: Mean prediction for 0-goal players is {zero_pred_mean:.3f} (>0.4). "
+                f"Consider a two-stage model (classify scorer/non-scorer first, then predict amount)."
+            )
+
+    # 3. High-scorer gap
+    high_mask = df["actual_goals"] >= 3
+    if high_mask.sum() >= 5:
+        high_pred_mean = df.loc[high_mask, "predicted_goals"].mean()
+        if high_pred_mean < 2.0:
+            suggestions.append(
+                f"HIGH-SCORER GAP: Mean prediction for 3+ goal games is {high_pred_mean:.3f} (<2.0). "
+                f"Model misses big games — boost key_forward features or add forward-specific interactions."
+            )
+
+    # 4. Home/away split
+    if "is_home" in df.columns:
+        home_mae = df.loc[df["is_home"] == 1, "abs_error"].mean() if (df["is_home"] == 1).any() else 0
+        away_mae = df.loc[df["is_home"] == 0, "abs_error"].mean() if (df["is_home"] == 0).any() else 0
+        if abs(home_mae - away_mae) > 0.1:
+            worse = "away" if away_mae > home_mae else "home"
+            suggestions.append(
+                f"HOME/AWAY: MAE gap = {abs(home_mae - away_mae):.3f} ({worse} is worse). "
+                f"Consider adding home-ground advantage or travel-distance features."
+            )
+
+    # 5. No learning effect (MAE increases across rounds)
+    rnd_stats = df.groupby("round")["abs_error"].mean()
+    if len(rnd_stats) >= 4:
+        rounds_arr = rnd_stats.index.values.astype(float)
+        mae_arr = rnd_stats.values
+        corr = np.corrcoef(rounds_arr, mae_arr)[0, 1]
+        if corr > 0.3:
+            suggestions.append(
+                f"NO LEARNING: MAE increases across rounds (r={corr:.2f}). "
+                f"Model may be overfitting or drifting. Try tuning rolling window sizes or adding regularization."
+            )
+
+    # 6. Feature concentration
+    if imp_df is not None and len(imp_df) >= 5:
+        total_imp = imp_df["importance"].sum()
+        top5_imp = imp_df.head(5)["importance"].sum()
+        top5_pct = top5_imp / total_imp * 100 if total_imp > 0 else 0
+        if top5_pct > 50:
+            top5_names = ", ".join(imp_df.head(5)["feature"].tolist())
+            suggestions.append(
+                f"FEATURE CONCENTRATION: Top 5 features account for {top5_pct:.0f}% of importance ({top5_names}). "
+                f"Consider more regularization (increase min_samples_leaf) or feature selection."
+            )
+
+    # 7. Sparse data
+    n = len(df)
+    if n < 200:
+        suggestions.append(
+            f"SPARSE DATA: Only {n} predictions. Consider scraping more seasons "
+            f"or including more players to improve model reliability."
+        )
+
+    if not suggestions:
+        print("  No major issues detected. Model looks well-calibrated!")
+    else:
+        for i, s in enumerate(suggestions, 1):
+            print(f"  {i}. {s}")
+
+    print()
+
+
+# ------------------------------------------------------------------
+# Sequential Learning
+# ------------------------------------------------------------------
+
+def _merge_predictions(scoring_preds, disposal_preds):
+    """Join scoring and disposal predictions on (player, team, match_id)."""
+    if disposal_preds.empty:
+        return scoring_preds
+
+    join_cols = ["player", "team", "match_id"]
+    # Only keep disposal-specific columns (avoid duplicating shared cols)
+    disp_cols = [c for c in disposal_preds.columns
+                 if c not in scoring_preds.columns or c in join_cols]
+    merged = scoring_preds.merge(
+        disposal_preds[disp_cols], on=join_cols, how="left"
+    )
+    return merged
+
+
+def _build_outcomes(test_df, tm_round=None):
+    """Extract actual goals, behinds, disposals from test feature DataFrame."""
+    result = pd.DataFrame({
+        "player": test_df["player"].values,
+        "team": test_df["team"].values,
+        "match_id": test_df["match_id"].values,
+        "actual_goals": test_df["GL"].values,
+        "actual_behinds": test_df["BH"].values,
+    })
+    if "DI" in test_df.columns:
+        result["actual_disposals"] = test_df["DI"].values
+    return result
+
+
+def _build_diagnostics(predictions, outcomes, test_df=None):
+    """Per-player error analysis from merged predictions and outcomes."""
+    join_cols = ["player", "team", "match_id"]
+    merged = predictions.merge(outcomes, on=join_cols, how="inner")
+
+    if merged.empty:
+        return pd.DataFrame()
+
+    diag = pd.DataFrame({
+        "player": merged["player"].values,
+        "team": merged["team"].values,
+        "match_id": merged["match_id"].values,
+    })
+
+    if "predicted_goals" in merged.columns and "actual_goals" in merged.columns:
+        error = merged["predicted_goals"].values - merged["actual_goals"].values
+        diag["goal_error"] = np.round(error, 4)
+        diag["goal_abs_error"] = np.round(np.abs(error), 4)
+
+    if "predicted_behinds" in merged.columns and "actual_behinds" in merged.columns:
+        bh_error = merged["predicted_behinds"].values - merged["actual_behinds"].values
+        diag["behind_error"] = np.round(bh_error, 4)
+
+    if "predicted_disposals" in merged.columns and "actual_disposals" in merged.columns:
+        di_error = merged["predicted_disposals"].values - merged["actual_disposals"].values
+        diag["disposal_error"] = np.round(di_error, 4)
+
+    # Miss classification
+    if test_df is not None and "predicted_goals" in merged.columns:
+        from analysis import classify_prediction_misses
+        miss_df = classify_prediction_misses(merged, test_df)
+        if not miss_df.empty:
+            miss_lookup = {(str(r["player"]), str(r["team"])): r["miss_type"]
+                           for _, r in miss_df.iterrows()}
+            diag["miss_type"] = [
+                miss_lookup.get((str(p), str(t)), "")
+                for p, t in zip(diag["player"], diag["team"])
+            ]
+        else:
+            diag["miss_type"] = ""
+    else:
+        diag["miss_type"] = ""
+
+    return diag
+
+
+def _update_sequential_calibration(store, preds, test_df):
+    """Bucket predictions and update calibration state for goals and disposals."""
+    from scipy.stats import poisson as poisson_dist
+
+    actual_goals = test_df["GL"].values
+    buckets = np.arange(0.05, 1.0, 0.1).round(2)
+    rows = []
+
+    # 1+ goals calibration (from p_scorer)
+    if "p_scorer" in preds.columns:
+        scorer_prob = preds["p_scorer"].values
+        for bucket in buckets:
+            lo, hi = bucket - 0.05, bucket + 0.05
+            mask = (scorer_prob >= lo) & (scorer_prob < hi)
+            if mask.sum() > 0:
+                rows.append({
+                    "target": "1plus_goals",
+                    "probability_bucket": float(bucket),
+                    "predicted": int(mask.sum()),
+                    "occurred": int((actual_goals[mask] >= 1).sum()),
+                })
+
+    # 2+ and 3+ goals calibration from lambda_goals
+    if "lambda_goals" in preds.columns:
+        lambdas = preds["lambda_goals"].values
+        for threshold, target_name in [(2, "2plus_goals"), (3, "3plus_goals")]:
+            p_exceed = np.array([1 - poisson_dist.cdf(threshold - 1, max(mu, 0.01))
+                                for mu in lambdas])
+            for bucket in buckets:
+                lo, hi = bucket - 0.05, bucket + 0.05
+                mask = (p_exceed >= lo) & (p_exceed < hi)
+                if mask.sum() > 0:
+                    rows.append({
+                        "target": target_name,
+                        "probability_bucket": float(bucket),
+                        "predicted": int(mask.sum()),
+                        "occurred": int((actual_goals[mask] >= threshold).sum()),
+                    })
+
+    # Disposal calibration — use predicted probabilities from the DataFrame
+    # (distribution-agnostic: works for Poisson, Gaussian, NegBin)
+    if "DI" in test_df.columns:
+        actual_disp = test_df["DI"].values
+        for threshold in config.DISPOSAL_THRESHOLDS:
+            target_name = f"{threshold}plus_disp"
+            p_col = f"p_{threshold}plus_disp"
+            if p_col not in preds.columns:
+                continue
+            p_exceed = preds[p_col].values.astype(float)
+            for bucket in buckets:
+                lo, hi = bucket - 0.05, bucket + 0.05
+                mask = (p_exceed >= lo) & (p_exceed < hi)
+                if mask.sum() > 0:
+                    rows.append({
+                        "target": target_name,
+                        "probability_bucket": float(bucket),
+                        "predicted": int(mask.sum()),
+                        "occurred": int((actual_disp[mask] >= threshold).sum()),
+                    })
+
+    if rows:
+        cal_df = pd.DataFrame(rows)
+        store.update_calibration(cal_df)
+
+
+def _predict_games_for_round(winner_model, tm_train, tm_round,
+                             player_predictions_df=None):
+    """Build game features and predict for a specific round's matches."""
+    # Combine training data with round data for feature computation
+    combined = pd.concat([tm_train, tm_round], ignore_index=True)
+    combined["date"] = pd.to_datetime(combined["date"])
+    combined = combined.sort_values("date").reset_index(drop=True)
+
+    try:
+        result = winner_model.predict_with_margin(
+            combined, player_predictions_df=player_predictions_df
+        )
+        # Filter to only the round's matches
+        round_match_ids = tm_round["match_id"].unique()
+        result = result[result["match_id"].isin(round_match_ids)]
+        return result
+    except Exception:
+        return pd.DataFrame()
+
+
+def cmd_sequential(args, disposal_distribution=None):
+    """Sequential learning: process a season round-by-round, learning from
+    each round's outcomes before predicting the next."""
+    import json
+    import time
+
+    year = args.year or config.SEQUENTIAL_YEAR
+    run_id = getattr(args, "run_id", None) or _new_run_id(prefix=f"sequential_{year}")
+
+    feat_path = config.FEATURES_DIR / "feature_matrix.parquet"
+    if not feat_path.exists():
+        print("No feature matrix found. Run --features first.")
+        return
+
+    feat_cols_path = config.FEATURES_DIR / "feature_columns.json"
+    if not feat_cols_path.exists():
+        print("No feature_columns.json found. Run --features first.")
+        return
+
+    feature_df = pd.read_parquet(feat_path)
+    with open(feat_cols_path) as f:
+        feature_cols = json.load(f)
+
+    # Load team-match data for game winner model
+    tm_path = config.BASE_STORE_DIR / "team_matches.parquet"
+    if tm_path.exists():
+        team_match_df = pd.read_parquet(tm_path)
+        team_match_df["date"] = pd.to_datetime(team_match_df["date"])
+        has_team_data = True
+    else:
+        print("  Warning: No team_matches.parquet — game predictions disabled")
+        team_match_df = pd.DataFrame()
+        has_team_data = False
+
+    # Sequential store — output goes to data/sequential/
+    store = LearningStore(base_dir=config.SEQUENTIAL_DIR, run_id=run_id)
+
+    # Get rounds in the target season
+    season_df = feature_df[feature_df["year"] == year].copy()
+    if season_df.empty:
+        print(f"No data for season {year}.")
+        return
+
+    rounds = sorted(season_df["round_number"].dropna().unique())
+    print(f"\nSequential learning for {year}")
+    print(f"  Rounds: {len(rounds)}")
+    print(f"  Players per round: ~{len(season_df) // max(len(rounds), 1)}")
+    print(f"  Run ID: {run_id}")
+    if getattr(args, "reset_calibration", False):
+        reset_done = store.reset_calibration(run_id=run_id, latest=False)
+        msg = "cleared" if reset_done else "already empty"
+        print(f"  Calibration state reset: {msg}")
+    else:
+        seeded = store.seed_calibration_from_latest()
+        if seeded:
+            print("  Calibration state seeded from latest prior run")
+        else:
+            print("  Calibration state starts fresh for this run")
+    print()
+
+    total_start = time.time()
+    round_results = []
+
+    from analysis import generate_round_analysis
+
+    for rnd in rounds:
+        rnd_int = int(rnd)
+        rnd_start = time.time()
+
+        # 1. SPLIT
+        train_mask = (
+            (feature_df["year"] < year)
+            | ((feature_df["year"] == year) & (feature_df["round_number"] < rnd))
+        )
+        train_df = feature_df[train_mask].copy()
+        test_mask = (feature_df["year"] == year) & (feature_df["round_number"] == rnd)
+        test_df = feature_df[test_mask].copy()
+
+        if len(train_df) < 50 or test_df.empty:
+            continue
+
+        # 2. TRAIN
+        scoring_model = AFLScoringModel()
+        scoring_model.train_backtest(train_df, feature_cols)
+
+        disposal_model = AFLDisposalModel(
+            distribution=disposal_distribution or config.DISPOSAL_DISTRIBUTION
+        )
+        disposal_model.train_backtest(train_df, feature_cols)
+
+        # Build player-level predictions on training data for game winner features
+        from model import _prepare_features
+        player_preds_for_gw = pd.DataFrame()
+        try:
+            _pp_raw, _pp_clean, _pp_scaled = _prepare_features(
+                train_df, feature_cols, scoring_model.scaler
+            )
+            if _pp_scaled is None or _pp_scaled.shape[0] != _pp_raw.shape[0]:
+                raise ValueError("Scaled feature matrix mismatch in sequential training context")
+            _pp_gl, _pp_scorer, _ = scoring_model._ensemble_predict(
+                _pp_raw, _pp_scaled, "goals"
+            )
+            _pp_di = disposal_model._predict_raw(_pp_raw, _pp_scaled)
+            player_preds_for_gw = train_df[["match_id", "team"]].copy()
+            player_preds_for_gw["predicted_goals"] = _pp_gl
+            player_preds_for_gw["predicted_disposals"] = _pp_di
+        except Exception:
+            pass  # Fall back to no player predictions
+
+        # Game winner model
+        game_preds = pd.DataFrame()
+        if has_team_data:
+            winner_model = AFLGameWinnerModel()
+            tm_train = team_match_df[
+                (team_match_df["year"] < year)
+                | ((team_match_df["year"] == year) & (team_match_df["round_number"] < rnd))
+            ].copy()
+            tm_round = team_match_df[
+                (team_match_df["year"] == year) & (team_match_df["round_number"] == rnd)
+            ].copy()
+
+            if len(tm_train) >= 20 and not tm_round.empty:
+                try:
+                    winner_model.train_backtest(
+                        tm_train,
+                        player_predictions_df=player_preds_for_gw if not player_preds_for_gw.empty else None,
+                    )
+                    # Also generate player preds for the test round for prediction
+                    _test_pp = pd.DataFrame()
+                    try:
+                        _tp_raw, _tp_clean, _tp_scaled = _prepare_features(
+                            test_df, feature_cols, scoring_model.scaler
+                        )
+                        if _tp_scaled is None or _tp_scaled.shape[0] != _tp_raw.shape[0]:
+                            raise ValueError("Scaled feature matrix mismatch in sequential test context")
+                        _tp_gl, _, _ = scoring_model._ensemble_predict(
+                            _tp_raw, _tp_scaled, "goals"
+                        )
+                        _tp_di = disposal_model._predict_raw(_tp_raw, _tp_scaled)
+                        _test_pp = test_df[["match_id", "team"]].copy()
+                        _test_pp["predicted_goals"] = _tp_gl
+                        _test_pp["predicted_disposals"] = _tp_di
+                    except Exception:
+                        pass
+                    # Combine train + test player preds for predict_with_margin
+                    all_pp = pd.concat([player_preds_for_gw, _test_pp], ignore_index=True) \
+                        if not _test_pp.empty else player_preds_for_gw
+                    game_preds = _predict_games_for_round(
+                        winner_model, tm_train, tm_round,
+                        player_predictions_df=all_pp if not all_pp.empty else None,
+                    )
+                except Exception as e:
+                    print(f"  Warning: Game winner model failed for R{rnd_int}: {e}")
+
+        # 3. PREDICT (distributions)
+        scoring_preds = scoring_model.predict_distributions(test_df, store, feature_cols)
+        disposal_preds = disposal_model.predict_distributions(test_df, store, feature_cols)
+
+        # 4. SAVE
+        merged_preds = _merge_predictions(scoring_preds, disposal_preds)
+        outcomes = _build_outcomes(test_df)
+        diagnostics = _build_diagnostics(merged_preds, outcomes, test_df=test_df)
+
+        store.save_predictions(year, rnd_int, merged_preds)
+        store.save_outcomes(year, rnd_int, outcomes)
+        store.save_diagnostics(year, rnd_int, diagnostics)
+
+        if not game_preds.empty:
+            store.save_game_predictions(year, rnd_int, game_preds)
+
+        # 5. LEARN
+        _update_sequential_calibration(store, merged_preds, test_df)
+        store.compute_calibration_adjustments()
+
+        # 6. ANALYZE
+        game_actuals = tm_round if has_team_data else pd.DataFrame()
+        try:
+            analysis = generate_round_analysis(
+                year, rnd_int, merged_preds, outcomes,
+                game_preds, game_actuals, test_df, store
+            )
+            store.save_analysis(year, rnd_int, analysis)
+        except Exception as e:
+            print(f"  Warning: Analysis failed for R{rnd_int}: {e}")
+            analysis = {}
+
+        # 7. PRINT
+        elapsed = time.time() - rnd_start
+        summary = analysis.get("summary", {})
+        mae = summary.get("goals_mae", float("nan"))
+        auc = summary.get("scorer_auc", float("nan"))
+        tm = summary.get("threshold_metrics", {})
+        br1 = tm.get("1plus_goals", {}).get("brier_score")
+        br2 = tm.get("2plus_goals", {}).get("brier_score")
+
+        mae_str = f"MAE={mae:.3f}" if mae is not None and not (isinstance(mae, float) and np.isnan(mae)) else "MAE=N/A"
+        br1_str = f"Br1+={br1:.3f}" if br1 is not None else "Br1+=N/A"
+        br2_str = f"Br2+={br2:.3f}" if br2 is not None else "Br2+=N/A"
+        auc_str = f"AUC={auc:.3f}" if auc is not None and not (isinstance(auc, float) and np.isnan(auc)) else "AUC=N/A"
+
+        n_players = len(test_df)
+        print(f"  R{rnd_int:02d}  n={n_players:<4d} {mae_str}  {br1_str}  {br2_str}  {auc_str}  ({elapsed:.1f}s)")
+
+        round_results.append({
+            "round": rnd_int,
+            "n_players": n_players,
+            "mae": mae,
+            "auc": auc,
+            "brier_1plus": br1,
+            "brier_2plus": br2,
+            "elapsed": round(elapsed, 1),
+        })
+
+    # Final summary
+    total_elapsed = time.time() - total_start
+    print(f"\n{'='*70}")
+    print(f"SEQUENTIAL LEARNING SUMMARY — {year}")
+    print(f"{'='*70}")
+
+    if round_results:
+        maes = [r["mae"] for r in round_results if r["mae"] is not None]
+        if maes:
+            overall_mae = np.mean(maes)
+            n_rounds = len(maes)
+            half = n_rounds // 2
+
+            first_half_mae = np.mean(maes[:half]) if half > 0 else float("nan")
+            second_half_mae = np.mean(maes[half:]) if half > 0 else float("nan")
+
+            print(f"  Rounds processed:  {n_rounds}")
+            print(f"  Overall MAE:       {overall_mae:.4f}")
+            print(f"  First-half MAE:    {first_half_mae:.4f}")
+            print(f"  Second-half MAE:   {second_half_mae:.4f}")
+
+            if first_half_mae > 0:
+                learning_effect = (first_half_mae - second_half_mae) / first_half_mae * 100
+                print(f"  Learning effect:   {learning_effect:+.1f}%")
+
+        # Calibration summary
+        cal = store.get_calibration_state(year=year)
+        active = cal[cal["calibration_adj"] != 0]
+        print(f"\n  Active calibration buckets: {len(active)}")
+        if len(active) > 0:
+            print(f"  Mean adjustment: {active['calibration_adj'].mean():.4f}")
+
+        aucs = [r["auc"] for r in round_results if r["auc"] is not None]
+        if aucs:
+            print(f"  Mean Scorer AUC:   {np.mean(aucs):.4f}")
+
+    print(f"\n  Total time: {total_elapsed:.1f}s")
+    print(f"  Output: {config.SEQUENTIAL_DIR}")
+
+
+def cmd_train_disposals(args, feature_df=None):
+    """Train the disposal prediction model."""
+    if feature_df is None:
+        feat_path = config.FEATURES_DIR / "feature_matrix.parquet"
+        if not feat_path.exists():
+            print("No feature matrix found. Run --features first.")
+            return None
+        feature_df = pd.read_parquet(feat_path)
+
+    print(f"Training disposal model ({config.DISPOSAL_DISTRIBUTION} distribution)...")
+    model = AFLDisposalModel(distribution=config.DISPOSAL_DISTRIBUTION)
+    metrics = model.train(feature_df)
+    model.save()
+    print(f"\nDisposal training complete. MAE: {metrics['disp_mae']:.4f}")
+    return model
+
+
+def cmd_train_winner(args):
+    """Train the game winner prediction model."""
+    team_match_path = config.BASE_STORE_DIR / "team_matches.parquet"
+    if not team_match_path.exists():
+        print("No team_matches.parquet found. Run --clean first.")
+        return None
+
+    team_match_df = pd.read_parquet(team_match_path)
+    print(f"Training game winner model on {len(team_match_df)} team-match rows...")
+
+    model = AFLGameWinnerModel()
+    metrics = model.train(team_match_df)
+    model.save()
+    return model
+
+
+def cmd_sequential_report(args):
+    """Generate post-season report from sequential learning data."""
+    import json
+
+    year = args.year
+    if not year:
+        print("Error: --sequential-report requires --year YYYY")
+        return
+
+    from analysis import generate_season_report
+
+    store = LearningStore(base_dir=config.SEQUENTIAL_DIR, run_id=getattr(args, "run_id", None))
+    report = generate_season_report(store, year)
+
+    if "error" in report:
+        print(f"Error: {report['error']}")
+        return
+
+    # Save JSON
+    report_path = config.SEQUENTIAL_DIR / f"season_report_{year}.json"
+    with open(report_path, "w") as f:
+        json.dump(report, f, indent=2, default=str)
+    print(f"Season report saved to {report_path}")
+    summary = store.get_learning_summary(year)
+    if summary.get("run_id"):
+        print(f"Run ID: {summary['run_id']}")
+
+    # Print formatted summary
+    print(f"\n{'='*70}")
+    print(f"SEASON REPORT — {year}")
+    print(f"{'='*70}")
+    print(f"  Rounds analyzed: {report.get('rounds_analyzed', 0)}")
+
+    # --- Threshold evaluation (PRIMARY) ---
+    te = report.get("threshold_evaluation", {})
+    if te:
+        print(f"\n  Probability Evaluation (PRIMARY):")
+        # Display names for nicer output
+        display_names = {
+            "1plus_goals": "Goals 1+", "2plus_goals": "Goals 2+", "3plus_goals": "Goals 3+",
+            "10plus_disp": "Disp 10+", "15plus_disp": "Disp 15+", "20plus_disp": "Disp 20+",
+            "25plus_disp": "Disp 25+", "30plus_disp": "Disp 30+",
+        }
+        print(f"    {'Threshold':<14s} {'Brier':>8s} {'LogLoss':>8s} {'BaseRate':>9s} {'n':>7s}")
+        for name in ["1plus_goals", "2plus_goals", "3plus_goals",
+                      "10plus_disp", "15plus_disp", "20plus_disp", "25plus_disp", "30plus_disp"]:
+            m = te.get(name)
+            if m:
+                dname = display_names.get(name, name)
+                print(f"    {dname:<14s} {m['brier_score']:8.4f} {m['log_loss']:8.4f} {m['base_rate']:9.4f} {m['n']:7d}")
+
+        # Calibration curves
+        print(f"\n  Calibration Curves:")
+        for name in ["1plus_goals", "2plus_goals", "3plus_goals",
+                      "10plus_disp", "15plus_disp", "20plus_disp", "25plus_disp", "30plus_disp"]:
+            m = te.get(name)
+            if m and m.get("calibration_curve"):
+                dname = display_names.get(name, name)
+                print(f"    {dname} (Brier={m['brier_score']:.4f}):")
+                print(f"      {'Predicted':>12s} {'Observed':>10s} {'n':>6s} {'Gap':>7s}")
+                for b in m["calibration_curve"]:
+                    gap = b["observed_mean"] - b["predicted_mean"]
+                    print(f"      {b['bin_lower']:.2f}-{b['bin_upper']:.2f}    {b['predicted_mean']:6.2f}    {b['observed_mean']:6.2f}  {b['count']:5d}   {gap:+.2f}")
+
+    # --- Learning curve ---
+    lc = report.get("learning_curve", {})
+    if lc.get("first_half_mae") is not None:
+        print(f"\n  Learning Curve:")
+        print(f"    First-half MAE:  {lc['first_half_mae']}")
+        print(f"    Second-half MAE: {lc['second_half_mae']}")
+        print(f"    Learning effect: {lc.get('learning_effect_pct', 'N/A')}%")
+        if lc.get("first_half_brier_1plus") is not None:
+            print(f"    First-half Brier (1+):  {lc['first_half_brier_1plus']}")
+            print(f"    Second-half Brier (1+): {lc['second_half_brier_1plus']}")
+
+    # --- MAE (SECONDARY) ---
+    lc_rounds = lc.get("rounds", [])
+    if lc_rounds:
+        maes = [r["goals_mae"] for r in lc_rounds if r.get("goals_mae") is not None]
+        if maes:
+            print(f"\n  Goals MAE (SECONDARY):")
+            print(f"    Overall:  {np.mean(maes):.4f}")
+
+    # Calibration
+    cc = report.get("calibration_curve", {})
+    if cc.get("mean_absolute_calibration_error") is not None:
+        print(f"\n  Legacy Calibration:")
+        print(f"    Mean abs error:  {cc['mean_absolute_calibration_error']}")
+
+    # Miss distribution
+    md = report.get("miss_type_distribution", {})
+    if md.get("total_significant_misses", 0) > 0:
+        print(f"\n  Miss Classification ({md['total_significant_misses']} total):")
+        for mt, pct in md.get("percentages", {}).items():
+            count = md.get("counts", {}).get(mt, 0)
+            print(f"    {mt:20s}  {count:4d}  ({pct}%)")
+
+    # Weather
+    ws = report.get("weather_summary", {})
+    if ws.get("total_wet_matches", 0) > 0:
+        print(f"\n  Weather Impact:")
+        print(f"    Wet matches: {ws['total_wet_matches']}/{ws['total_matches']} ({ws.get('wet_match_pct', 0)}%)")
+        if ws.get("avg_wet_mae") is not None:
+            print(f"    Wet MAE:  {ws['avg_wet_mae']}")
+            print(f"    Dry MAE:  {ws.get('avg_dry_mae', 'N/A')}")
+
+    # Game winner
+    gw = report.get("game_winner_accuracy", {})
+    if gw.get("total_games", 0) > 0:
+        print(f"\n  Game Winner Predictions:")
+        print(f"    Accuracy: {gw['correct_predictions']}/{gw['total_games']} ({gw.get('accuracy_pct', 0)}%)")
+        if gw.get("margin_mae") is not None:
+            print(f"    Margin MAE: {gw['margin_mae']}")
+
+    # Player leaderboard
+    pl = report.get("player_leaderboard", {})
+    if pl.get("best"):
+        print(f"\n  Best Predicted Players:")
+        for p in pl["best"][:5]:
+            print(f"    {p['player']:30s} {p['team']:15s}  MAE={p['mae']}  n={p['appearances']}")
+    if pl.get("worst"):
+        print(f"\n  Worst Predicted Players:")
+        for p in pl["worst"][:5]:
+            print(f"    {p['player']:30s} {p['team']:15s}  MAE={p['mae']}  n={p['appearances']}")
+
+    # Archetype accuracy
+    aa = report.get("archetype_accuracy", {})
+    if aa.get("per_archetype"):
+        print(f"\n  Per-Archetype Accuracy:")
+        for a in aa["per_archetype"]:
+            auc_s = f"AUC={a['scorer_auc']}" if a.get("scorer_auc") is not None else "AUC=N/A"
+            print(f"    Archetype {a['archetype']}:  MAE={a.get('goals_mae', 'N/A')}  {auc_s}  n={a['n_predictions']}")
+
+    # Streak summary
+    ss = report.get("streak_summary", {})
+    if ss.get("longest_hot_streaks"):
+        print(f"\n  Top Scoring Streaks:")
+        for h in ss["longest_hot_streaks"][:5]:
+            print(f"    {h['player']:30s} {h['team']:15s}  {h.get('streak', 0)} rounds (R{h.get('round', '?')})")
+
+    print()
+    return report
+
+
+def _compute_hit_rates(store, year):
+    """Compute hit-rate metrics (accuracy/precision/recall at P>=0.50) per threshold."""
+    from analysis import _merge_pred_outcome, _extract_threshold_data
+
+    preds = store.load_predictions(year)
+    outs = store.load_outcomes(year)
+    if preds.empty or outs.empty:
+        return {}
+
+    merged = _merge_pred_outcome(preds, outs)
+    if merged.empty:
+        return {}
+
+    threshold_data = _extract_threshold_data(merged)
+    results = {}
+    for name, (pred_probs, actual_binary) in threshold_data.items():
+        n = len(pred_probs)
+        if n < 10:
+            continue
+        predicted_yes = (pred_probs >= 0.50).astype(int)
+        actual = actual_binary.astype(int)
+        correct = (predicted_yes == actual).sum()
+        tp = ((predicted_yes == 1) & (actual == 1)).sum()
+        fp = ((predicted_yes == 1) & (actual == 0)).sum()
+        fn = ((predicted_yes == 0) & (actual == 1)).sum()
+        precision = float(tp / (tp + fp)) if (tp + fp) > 0 else 0.0
+        recall = float(tp / (tp + fn)) if (tp + fn) > 0 else 0.0
+        results[name] = {
+            "accuracy": float(correct / n),
+            "precision": precision,
+            "recall": recall,
+            "n": int(n),
+            "n_predicted_yes": int(predicted_yes.sum()),
+            "n_actual_yes": int(actual.sum()),
+        }
+    return results
+
+
+def _print_year_summary(year, report, hit_rates):
+    """Print abbreviated per-year summary after backtest."""
+    display_names = {
+        "1plus_goals": "Goals 1+", "2plus_goals": "Goals 2+", "3plus_goals": "Goals 3+",
+        "10plus_disp": "Disp 10+", "15plus_disp": "Disp 15+", "20plus_disp": "Disp 20+",
+        "25plus_disp": "Disp 25+", "30plus_disp": "Disp 30+",
+    }
+    threshold_order = [
+        "1plus_goals", "2plus_goals", "3plus_goals",
+        "10plus_disp", "15plus_disp", "20plus_disp", "25plus_disp", "30plus_disp",
+    ]
+
+    print(f"\n{'='*70}")
+    print(f"SEASON REPORT — {year}")
+    print(f"{'='*70}")
+
+    # Threshold Brier table
+    te = report.get("threshold_evaluation", {})
+    if te:
+        print(f"\n  Probability Evaluation:")
+        print(f"    {'Threshold':<14s} {'Brier':>8s} {'LogLoss':>8s} {'BaseRate':>9s} {'n':>7s}")
+        for name in threshold_order:
+            m = te.get(name)
+            if m:
+                dname = display_names.get(name, name)
+                print(f"    {dname:<14s} {m['brier_score']:8.4f} {m['log_loss']:8.4f} {m['base_rate']:9.4f} {m['n']:7d}")
+
+    # Hit rate table
+    if hit_rates:
+        print(f"\n  Hit Rates (P >= 0.50):")
+        print(f"    {'Threshold':<14s} {'Acc':>7s} {'Prec':>7s} {'Recall':>7s} {'PredY':>7s} {'ActY':>7s} {'n':>7s}")
+        for name in threshold_order:
+            hr = hit_rates.get(name)
+            if hr:
+                dname = display_names.get(name, name)
+                print(f"    {dname:<14s} {hr['accuracy']:7.3f} {hr['precision']:7.3f} {hr['recall']:7.3f} "
+                      f"{hr['n_predicted_yes']:7d} {hr['n_actual_yes']:7d} {hr['n']:7d}")
+
+    # Game winner
+    gw = report.get("game_winner_accuracy", {})
+    if gw.get("total_games", 0) > 0:
+        print(f"\n  Game Winner: {gw['correct_predictions']}/{gw['total_games']} "
+              f"({gw.get('accuracy_pct', 0)}%)"
+              f"  Margin MAE: {gw.get('margin_mae', 'N/A')}")
+
+    # Learning effect
+    lc = report.get("learning_curve", {})
+    if lc.get("learning_effect_pct") is not None:
+        print(f"  Learning effect: {lc['learning_effect_pct']:+.1f}%"
+              f"  (1st half MAE: {lc['first_half_mae']}, 2nd half MAE: {lc['second_half_mae']})")
+
+    print()
+
+
+def _print_cross_season_comparison(year_reports):
+    """Print side-by-side comparison table across all years."""
+    if len(year_reports) < 2:
+        return
+
+    years = [yr["year"] for yr in year_reports]
+    col_w = 12
+
+    def _header():
+        cols = "".join(f"{yr:>{col_w}}" for yr in years)
+        return f"    {'':20s}{cols}"
+
+    def _row(label, extractor, fmt=".4f"):
+        vals = []
+        for yr in year_reports:
+            try:
+                v = extractor(yr)
+            except (KeyError, TypeError):
+                v = None
+            if v is None:
+                vals.append(f"{'N/A':>{col_w}}")
+            else:
+                formatted = f"{v:{fmt}}"
+                vals.append(f"{formatted:>{col_w}}")
+        return f"    {label:20s}{''.join(vals)}"
+
+    print(f"{'='*70}")
+    print(f"CROSS-SEASON COMPARISON")
+    print(f"{'='*70}")
+    print(_header())
+    print(f"    {'─'*20}{'─'*col_w*len(years)}")
+
+    # Brier Scores
+    print(f"\n  Brier Scores (lower = better):")
+    for name, dname in [("1plus_goals", "Goals 1+"), ("2plus_goals", "Goals 2+"),
+                        ("3plus_goals", "Goals 3+"), ("20plus_disp", "Disp 20+")]:
+        print(_row(dname, lambda r, n=name: r["report"]["threshold_evaluation"].get(n, {}).get("brier_score")))
+
+    # Hit Rates
+    print(f"\n  Hit Rate @ P>=0.50 (higher = better):")
+    for name, dname in [("1plus_goals", "Goals 1+"), ("2plus_goals", "Goals 2+"),
+                        ("3plus_goals", "Goals 3+"), ("20plus_disp", "Disp 20+")]:
+        print(_row(dname, lambda r, n=name: r["hit_rates"].get(n, {}).get("accuracy"), fmt=".3f"))
+
+    # Learning Trajectory
+    print(f"\n  Learning Trajectory:")
+    print(_row("Overall MAE", lambda r: r["overall_mae"]))
+    print(_row("1st Half MAE", lambda r: r["report"]["learning_curve"].get("first_half_mae")))
+    print(_row("2nd Half MAE", lambda r: r["report"]["learning_curve"].get("second_half_mae")))
+    print(_row("Learning %", lambda r: r["report"]["learning_curve"].get("learning_effect_pct"), fmt="+.1f"))
+
+    # Game Winner
+    print(f"\n  Game Winner:")
+    print(_row("Accuracy %", lambda r: r["report"]["game_winner_accuracy"].get("accuracy_pct"), fmt=".1f"))
+    print(_row("Margin MAE", lambda r: r["report"]["game_winner_accuracy"].get("margin_mae")))
+
+    # Year-over-year trend for Brier 1+ goals
+    print(f"\n  Year-over-Year Brier (Goals 1+):")
+    for i in range(1, len(year_reports)):
+        prev = year_reports[i - 1]
+        curr = year_reports[i]
+        try:
+            prev_b = prev["report"]["threshold_evaluation"]["1plus_goals"]["brier_score"]
+            curr_b = curr["report"]["threshold_evaluation"]["1plus_goals"]["brier_score"]
+            delta = curr_b - prev_b
+            direction = "improved" if delta < 0 else "regressed" if delta > 0 else "unchanged"
+            print(f"    {prev['year']} → {curr['year']}: {delta:+.4f} ({direction})")
+        except (KeyError, TypeError):
+            print(f"    {prev['year']} → {curr['year']}: N/A")
+
+    print()
+
+
+def cmd_sequential_year_range(args, disposal_distribution=None):
+    """Run sequential learning across multiple seasons with full reports."""
+    import json
+    import time
+
+    year_range = args.year_range
+    if not year_range:
+        print("Error: --year-range requires format YYYY-YYYY (e.g., 2023-2025)")
+        return
+
+    try:
+        start_year, end_year = [int(y) for y in year_range.split("-")]
+    except ValueError:
+        print("Error: --year-range format must be YYYY-YYYY (e.g., 2023-2025)")
+        return
+
+    from analysis import generate_season_report
+
+    years = list(range(start_year, end_year + 1))
+    est_rounds = len(years) * 28
+    est_min = est_rounds * 8 / 60
+
+    print(f"\nMulti-season sequential learning: {years}")
+    print(f"  ~{est_rounds} rounds x ~8s = ~{est_min:.0f} min estimated")
+    print(f"{'='*70}")
+
+    year_reports = []
+    total_start = time.time()
+
+    for yr in years:
+        print(f"\n{'='*70}")
+        print(f"SEASON {yr}")
+        print(f"{'='*70}")
+
+        # Run the walk-forward backtest for this year
+        class YearArgs:
+            year = yr
+        cmd_sequential(YearArgs(), disposal_distribution=disposal_distribution)
+
+        # Generate the full season report
+        store = LearningStore(base_dir=config.SEQUENTIAL_DIR)
+        report = generate_season_report(store, yr)
+
+        if "error" in report:
+            print(f"  Warning: Report generation failed — {report['error']}")
+            continue
+
+        # Compute hit rates
+        hit_rates = _compute_hit_rates(store, yr)
+
+        # Compute overall MAE from learning curve
+        lc_rounds = report.get("learning_curve", {}).get("rounds", [])
+        maes = [r["goals_mae"] for r in lc_rounds if r.get("goals_mae") is not None]
+        overall_mae = float(np.mean(maes)) if maes else None
+
+        # Save JSON report
+        report_path = config.SEQUENTIAL_DIR / f"season_report_{yr}.json"
+        with open(report_path, "w") as f:
+            json.dump(report, f, indent=2, default=str)
+        print(f"  Report saved: {report_path}")
+
+        # Print per-year summary
+        _print_year_summary(yr, report, hit_rates)
+
+        # Accumulate for cross-season comparison
+        year_reports.append({
+            "year": yr,
+            "report": report,
+            "hit_rates": hit_rates,
+            "overall_mae": overall_mae,
+        })
+
+    # Cross-season comparison
+    if len(year_reports) >= 2:
+        _print_cross_season_comparison(year_reports)
+
+    total_elapsed = time.time() - total_start
+    print(f"Total elapsed: {total_elapsed:.1f}s ({total_elapsed/60:.1f} min)")
+    print(f"Output: {config.SEQUENTIAL_DIR}")
 
 
 def cmd_evaluate(args):
@@ -282,22 +2069,50 @@ Examples:
     parser.add_argument("--features", action="store_true",
                         help="Build feature matrix from cleaned data")
     parser.add_argument("--train", action="store_true",
-                        help="Train prediction models")
+                        help="Train scoring prediction models")
+    parser.add_argument("--train-disposals", action="store_true",
+                        dest="train_disposals",
+                        help="Train disposal prediction model")
+    parser.add_argument("--train-winner", action="store_true",
+                        dest="train_winner",
+                        help="Train game winner prediction model")
     parser.add_argument("--predict", action="store_true",
                         help="Generate predictions for a round")
     parser.add_argument("--evaluate", action="store_true",
                         help="Evaluate model on validation set")
+    parser.add_argument("--backtest", action="store_true",
+                        help="Walk-forward backtest on a season (requires --year)")
+    parser.add_argument("--diagnose", action="store_true",
+                        help="Diagnostic report on backtest results (requires --year)")
+    parser.add_argument("--sequential", action="store_true",
+                        help="Sequential learning: round-by-round with calibration feedback (requires --year)")
+    parser.add_argument("--sequential-report", action="store_true",
+                        dest="sequential_report",
+                        help="Generate post-season report from sequential learning data (requires --year)")
+    parser.add_argument("--year-range", type=str, dest="year_range",
+                        help="Run sequential learning across multiple seasons (e.g., 2023-2025)")
+    parser.add_argument("--run-id", type=str, dest="run_id",
+                        help="Optional run identifier for LearningStore outputs")
+    parser.add_argument("--reset-calibration", action="store_true",
+                        help="Reset calibration state for the active run before sequential processing")
 
     parser.add_argument("--start", type=int, help="Start year for scraping")
     parser.add_argument("--end", type=int, help="End year for scraping")
     parser.add_argument("--round", type=int, help="Round number for prediction")
     parser.add_argument("--year", type=int, help="Season year (default: current)")
+    parser.add_argument("--model", type=str, default="scoring",
+                        choices=list(config.MODEL_TARGETS.keys()),
+                        help="Model target (default: scoring)")
 
     args = parser.parse_args()
+    _set_global_seed()
 
     # No flags → show help
     if not any([args.scrape, args.update, args.clean, args.features,
-                args.train, args.predict, args.evaluate]):
+                args.train, args.train_disposals, args.train_winner,
+                args.predict, args.evaluate, args.backtest,
+                args.diagnose, args.sequential, args.sequential_report,
+                args.year_range]):
         parser.print_help()
         return
 
@@ -319,6 +2134,12 @@ Examples:
     if args.train:
         cmd_train(args)
 
+    if args.train_disposals:
+        cmd_train_disposals(args)
+
+    if args.train_winner:
+        cmd_train_winner(args)
+
     if args.predict:
         if not args.round:
             print("Error: --predict requires --round N")
@@ -327,6 +2148,21 @@ Examples:
 
     if args.evaluate:
         cmd_evaluate(args)
+
+    if args.backtest:
+        cmd_backtest(args)
+
+    if args.diagnose:
+        cmd_diagnose(args)
+
+    if args.sequential:
+        cmd_sequential(args)
+
+    if args.sequential_report:
+        cmd_sequential_report(args)
+
+    if args.year_range:
+        cmd_sequential_year_range(args)
 
 
 if __name__ == "__main__":

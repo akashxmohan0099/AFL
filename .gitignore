@@ -2,3 +2,19 @@
 __pycache__/
 *.pyc
 .env
+
+# Large / regenerable data
+AFL Betting odds/
+data/player_stats/
+data/player_details/
+data/scoring/
+data/matches/
+data/sequential/
+data/learning/
+data/backtest/
+data/base/
+data/models/*.pkl
+
+# Logs and images
+scraper.log
+*.png

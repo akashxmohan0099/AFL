@@ -81,3 +81,13 @@ The scraper waits 1.5 seconds between requests to be respectful to the afltables
 1. Load CSVs into PostgreSQL or SQLite
 2. Build feature engineering pipeline (rolling averages, form indicators)
 3. Train prediction models
+
+## ML Pipeline Artifact Notes
+
+When running the prediction pipeline (`pipeline.py`), LearningStore artifacts are now
+written to run-versioned directories to avoid overwriting previous experiments.
+
+- `predictions/outcomes/diagnostics/game_predictions/analysis`: stored under `.../<year>/run_<run_id>/...`
+- Calibration state: stored under `calibration/run_<run_id>/calibration_state.parquet`
+- Use `--run-id <id>` to force a specific run id.
+- Sequential mode keeps calibration by default and only clears it when `--reset-calibration` is provided.
