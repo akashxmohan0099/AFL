@@ -1,0 +1,324 @@
+{
+  "version": "2.1",
+  "label": "BASELINE v2.1 \u2014 v2.0 + market odds features (175 features)",
+  "season": 2025,
+  "n_predictions": 9931,
+  "n_rounds": 28,
+  "n_features": 175,
+  "thresholds": {
+    "1plus_goals": {
+      "brier_score": 0.1596,
+      "log_loss": 0.4804,
+      "n": 9931,
+      "base_rate": 0.3305,
+      "hit_rate_p50": 0.6935,
+      "n_confident_p50": 2548,
+      "hit_rate_p70": 0.7919,
+      "n_confident_p70": 1206
+    },
+    "2plus_goals": {
+      "brier_score": 0.0862,
+      "log_loss": 0.2819,
+      "n": 9931,
+      "base_rate": 0.125,
+      "hit_rate_p50": 0.6599,
+      "n_confident_p50": 147,
+      "hit_rate_p70": 0.7333,
+      "n_confident_p70": 15
+    },
+    "3plus_goals": {
+      "brier_score": 0.0408,
+      "log_loss": 0.1481,
+      "n": 9931,
+      "base_rate": 0.0501,
+      "hit_rate_p50": 0.5294,
+      "n_confident_p50": 17,
+      "hit_rate_p70": 1.0,
+      "n_confident_p70": 1
+    },
+    "15plus_disp": {
+      "brier_score": 0.1797,
+      "log_loss": 0.5429,
+      "n": 9931,
+      "base_rate": 0.5008,
+      "hit_rate_p50": 0.8367,
+      "n_confident_p50": 4067,
+      "hit_rate_p70": 0.963,
+      "n_confident_p70": 1054
+    },
+    "20plus_disp": {
+      "brier_score": 0.1399,
+      "log_loss": 0.4344,
+      "n": 9931,
+      "base_rate": 0.2722,
+      "hit_rate_p50": 0.8765,
+      "n_confident_p50": 672,
+      "hit_rate_p70": 0.9667,
+      "n_confident_p70": 30
+    },
+    "25plus_disp": {
+      "brier_score": 0.0831,
+      "log_loss": 0.2726,
+      "n": 9931,
+      "base_rate": 0.1258,
+      "hit_rate_p50": 0.7368,
+      "n_confident_p50": 38,
+      "hit_rate_p70": null,
+      "n_confident_p70": 0
+    },
+    "30plus_disp": {
+      "brier_score": 0.0342,
+      "log_loss": 0.1271,
+      "n": 9931,
+      "base_rate": 0.0429,
+      "hit_rate_p50": null,
+      "n_confident_p50": 0,
+      "hit_rate_p70": null,
+      "n_confident_p70": 0
+    }
+  },
+  "scorer_auc": {
+    "overall": 0.8153,
+    "per_round": {
+      "1": 0.7505,
+      "2": 0.7603,
+      "3": 0.8297,
+      "4": 0.8073,
+      "5": 0.8098,
+      "6": 0.8048,
+      "7": 0.7927,
+      "8": 0.8357,
+      "9": 0.8008,
+      "10": 0.8237,
+      "11": 0.8311,
+      "12": 0.8094,
+      "13": 0.8238,
+      "14": 0.8145,
+      "15": 0.7936,
+      "16": 0.8285,
+      "17": 0.7774,
+      "18": 0.8231,
+      "19": 0.8287,
+      "20": 0.8426,
+      "21": 0.8221,
+      "22": 0.8512,
+      "23": 0.8074,
+      "24": 0.8247,
+      "25": 0.8301,
+      "26": 0.8415,
+      "27": 0.8767,
+      "28": 0.8012
+    }
+  },
+  "mae": {
+    "goals": 0.5147,
+    "goals_rmse": 0.7729,
+    "goals_weighted": 0.5136,
+    "behinds": 0.4428,
+    "disposals": 3.9018,
+    "baseline_goals": 0.5391,
+    "improvement_pct": 4.5
+  },
+  "game_winner": {
+    "accuracy": 0.7083,
+    "margin_mae": 26.4,
+    "auc": 0.7861,
+    "n_games": 216,
+    "confident_accuracy": 0.8115,
+    "n_confident_games": 122
+  },
+  "learning_effect": {
+    "first_half_mae": 0.5197,
+    "second_half_mae": 0.5161,
+    "learning_pct": 0.7,
+    "first_half_rounds": "R1-R14",
+    "second_half_rounds": "R15-R28"
+  },
+  "calibration_1plus_goals": [
+    {
+      "bin": "0-10%",
+      "predicted_mean": 0.0472,
+      "actual_rate": 0.0329,
+      "n": 2067,
+      "gap": 0.0143
+    },
+    {
+      "bin": "10-20%",
+      "predicted_mean": 0.1518,
+      "actual_rate": 0.1568,
+      "n": 1409,
+      "gap": 0.0051
+    },
+    {
+      "bin": "20-30%",
+      "predicted_mean": 0.253,
+      "actual_rate": 0.2665,
+      "n": 1835,
+      "gap": 0.0135
+    },
+    {
+      "bin": "30-40%",
+      "predicted_mean": 0.343,
+      "actual_rate": 0.3196,
+      "n": 1361,
+      "gap": 0.0234
+    },
+    {
+      "bin": "40-50%",
+      "predicted_mean": 0.4467,
+      "actual_rate": 0.4248,
+      "n": 711,
+      "gap": 0.0219
+    },
+    {
+      "bin": "50-60%",
+      "predicted_mean": 0.5534,
+      "actual_rate": 0.5597,
+      "n": 636,
+      "gap": 0.0064
+    },
+    {
+      "bin": "60-70%",
+      "predicted_mean": 0.6523,
+      "actual_rate": 0.6459,
+      "n": 706,
+      "gap": 0.0064
+    },
+    {
+      "bin": "70-80%",
+      "predicted_mean": 0.7508,
+      "actual_rate": 0.7552,
+      "n": 825,
+      "gap": 0.0044
+    },
+    {
+      "bin": "80-90%",
+      "predicted_mean": 0.8367,
+      "actual_rate": 0.8542,
+      "n": 336,
+      "gap": 0.0174
+    },
+    {
+      "bin": "90-100%",
+      "predicted_mean": 0.9401,
+      "actual_rate": 1.0,
+      "n": 45,
+      "gap": 0.0599
+    }
+  ],
+  "calibration_ece": 0.0131,
+  "round_detail": {
+    "1": {
+      "mae": 0.5328,
+      "auc": 0.7505
+    },
+    "2": {
+      "mae": 0.5659,
+      "auc": 0.7603
+    },
+    "3": {
+      "mae": 0.5326,
+      "auc": 0.8297
+    },
+    "4": {
+      "mae": 0.4981,
+      "auc": 0.8073
+    },
+    "5": {
+      "mae": 0.5376,
+      "auc": 0.8098
+    },
+    "6": {
+      "mae": 0.5732,
+      "auc": 0.8048
+    },
+    "7": {
+      "mae": 0.5536,
+      "auc": 0.7927
+    },
+    "8": {
+      "mae": 0.5024,
+      "auc": 0.8357
+    },
+    "9": {
+      "mae": 0.5044,
+      "auc": 0.8008
+    },
+    "10": {
+      "mae": 0.4878,
+      "auc": 0.8237
+    },
+    "11": {
+      "mae": 0.508,
+      "auc": 0.8311
+    },
+    "12": {
+      "mae": 0.5336,
+      "auc": 0.8094
+    },
+    "13": {
+      "mae": 0.4971,
+      "auc": 0.8238
+    },
+    "14": {
+      "mae": 0.4488,
+      "auc": 0.8145
+    },
+    "15": {
+      "mae": 0.5382,
+      "auc": 0.7936
+    },
+    "16": {
+      "mae": 0.5053,
+      "auc": 0.8285
+    },
+    "17": {
+      "mae": 0.5477,
+      "auc": 0.7774
+    },
+    "18": {
+      "mae": 0.5151,
+      "auc": 0.8231
+    },
+    "19": {
+      "mae": 0.4918,
+      "auc": 0.8287
+    },
+    "20": {
+      "mae": 0.4757,
+      "auc": 0.8426
+    },
+    "21": {
+      "mae": 0.5254,
+      "auc": 0.8221
+    },
+    "22": {
+      "mae": 0.4848,
+      "auc": 0.8512
+    },
+    "23": {
+      "mae": 0.5063,
+      "auc": 0.8074
+    },
+    "24": {
+      "mae": 0.52,
+      "auc": 0.8247
+    },
+    "25": {
+      "mae": 0.4997,
+      "auc": 0.8301
+    },
+    "26": {
+      "mae": 0.4648,
+      "auc": 0.8415
+    },
+    "27": {
+      "mae": 0.4761,
+      "auc": 0.8767
+    },
+    "28": {
+      "mae": 0.6752,
+      "auc": 0.8012
+    }
+  }
+}
