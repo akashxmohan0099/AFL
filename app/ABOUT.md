@@ -1,6 +1,6 @@
 # AFL Player Prediction Pipeline
 
-A machine-learning pipeline that predicts individual player scoring (goals, behinds) and disposal counts for Australian Football League matches. It scrapes historical data from AFL Tables, engineers 182 features, trains a multi-stage ensemble model, and generates per-player probability distributions for upcoming rounds.
+A machine-learning pipeline that predicts individual player scoring (goals, behinds), disposal counts, and marks for Australian Football League matches. It scrapes historical data from AFL Tables and FootyWire, integrates weather and betting odds, engineers 252 features, trains multi-stage ensemble models, and generates per-player probability distributions for upcoming rounds.
 
 ---
 
@@ -10,7 +10,7 @@ A machine-learning pipeline that predicts individual player scoring (goals, behi
 2. [Data Sources & APIs](#data-sources--apis)
 3. [Raw Data Points](#raw-data-points)
 4. [Pipeline Stages](#pipeline-stages)
-5. [Feature Engineering (182 Features)](#feature-engineering-182-features)
+5. [Feature Engineering (252 Features)](#feature-engineering-252-features)
 6. [Models](#models)
 7. [Predictions & Output](#predictions--output)
 8. [Backtesting & Learning](#backtesting--learning)
@@ -23,29 +23,29 @@ A machine-learning pipeline that predicts individual player scoring (goals, behi
 ## Architecture Overview
 
 ```
-AFL Tables (web scrape)          Open-Meteo API          Betting Odds (XLSX/CSV)
-        │                              │                          │
-        ▼                              ▼                          ▼
-   Raw CSVs ──────────────────► clean.py ◄────────────────────────┘
+AFL Tables (web scrape)    FootyWire (scrape)    Open-Meteo API    Betting Odds (XLSX/CSV)
+        │                        │                     │                     │
+        ▼                        ▼                     ▼                     ▼
+   Raw CSVs ──────────────────► clean.py ◄─────────────┴─────────────────────┘
    (player_stats, player_details,       │
-    scoring, matches per year)          ▼
+    scoring, matches, umpires)          ▼
                                  player_games.parquet  (101K rows, 71 cols)
                                  matches.parquet       (2,258 rows, 38 cols)
                                  team_matches.parquet  (4,516 rows, 24 cols)
+                                 umpires.parquet / coaches.parquet
+                                 player_profiles.parquet
+                                 footywire_advanced.parquet (93K rows)
                                         │
                                         ▼
-                                  features.py
+                                  features.py (252 features)
                                         │
-                                        ▼
-                                 feature_matrix.parquet (182 features, float32)
-                                        │
-                              ┌─────────┼─────────┐
-                              ▼         ▼         ▼
-                        Scoring     Disposal   Game Winner
-                         Model       Model       Model
-                              │         │         │
-                              ▼         ▼         ▼
-                           Predictions per player per round
+                              ┌─────────┼──────────┬──────────┐
+                              ▼         ▼          ▼          ▼
+                        Scoring     Disposal     Marks    Game Winner
+                         Model       Model      Model      Model
+                              │         │          │          │
+                              ▼         ▼          ▼          ▼
+                              Predictions per player per round
                                         │
                                         ▼
                               LearningStore (round-by-round)
@@ -60,7 +60,7 @@ AFL Tables (web scrape)          Open-Meteo API          Betting Odds (XLSX/CSV)
 
 ### 1. AFL Tables (Primary — Web Scrape)
 
-The scraper fetches season-by-season HTML pages from **afltables.com** and extracts four categories of data into year-specific CSVs:
+The scraper (`scraper.py`) fetches season-by-season HTML pages from **afltables.com** and extracts data into year-specific CSVs:
 
 | Category | Output Directory | Content |
 |---|---|---|
@@ -68,10 +68,18 @@ The scraper fetches season-by-season HTML pages from **afltables.com** and extra
 | Player details | `data/player_details/` | Age, career games, career goals |
 | Scoring events | `data/scoring/` | Quarter-by-quarter goal/behind breakdowns |
 | Match metadata | `data/matches/` | Date, venue, scores, attendance, round info |
+| Umpires | `data/umpires/` | Umpire assignments per match (extracted from match pages, zero extra requests) |
+| Player profiles | (via `--scrape-profiles`) | Height, weight, DOB + career splits |
 
 **Years covered:** 2015–2025 (configurable via `--start` / `--end`)
 
-### 2. Open-Meteo Historical Weather API
+### 2. FootyWire Advanced Stats (Web Scrape)
+
+Scraped by `scrape_footywire.py` into `data/footywire/advanced_stats_{year}.csv` (2015–2025, 101K total rows).
+
+**Stats collected:** Effective Disposals (ED), Disposal Efficiency (DE%), Centre Clearances (CCL), Stoppage Clearances (SCL), Turnovers (TO), Metres Gained (MG), Score Involvements (SI), Intercepts (ITC), Tackles Inside 50 (T5), Time On Ground % (TOG%).
+
+### 3. Open-Meteo Historical Weather API
 
 | Field | Value |
 |---|---|
@@ -82,22 +90,21 @@ The scraper fetches season-by-season HTML pages from **afltables.com** and extra
 
 **Hourly variables fetched:**
 - `temperature_2m`, `apparent_temperature`, `precipitation`, `rain`
-- `wind_speed_10m`, `wind_gusts_10m`, `relative_humidity_2m`, `dew_point_2m`
+- `wind_speed_10m`, `wind_gusts_10m`, `wind_direction_10m`, `relative_humidity_2m`, `dew_point_2m`
 - `cloud_cover`, `surface_pressure`
 
-**25 venues mapped** with lat/lon coordinates — MCG, Docklands, Adelaide Oval, Perth Stadium, Gabba, Carrara, SCG, Kardinia Park, Sydney Showground, Subiaco, York Park, Bellerive Oval, Manuka Oval, Marrara Oval, Eureka Stadium, Cazaly's Stadium, Traeger Park, Norwood Oval, Stadium Australia, Jiangwan Stadium (Shanghai), Summit Sports Park, Barossa Oval, Hands Oval, Riverway Stadium, Wellington (NZ).
+**25 venues mapped** with lat/lon coordinates.
 
-### 3. Betting Odds (Two Sources)
+### 4. Betting Odds (Three Sources)
 
 **Bookmaker (Source 2):** `afl_Source_2.xlsx` — 3,353 matches (2009–2025)
 - Pre-game only: `home_odds_open`, `home_odds_close`, `away_odds_open`, `away_odds_close`, `home_line_open`, `home_line_close`, `total_score_open`, `total_score_close`
 
-**Betfair Exchange:** `AFL_YYYY_Match_Odds.csv` (2021–2025)
+**Betfair Match Odds:** `AFL_YYYY_Match_Odds.csv` (2021–2025)
 - Pre-game only: `BEST_BACK_FIRST_BOUNCE`, `BEST_LAY_FIRST_BOUNCE`
-- All post-game and in-play data explicitly excluded
 
-**Derived odds features:**
-`market_home_implied_prob`, `market_away_implied_prob`, `market_handicap`, `market_total_score`, `market_confidence`, `odds_movement_home`, `odds_movement_line`, `betfair_home_implied_prob`
+**Betfair Player Markets:** Disposals, First Goal Scorer, 2/3+ Goals (23.6K rows, 91.8% name match rate)
+- Processed by `integrate_player_odds.py` → `data/base/player_odds.parquet`
 
 ---
 
@@ -145,16 +152,21 @@ All stages are invoked via `pipeline.py`:
 
 ```
 python pipeline.py --scrape [--start 2015] [--end 2025]   # Fetch raw CSVs from AFL Tables
+python pipeline.py --scrape-profiles                        # Fetch player height/weight/DOB + career splits
+python pipeline.py --scrape-footywire                       # Fetch FootyWire advanced stats
 python pipeline.py --clean                                  # Normalize → parquets
-python pipeline.py --features                               # Engineer 182 features
+python pipeline.py --features                               # Engineer 252 features
 python pipeline.py --train                                  # Train scoring model (goals + behinds)
 python pipeline.py --train-disposals                        # Train disposal model
 python pipeline.py --train-winner                           # Train game-winner model
 python pipeline.py --predict --round N [--year YYYY]        # Predict a specific round
 python pipeline.py --evaluate                               # Evaluate on validation year (2024)
 python pipeline.py --backtest [--year YYYY]                 # Walk-forward per-round backtest
+python pipeline.py --backtest-winner [--year YYYY]          # Walk-forward game winner backtest
 python pipeline.py --diagnose [--year YYYY]                 # Breakdown of backtest results
 python pipeline.py --sequential [--year YYYY]               # Calibration-aware sequential learning
+python pipeline.py --tune                                   # Optuna hyperparameter tuning
+python pipeline.py --save-experiment NAME                    # Save experiment results to JSON
 python pipeline.py --update                                 # Scrape + rebuild + predict (current season)
 python pipeline.py --reset-calibration                      # Clear calibration state
 ```
@@ -164,17 +176,20 @@ python pipeline.py --reset-calibration                      # Clear calibration 
 | Stage | Input | Output | Description |
 |---|---|---|---|
 | **Scrape** | AFL Tables HTML | Year CSVs in `data/player_stats/`, `data/scoring/`, etc. | Fetches historical data per season |
-| **Clean** | Raw CSVs | `player_games.parquet` (101K rows, 71 cols), `matches.parquet` (2,258 rows), `team_matches.parquet` (4,516 rows) | Joins, normalizes, computes rate columns, fixes finals labeling |
-| **Features** | Cleaned parquets | `feature_matrix.parquet` (182 features) + `feature_columns.json` | Rolling averages, archetypes, opponent profiles, venue, weather, odds |
-| **Train** | Feature matrix | `goals_*.pkl`, `behinds_*.pkl`, `scorer_clf.pkl`, `scaler.pkl` | Fits two-stage scoring ensemble |
+| **Scrape Profiles** | AFL Tables player pages | `player_profiles.parquet`, `career_splits_*.parquet` | Height, weight, DOB, career splits |
+| **Scrape FootyWire** | FootyWire HTML | `data/footywire/advanced_stats_{year}.csv` | Advanced stats (ED, DE%, TOG%, etc.) |
+| **Clean** | Raw CSVs | `player_games.parquet` (101K rows), `matches.parquet`, `team_matches.parquet`, `umpires.parquet`, `coaches.parquet`, `footywire_advanced.parquet` | Joins, normalizes, computes rate columns |
+| **Features** | Cleaned parquets | `feature_matrix.parquet` (252 features) + `feature_columns.json` | Rolling averages, archetypes, opponent profiles, venue, weather, odds, umpires, coaches |
+| **Train** | Feature matrix | Model `.pkl` files + metadata JSONs | Fits scoring/disposal/marks/winner ensembles |
 | **Predict** | Trained models + feature matrix | `round_N_predictions.csv`, `round_N_thresholds.csv` | Per-player distributions for an upcoming round |
 | **Backtest** | Feature matrix | LearningStore entries per round | Walk-forward: train on all prior data, predict each round, save outcomes |
+| **Tune** | Feature matrix | `data/tuning/best_params_*.json` | Optuna walk-forward hyperparameter optimization |
 
 ---
 
-## Feature Engineering (182 Features)
+## Feature Engineering (252 Features)
 
-After building and pruning (22 redundant features removed, including `is_covid_season` and `quarter_length_ratio` which had r=1.0 with `era_4`), the final matrix has **182 features**.
+Stages A–W, built in `features.py`. After pruning redundant features, the final matrix has **252 features**.
 
 ### A. Career & Age (5)
 `age_years`, `age_squared`, `career_games_pre`, `career_goals_pre`, `career_goal_avg_capped`
@@ -185,10 +200,10 @@ After building and pruning (22 redundant features removed, including `is_covid_s
 `player_gl_avg_3`, `player_gl_avg_5`, `player_gl_avg_10`, `player_di_avg_3`, `player_mk_avg_3`, `player_tk_avg_3`, `player_if50_avg_3`, `player_cl_avg_3`, `player_ho_avg_3`, `player_ga_avg_3`, `player_mi_avg_3`, `player_cm_avg_3`, `player_cp_avg_3`, `player_ff_avg_3`, `player_rb_avg_3`, `player_one_pct_avg_3`, etc.
 
 **Rate-normalized rolling** (3/5/10 windows):
-`player_gl_rate_avg_3`, `player_bh_rate_avg_3`, `player_di_rate_avg_3`, `player_mk_rate_avg_3`, `player_tk_rate_avg_3`, `player_if50_rate_avg_3`, `player_cp_rate_avg_3`, etc.
+`player_gl_rate_avg_3`, `player_bh_rate_avg_3`, `player_di_rate_avg_3`, `player_mk_rate_avg_3`, etc.
 
 **Exponentially weighted means** (span=5):
-`player_gl_ewm_5`, `player_bh_ewm_5`, `player_mi_ewm_5`, `player_if50_ewm_5`, `player_di_ewm_5`, `player_mk_ewm_5`, plus rate versions
+`player_gl_ewm_5`, `player_bh_ewm_5`, `player_di_ewm_5`, `player_mk_ewm_5`, plus rate versions
 
 **Accuracy** (GL / (GL + BH)):
 `player_accuracy_3`, `player_accuracy_5`, `player_accuracy_10`
@@ -197,7 +212,7 @@ After building and pruning (22 redundant features removed, including `is_covid_s
 `player_gl_streak`, `player_gl_streak_weighted` (decay=0.85), `player_gl_cold_streak`, `player_form_ratio`, `player_is_hot`, `player_is_cold`, `player_streak_just_broke`
 
 **Volatility & trend:**
-`player_gl_volatility_5`, `player_gl_trend_5`, `player_di_volatility_5`, `player_di_trend_5`, `player_gl_rate_volatility_5`, `player_gl_rate_trend_5`, `player_di_rate_volatility_5`, `player_di_rate_trend_5`
+`player_gl_volatility_5`, `player_gl_trend_5`, `player_di_volatility_5`, `player_di_trend_5`
 
 **Season cumulative:**
 `season_goals_total`, `season_disposals_total`, `season_goals_rate_avg`, `season_disposals_rate_avg`
@@ -211,40 +226,68 @@ After building and pruning (22 redundant features removed, including `is_covid_s
 ### D. Opponent Defense (13)
 `opp_goals_conceded_avg_5`, `opp_goals_conceded_avg_10`, `player_vs_opp_gl_avg`, `player_vs_opp_games`, `player_vs_opp_gl_diff`, `opp_disp_conceded_avg_5`, `opp_disp_conceded_avg_10`, `opp_contested_poss_diff_5`, `opp_key_defenders_count`, `opp_defender_strength_score`
 
-### E. Team Context (8)
+### E. Defender Matchup Features (~6)
+Player-vs-opponent historical performance splits.
+
+### F. Team Context (8)
 `team_goals_avg_5`, `team_goals_avg_10`, `team_if_avg_5`, `team_cl_avg_5`, `team_clearance_dominance_5`, `team_mid_quality_score`, `player_goal_share_5`, `team_win_pct_5`, `team_margin_avg_5`
 
-### F. Scoring Patterns (6)
+### G. Scoring Patterns (6)
 `player_q1_gl_pct`, `player_q2_gl_pct`, `player_q3_gl_pct`, `player_q4_gl_pct`, `player_late_scorer_pct`, `player_multi_goal_rate`
 
-### G. Role Classification (2)
+### H. Role Classification (2)
 `forward_score` — derived from goals/inside-50s ratio
 `player_role` — categorical: ruck, key_forward, small_forward, key_defender, midfielder, general
 
-### H. Teammate Features (3)
+### I. Teammate Features (3)
 `teammate_enabler_count`, `teammate_scoring_avg`, `interact_team_form_share`
 
-### I. Interaction Terms (8)
+### J. Interaction Terms (~10)
 `interact_player_vs_opp_defense`, `interact_form_vs_defense`, `interact_home_scoring`, `interact_venue_boost`, `interact_hot_vs_weak_defense`, `interact_streak_forward`, `interact_disp_vs_contested`, `interact_disp_pace`, `interact_disp_vs_cp_diff`, `interact_mid_supply_forward`
 
-### J. Archetype Features (8)
+### K. GMM Archetype Features (8)
 
 Uses a **Gaussian Mixture Model (6 clusters)** fitted on player stat profiles to classify players into archetypes: Forward, Midfielder, Ruck, Defender, Tagger, Utility.
 
 **Soft assignments:** `archetype_prob_0` through `archetype_prob_5`
-
-**Archetype concession profiles:** `opp_arch_gl_conceded_avg_5`, `opp_arch_disp_conceded_avg_5` — how many goals/disposals the opponent concedes to players of this archetype
-
+**Archetype concession profiles:** `opp_arch_gl_conceded_avg_5`, `opp_arch_disp_conceded_avg_5`
 **Disposal ceiling:** `archetype_di_ceiling_ratio`, `archetype_di_ceiling_5`
 
-### K. Game Environment (10)
+### L. Weather Features (~19)
+`temperature_avg`, `apparent_temperature_avg`, `temperature_range`, `rain_total`, `wind_speed_avg`, `wind_speed_max`, `wind_gusts_max`, `wind_severity`, `wind_direction_variability`, `humidity_avg`, `dew_point_avg`, `cloud_cover_avg`, `feels_like_delta`, `weather_difficulty_score`, `slippery_conditions`
+
+### M. Game Environment (~10)
 `game_pace_proxy`, `expected_margin_diff`, `expected_margin_abs`, `ground_length`, `ground_width`, `ground_area`, `ground_shape_ratio`, `is_night_game`, `is_twilight_game`
 
-### L. Era / Rule Regime (4)
-`era_2`, `era_3`, `era_4`, `era_6` — one-hot for rule-change eras (6 total: 2015, 2016–18, 2019, 2020-COVID, 2021–22, 2023–25)
+### N. Umpire Features (~5)
+Umpire scoring tendencies, free kick rates based on umpire assignment history (lookback 20 matches, min 10 games).
 
-### M. Weather Features (19)
-`temperature_avg`, `apparent_temperature_avg`, `temperature_range`, `rain_total`, `wind_speed_avg`, `wind_speed_max`, `wind_gusts_max`, `wind_severity`, `humidity_avg`, `dew_point_avg`, `cloud_cover_avg`, `feels_like_delta`, `weather_difficulty_score`, `slippery_conditions`
+### O. Coach Features (~5)
+Coach historical scoring rates, head-to-head matchup tendencies (min 10 games, min 3 H2H matches).
+
+### P. Player Physical Features (~6)
+Height, weight, BMI, age interactions with archetype (requires archetype from Stage K). Fallbacks: 186cm height, 86kg weight, 25 years age.
+
+### Q. Career Split Features (~4)
+Home/away, day/night career performance splits (min 3 games per split). Disabled by default (`CAREER_SPLIT_FEATURES_ENABLED=False`) — snapshot career splits are leaky for historical rows.
+
+### R. Team Venue Features (~4)
+Team-level venue scoring history over 5-year lookback (min 3 games). Fallback: 80 points.
+
+### S. Player Market Odds Features (~8)
+Implied probabilities, market total score, odds movement, market confidence, player-level implied goals/disposals.
+
+### T. Venue Elevation Features (~2)
+Ground elevation, altitude-adjusted scoring.
+
+### U. Disposal-Specific Interaction Features (~8)
+TOG rolling averages, disposal share, UP rolling, weather × disposal interactions, opponent tackles, rest day effects. Key feature: `player_disp_share_10` (#1 most important, 0.074 permutation importance).
+
+### V. FootyWire Advanced Stats — DISABLED
+24 features from ED, DE%, CCL, SCL, TO, MG, TOG%. **Reverted after A/B test showed BSS regression at all thresholds.**
+
+### W. CBA Features — Stub
+Placeholder for DFS Australia CBA data (future).
 
 ---
 
@@ -263,13 +306,8 @@ A **two-stage ensemble** that addresses zero-inflation — roughly 68% of player
 
 | Component | Algorithm | Weight |
 |---|---|---|
-| Poisson | `PoissonRegressor` (alpha=0.5, max_iter=1000) | 40% |
-| GBT | `GradientBoostingRegressor` (n_estimators=300, max_depth=4, lr=0.05, min_samples_leaf=20, subsample=0.8) | 60% |
-
-When `MULTI_MODEL_ENSEMBLE=True`, the GBT slot is replaced by an average of 3 `HistGradientBoostingRegressor` variants:
-- Base: max_depth=3, max_iter=100
-- Deep: max_depth=6, max_iter=60
-- Wide: max_depth=2, max_iter=200
+| Poisson | `PoissonRegressor` (alpha=0.014, max_iter=1000) | 80% |
+| GBT | `GradientBoostingRegressor` (n_estimators=300, max_depth=4, lr=0.05) | 20% |
 
 **Behinds Regressor:** Same Poisson + GBT ensemble, trained on all players (behinds are more diffuse).
 
@@ -283,36 +321,42 @@ Single-stage regressor for disposal count predictions.
 
 | Component | Algorithm | Weight |
 |---|---|---|
-| Poisson | `PoissonRegressor` (alpha=0.5) | 40% |
-| GBT | `GradientBoostingRegressor` (same params) | 60% |
+| Poisson | `PoissonRegressor` (alpha=0.015) | 80% |
+| GBT | `HistGradientBoostingRegressor` (max_iter=217, max_depth=5, lr=0.052) | 20% |
 
 **Threshold probabilities:** P(X >= k) for k in {10, 15, 20, 25, 30} disposals.
 
-**Distribution options** (`config.DISPOSAL_DISTRIBUTION`):
-- **Gaussian** (default, best performer) — uses predicted mean + std from residuals
-- **Poisson** — classic count model
-- **Negative Binomial** — overdispersed count model
+**Distribution:** Gaussian (default, best performer) — uses predicted mean + std from residuals.
 
 **Upper-tail corrections** for 25+ and 30+ thresholds: STD multiplier 1.2, skew alpha 2.0, 30+ probability scaled 1.3x with cap at 0.45.
 
-### 3. EloSystem
+**Isotonic calibration** is the key lever — walk-forward isotonic post-processing yields BSS 30.9% at 15+, 30.4% at 20+, 13.7% at 25+/30+.
+
+### 3. AFLMarksModel
+
+Single-stage regressor for marks predictions. Same Poisson + GBT architecture.
+
+**Threshold probabilities:** P(X >= k) for k in {2, 3, 4, 5, 6, 7, 8, 9, 10} marks.
+
+### 4. EloSystem
 
 Team-strength ratings used as input to the game-winner model.
 
 | Parameter | Value |
 |---|---|
 | Initial rating | 1500 |
-| K-factor | 30 |
-| Home advantage | +30 points |
-| Season regression | 0.5x toward 1500 |
-| Margin scaling | FiveThirtyEight formula (larger upsets move ratings more) |
+| K-factor | 12.3 |
+| Home advantage | +16.2 points |
+| Season regression | 0.285x toward 1500 |
+| Margin scaling | FiveThirtyEight formula |
 
-### 4. AFLGameWinnerModel
+### 5. AFLGameWinnerModel
 
 Predicts match winner using team-level features.
 
 - **Algorithm:** `HistGradientBoostingClassifier` (binary: home win or not)
-- **54 features:** Elo ratings, aggregated player predictions (avg p_scorer, avg predicted goals per team), team stats (rest days, venue, is_home)
+- **Features:** Elo ratings, aggregated player predictions, team stats (rest days, venue, is_home)
+- **Hybrid mode:** Logit-space blend of market prior + ML residual (controlled by `WINNER_HYBRID_*` config)
 - **Training:** One row per team per match
 
 ---
@@ -342,6 +386,12 @@ For each player in a given round, the pipeline produces:
 | `p_25plus_disp` | P(disposals >= 25) |
 | `p_30plus_disp` | P(disposals >= 30) |
 
+### Marks Thresholds
+| Column | Description |
+|---|---|
+| `predicted_marks` | Expected marks count |
+| `p_2plus_mk` through `p_10plus_mk` | P(marks >= k) for k in {2..10} |
+
 ### Game Winner
 | Column | Description |
 |---|---|
@@ -362,11 +412,11 @@ For each round in a season:
 4. Save everything to the LearningStore
 
 ### LearningStore (`store.py`)
-Persistent, run-versioned, append-only storage in `data/learning/`:
+Persistent, run-versioned, append-only storage in `data/sequential/`:
 
 | Subdirectory | Contents |
 |---|---|
-| `predictions/` | Per-round predicted values |
+| `predictions/` | Per-round predicted values (run-versioned) |
 | `outcomes/` | Per-round actual results |
 | `diagnostics/` | Per-round error metrics |
 | `calibration/` | Calibration state (predicted vs actual bucket probabilities) |
@@ -376,13 +426,17 @@ Persistent, run-versioned, append-only storage in `data/learning/`:
 | `game_predictions/` | Game winner predictions |
 
 ### Calibration System
-- Monitors P(X >= k) for all goal and disposal thresholds
-- Computes per-bucket multiplicative corrections (0.5x–2.0x) applied to the Poisson lambda
-- Min 30 samples required per bucket before adjustments kick in
-- Max adjustment: 0.3 (i.e., 0.7x–1.3x range)
+- Walk-forward isotonic calibration (the key BSS lever)
+- Needs ~1500+ samples to stabilize; applying too early hurts BSS
+- Monitors P(X >= k) for all goal, disposal, and marks thresholds
+- Min 100 samples before fitting isotonic calibrator
+- Refits every 5 rounds in sequential mode
 
 ### Sequential Learning (`--sequential`)
 Calibration-aware version of backtest that updates calibration state between rounds, simulating live deployment.
+
+### Experiment Comparison (`compare_experiments.py`)
+Loads experiment JSONs from `data/experiments/` and prints BSS comparison table across all disposal thresholds.
 
 ---
 
@@ -406,10 +460,11 @@ Generates per-round JSON summaries covering:
 
 | Script | Purpose |
 |---|---|
-| `experiment_ensemble.py` | Compare single-model HistGBT vs multi-model ensemble (HistGBT + GBT + ExtraTrees). Measures Brier score, AUC, MAE with paired t-tests. |
+| `experiment_ensemble.py` | Compare single-model HistGBT vs multi-model ensemble. Measures Brier score, AUC, MAE with paired t-tests. |
 | `experiment_ensemble_fast.py` | Lightweight version of ensemble comparison (HistGBT only) |
-| `experiment_disposal_dist.py` | Compare Poisson vs Gaussian vs Negative Binomial for disposal threshold probabilities. Measures Brier score, log-loss, hit rates per threshold. |
-| `experiment_teammate_abc.py` | Analyze teammate assist/block/create contributions to scoring. Identifies top enablers per player. |
+| `experiment_disposal_dist.py` | Compare Poisson vs Gaussian vs Negative Binomial for disposal threshold probabilities. |
+| `experiment_teammate_abc.py` | Analyze teammate assist/block/create contributions to scoring. |
+| `compare_experiments.py` | Load and compare experiment JSONs side-by-side with BSS at all thresholds. |
 
 ### Analysis Utilities
 
@@ -421,18 +476,20 @@ Generates per-round JSON summaries covering:
 | `investigate_hitrate.py` | Deep-dive into scorer classifier accuracy by role, team, venue |
 | `disposal_distribution_analysis.py` | Empirical vs predicted disposal distribution comparison |
 | `disposal_distribution_comparison.py` | Side-by-side distribution analysis across methods |
-| `study_early_ladder_momentum.py` | Correlate early-season ladder position with individual player performance |
-| `integrate_odds.py` | Merge bookmaker and Betfair odds into the feature pipeline |
+| `study_early_ladder_momentum.py` | Correlate early-season ladder position with player performance |
+| `integrate_odds.py` | Merge bookmaker and Betfair match odds into the feature pipeline |
+| `integrate_player_odds.py` | Parse Betfair player-level markets (disposals, FGS, 2/3 goals) |
 
 ### Validation (`validate.py`)
 
-Three-stage validation:
+Multi-stage validation:
 
 | Stage | Checks |
 |---|---|
 | `validate_cleaned()` | Required columns present, no duplicate (player, team, match_id), non-negative GL/BH, valid dates, min 2 players per match |
 | `validate_features()` | All feature columns exist, no inf values, no all-NaN columns, non-negative targets |
 | `validate_predictions()` | Required output columns present, non-negative predictions, p_scorer in [0, 1] |
+| `validate_umpires()` | Umpire data integrity checks |
 
 ---
 
@@ -445,14 +502,15 @@ All tunable parameters live in `config.py`.
 2015–2019  →  0.4x
 2020–2022  →  0.7x
 2023–2024  →  0.9x
-2025       →  1.0x
+2025–2026  →  1.0x
 ```
 
 ### Rule Eras
 ```
-Era 1: 2015          Era 4: 2020 (COVID — 80% quarter length)
-Era 2: 2016–2018     Era 5: 2021–2022
-Era 3: 2019          Era 6: 2023–2025
+Era 1: 2015                  Era 5: 2021–2022
+Era 2: 2016–2018             Era 6: 2023–2025
+Era 3: 2019                  Era 7: 2026 (no centre bounces, 5-man interchange,
+Era 4: 2020 (COVID — 80%)            top-10 wildcard finals)
 ```
 
 ### Feature Engineering
@@ -463,34 +521,25 @@ Era 3: 2019          Era 6: 2023–2025
 | `MATCHUP_MIN_MATCHES` | 3 |
 | `N_ARCHETYPES` | 6 |
 | `RECENCY_DECAY_HALF_LIFE` | 365 days |
+| `UMPIRE_LOOKBACK_MATCHES` | 20 |
+| `COACH_MIN_GAMES` | 10 |
+| `TEAM_VENUE_LOOKBACK_YEARS` | 5 |
 
 ### Model Hyperparameters
 | Parameter | Value |
 |---|---|
-| `ENSEMBLE_WEIGHTS` | Poisson 40%, GBT 60% |
-| `GBT n_estimators` | 300 (full) / 100 (backtest) |
-| `GBT max_depth` | 4 (full) / 3 (backtest) |
-| `GBT learning_rate` | 0.05 |
-| `GBT min_samples_leaf` | 20 (full) / 25 (backtest) |
-| `GBT subsample` | 0.8 |
-| `Poisson alpha` | 0.5 |
-| `MULTI_MODEL_ENSEMBLE` | True |
+| `ENSEMBLE_WEIGHTS` | Poisson 80%, GBT 20% |
 | `DISPOSAL_DISTRIBUTION` | Gaussian |
-
-### Streaks & Form
-| Parameter | Value |
-|---|---|
-| `STREAK_DECAY` | 0.85 |
-| `HOT_THRESHOLD` | 1.5 |
-| `COLD_THRESHOLD` | 0.5 |
-| `STREAK_BROKE_MIN` | 3 |
+| `CALIBRATION_METHOD` | Isotonic |
+| `ISOTONIC_MIN_SAMPLES` | 100 |
+| `ISOTONIC_REFIT_INTERVAL` | 5 rounds |
 
 ### Training
 | Parameter | Value |
 |---|---|
 | `HISTORICAL_START_YEAR` | 2015 |
-| `HISTORICAL_END_YEAR` | 2025 |
-| `CURRENT_SEASON_YEAR` | 2025 |
+| `HISTORICAL_END_YEAR` | 2026 |
+| `CURRENT_SEASON_YEAR` | 2026 |
 | `VALIDATION_YEAR` | 2024 |
 | `MIN_PLAYER_MATCHES` | 5 |
 | `BACKTEST_TRAIN_MIN_YEARS` | 3 |
@@ -498,14 +547,7 @@ Era 3: 2019          Era 6: 2023–2025
 ### Thresholds
 **Goals:** 1+, 2+, 3+
 **Disposals:** 10+, 15+, 20+, 25+, 30+
-
-### Calibration
-| Parameter | Value |
-|---|---|
-| `CALIBRATION_N_BUCKETS` | 10 |
-| `CALIBRATION_MIN_BUCKET_SIZE` | 5 |
-| `CALIBRATION_MIN_SAMPLES` | 30 |
-| `CALIBRATION_MAX_ADJUSTMENT` | 0.3 |
+**Marks:** 2+, 3+, 4+, 5+, 6+, 7+, 8+, 9+, 10+
 
 ---
 
@@ -515,56 +557,55 @@ Era 3: 2019          Era 6: 2023–2025
 AFL/
 ├── pipeline.py                         # CLI orchestrator (all stages)
 ├── clean.py                            # Data loading, cleaning, rate normalization
-├── features.py                         # 182-feature engineering pipeline
-├── model.py                            # AFLScoringModel, AFLDisposalModel, EloSystem, AFLGameWinnerModel
+├── features.py                         # 252-feature engineering pipeline (stages A-W)
+├── model.py                            # AFLScoringModel, AFLDisposalModel, AFLMarksModel,
+│                                       #   EloSystem, AFLGameWinnerModel, CalibratedPredictor
 ├── config.py                           # All tunable parameters and paths
 ├── store.py                            # LearningStore — persistent round-by-round records
-├── validate.py                         # Three-stage data validation
+├── validate.py                         # Data validation (cleaned, features, predictions, umpires)
 ├── analysis.py                         # Round-by-round analysis engine
-├── weather.py                          # Open-Meteo API integration (25 venues)
-├── integrate_odds.py                   # Bookmaker + Betfair odds merging
-├── build_baseline.py                   # Baseline report builder (v2/v3)
-├── build_baseline_v21.py               # Baseline v2.1 with odds
-├── experiment_ensemble.py              # Single vs multi-model ensemble comparison
-├── experiment_ensemble_fast.py         # Fast ensemble comparison
-├── experiment_disposal_dist.py         # Poisson vs Gaussian vs NegBin experiment
-├── experiment_teammate_abc.py          # Teammate contribution analysis
-├── feature_importance_analysis.py      # Feature ranking
-├── investigate_hitrate.py              # Scorer classifier deep-dive
-├── disposal_distribution_analysis.py   # Empirical distribution analysis
-├── disposal_distribution_comparison.py # Distribution method comparison
-├── study_early_ladder_momentum.py      # Ladder position vs performance study
-├── .gitignore
-├── README.md
+├── weather.py                          # Open-Meteo API integration (25 venues, wind direction)
+├── scraper.py                          # AFL Tables scraper (matches, stats, umpires, profiles)
+├── scrape_footywire.py                 # FootyWire advanced stats scraper
+├── player.py                           # Player-level utilities
+├── integrate_odds.py                   # Bookmaker + Betfair match odds merging
+├── integrate_player_odds.py            # Betfair player-level market odds (91.8% name match)
+├── compare_experiments.py              # Experiment A/B comparison tables
+│
+├── Experiment & analysis scripts:
+│   ├── experiment_ensemble.py          # Single vs multi-model ensemble comparison
+│   ├── experiment_ensemble_fast.py     # Fast ensemble comparison (HistGBT only)
+│   ├── experiment_disposal_dist.py     # Poisson vs Gaussian vs NegBin experiment
+│   ├── experiment_teammate_abc.py      # Teammate assist/block/create analysis
+│   ├── build_baseline.py              # Baseline report builder (v2/v3)
+│   ├── build_baseline_v21.py          # Baseline v2.1 with odds
+│   ├── feature_importance_analysis.py # Feature ranking
+│   ├── investigate_hitrate.py         # Scorer classifier deep-dive
+│   ├── disposal_distribution_analysis.py
+│   ├── disposal_distribution_comparison.py
+│   └── study_early_ladder_momentum.py
+│
 ├── app/
-│   └── ABOUT.md                        # This file
+│   ├── ABOUT.md                        # Detailed pipeline documentation
+│   ├── generate_pdf.py                 # PDF report generation
+│   ├── rosters_2026.json               # Current season rosters
+│   └── round_*_2026.csv                # Per-round fixture/prediction CSVs
+│
 ├── data/
 │   ├── base/                           # Cleaned parquets (gitignored, regenerable)
 │   ├── features/
-│   │   ├── feature_matrix.parquet      # 182-feature matrix
+│   │   ├── feature_matrix.parquet      # 252-feature matrix
 │   │   └── feature_columns.json        # Feature name list
-│   ├── cleaned/
-│   │   └── player_matches.parquet      # Cleaned player-match data
-│   ├── models/
-│   │   ├── *.pkl                       # Trained model weights (gitignored)
-│   │   ├── model_metadata.json         # Scoring model metadata
-│   │   ├── disp_model_metadata.json    # Disposal model metadata
-│   │   └── game_winner_metadata.json   # Game winner model metadata
-│   ├── predictions/
-│   │   ├── round_N_predictions.csv     # Per-player predictions
-│   │   └── round_N_thresholds.csv      # Disposal threshold probabilities
-│   ├── experiments/                    # Experiment result CSVs
-│   ├── learning/                       # LearningStore (gitignored)
-│   ├── backtest/                       # Backtest output (gitignored)
-│   ├── sequential/                     # Sequential learning output (gitignored)
-│   ├── venue_dimensions.json           # Ground length/width for all venues
-│   ├── player_stats/                   # Raw scraped CSVs (gitignored)
-│   ├── player_details/                 # Raw scraped CSVs (gitignored)
-│   ├── scoring/                        # Raw scraped CSVs (gitignored)
-│   └── matches/                        # Raw scraped CSVs (gitignored)
-├── baseline_v2.json                    # Baseline v2 summary
-├── baseline_v2.1_with_odds.json        # Baseline v2.1 summary
-├── baseline_v3.json                    # Baseline v3 summary
-├── baseline_v3.1.json                  # Baseline v3.1 summary
+│   ├── models/                         # Trained model weights (.pkl, gitignored) + metadata JSONs
+│   ├── predictions/                    # Per-round prediction CSVs (curated snapshots only)
+│   ├── experiments/                    # Experiment result JSONs (0–4)
+│   ├── fixtures/                       # Round fixtures + rosters
+│   ├── footywire/                      # FootyWire advanced stats CSVs (2015–2025)
+│   ├── umpires/                        # Umpire assignment CSVs (2015–2025)
+│   ├── tuning/                         # Optuna best params JSONs
+│   ├── sequential/                     # Sequential learning output (run-versioned, gitignored)
+│   └── backtest/                       # Backtest output (gitignored)
+│
+├── baseline_v3.2.json                  # Current baseline summary
 └── momentum_study_2015_2025.json       # Momentum study results
 ```
