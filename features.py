@@ -3074,6 +3074,17 @@ def build_features(df=None, data_dir=None, save=True):
     if save and df is None and cached_path.exists() and base_path.exists():
         cache_mtime = cached_path.stat().st_mtime
         sources_fresh = cache_mtime > base_path.stat().st_mtime
+        # Invalidate cache when feature code or configuration changes.
+        config_file = getattr(config, "__file__", None)
+        code_paths = [Path(__file__)]
+        if config_file:
+            code_paths.append(Path(config_file))
+        for code_path in code_paths:
+            try:
+                if code_path.exists():
+                    sources_fresh = sources_fresh and cache_mtime > code_path.stat().st_mtime
+            except Exception:
+                pass
         if weather_path.exists():
             sources_fresh = sources_fresh and cache_mtime > weather_path.stat().st_mtime
         if dims_path.exists():

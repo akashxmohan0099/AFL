@@ -191,6 +191,9 @@ MARKS_THRESHOLDS = [2, 3, 4, 5, 6, 7, 8, 9, 10]
 # Market / odds features
 # ---------------------------------------------------------------------------
 MARKET_FEATURES_ENABLED = True
+# Raw bookmaker / Betfair source directory (used by integrate_odds*.py).
+# Override with AFL_ODDS_DIR for portability across machines.
+ODDS_DIR = Path(os.getenv("AFL_ODDS_DIR", BASE_DIR / "AFL Betting odds"))
 ODDS_PARQUET_PATH = BASE_STORE_DIR / "odds.parquet"
 MARKET_POISSON_BLEND = 0.10   # blend market-implied baseline into Poisson component
 # Market player-feature ablation mode:

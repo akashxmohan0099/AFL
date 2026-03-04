@@ -105,25 +105,35 @@ def _extract_threshold_data(merged):
     actual_goals = merged["actual_goals"].values
 
     # Goal thresholds
-    if "p_scorer" in merged.columns:
+    if "p_1plus_goals" in merged.columns:
+        results["1plus_goals"] = (
+            merged["p_1plus_goals"].values.astype(float),
+            (actual_goals >= 1).astype(int),
+        )
+    elif "p_scorer" in merged.columns:
         results["1plus_goals"] = (
             merged["p_scorer"].values.astype(float),
             (actual_goals >= 1).astype(int),
         )
 
-    if "p_goals_0" in merged.columns and "p_goals_1" in merged.columns:
-        p_2plus = 1.0 - merged["p_goals_0"].values.astype(float) - merged["p_goals_1"].values.astype(float)
+    if "p_2plus_goals" in merged.columns:
         results["2plus_goals"] = (
-            np.clip(p_2plus, 0.0, 1.0),
+            merged["p_2plus_goals"].values.astype(float),
             (actual_goals >= 2).astype(int),
         )
+    elif "p_goals_0" in merged.columns and "p_goals_1" in merged.columns:
+        p_2plus = 1.0 - merged["p_goals_0"].values.astype(float) - merged["p_goals_1"].values.astype(float)
+        results["2plus_goals"] = (np.clip(p_2plus, 0.0, 1.0), (actual_goals >= 2).astype(int))
 
-        if "p_goals_2" in merged.columns:
-            p_3plus = p_2plus - merged["p_goals_2"].values.astype(float)
-            results["3plus_goals"] = (
-                np.clip(p_3plus, 0.0, 1.0),
-                (actual_goals >= 3).astype(int),
-            )
+    if "p_3plus_goals" in merged.columns:
+        results["3plus_goals"] = (
+            merged["p_3plus_goals"].values.astype(float),
+            (actual_goals >= 3).astype(int),
+        )
+    elif "p_goals_0" in merged.columns and "p_goals_1" in merged.columns and "p_goals_2" in merged.columns:
+        p_2plus = 1.0 - merged["p_goals_0"].values.astype(float) - merged["p_goals_1"].values.astype(float)
+        p_3plus = p_2plus - merged["p_goals_2"].values.astype(float)
+        results["3plus_goals"] = (np.clip(p_3plus, 0.0, 1.0), (actual_goals >= 3).astype(int))
 
     # Disposal thresholds
     if "actual_disposals" in merged.columns:

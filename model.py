@@ -138,6 +138,36 @@ def _predict_proba_with_compatible_input(model, X_raw, X_clean):
     return model.predict_proba(X)[:, 1]
 
 
+def _enforce_non_increasing_probs(df: pd.DataFrame, cols, round_dp: int = 4) -> None:
+    """Enforce row-wise monotonicity for threshold probabilities.
+
+    For probability thresholds, higher thresholds must not have higher
+    probabilities (e.g. P(3+) <= P(2+) <= P(1+)).
+
+    This matters because thresholds are often calibrated independently
+    (e.g. via isotonic regression), which can otherwise violate ordering.
+    """
+    if df is None or df.empty:
+        return
+
+    present = [c for c in cols if c in df.columns]
+    if not present:
+        return
+
+    # Always clip any present columns into [0, 1] first.
+    if len(present) == 1:
+        c = present[0]
+        df[c] = np.round(np.clip(df[c].astype(float), 0.0, 1.0), round_dp)
+        return
+
+    arr = df[present].to_numpy(dtype=float)
+    arr = np.nan_to_num(arr, nan=0.0, posinf=1.0, neginf=0.0)
+    arr = np.clip(arr, 0.0, 1.0)
+    # Enforce non-increasing sequence across columns (left-to-right).
+    arr = np.minimum.accumulate(arr, axis=1)
+    df[present] = np.round(arr, round_dp)
+
+
 
 class AFLScoringModel:
     """Two-stage ensemble model for predicting goals and behinds per player per match.
@@ -168,14 +198,25 @@ class AFLScoringModel:
 
     @staticmethod
     def _mixture_quantile(p_scorer, lambda_if_scorer, quantile, max_k=15):
-        """Quantile from zero-inflated Poisson: P(X=k) = (1-p)*I(k=0) + p*Poisson(k, lam)."""
-        lam = max(lambda_if_scorer, 0.001)
+        """Quantile from the two-stage goals mixture.
+
+        Stage 1 predicts p = P(X>=1).
+        Stage 2 predicts E[X | X>=1] (lambda_if_scorer).
+
+        We model the scorer distribution with a *shifted Poisson*:
+          X = 0 w.p. (1-p)
+          X = 1 + Pois(mu) w.p. p
+        where mu = max(lambda_if_scorer - 1, 0).
+        """
+        p = float(np.clip(p_scorer, 0.0, 1.0))
+        mean_if = max(float(lambda_if_scorer), 1.0)
+        mu = max(mean_if - 1.0, 0.001)
         cdf = 0.0
         for k in range(max_k + 1):
             if k == 0:
-                pmf_k = (1 - p_scorer) + p_scorer * poisson.pmf(0, lam)
+                pmf_k = 1.0 - p
             else:
-                pmf_k = p_scorer * poisson.pmf(k, lam)
+                pmf_k = p * poisson.pmf(k - 1, mu)
             cdf += pmf_k
             if cdf >= quantile:
                 return k
@@ -605,7 +646,9 @@ class AFLScoringModel:
         result["predicted_goals"] = np.round(pred_goals, 4)
         result["predicted_behinds"] = np.round(pred_behinds, 4)
         result["predicted_score"] = np.round(pred_goals * 6 + pred_behinds, 2)
-        result["p_scorer"] = np.round(scorer_prob, 4)
+        # Keep raw scorer probability for learning/calibration; expose calibrated as p_scorer.
+        result["p_scorer_raw"] = np.round(scorer_prob, 4)
+        result["p_scorer"] = result["p_scorer_raw"].copy()
 
         # Calibrated lambdas and full PMFs
         lambda_goals = np.zeros(len(df))
@@ -615,23 +658,29 @@ class AFLScoringModel:
         conf_lower_gl = np.zeros(len(df))
         conf_upper_gl = np.zeros(len(df))
 
-        for i in range(len(df)):
-            # Goals: calibrate lambda_if_scorer (E[goals | scorer]), not pred_goals
-            sp = scorer_prob[i]
-            raw_lam = max(lambda_if_scorer[i], 0.001)
-            if store is not None:
-                cal_gl_if_scorer = store.get_lambda_calibration("goals", raw_lam)
-            else:
-                cal_gl_if_scorer = raw_lam
-            lambda_goals[i] = sp * cal_gl_if_scorer  # store the expected value
+        cal_method = getattr(config, "CALIBRATION_METHOD", "bucket")
 
-            # Goal PMF: zero-inflated Poisson mixture
-            # P(X=0) = (1-p) + p*Poisson(0, lam), P(X=k) = p*Poisson(k, lam)
-            for k in range(max_k):
-                if k == 0:
-                    goal_pmfs[i, k] = (1 - sp) + sp * poisson.pmf(0, cal_gl_if_scorer)
-                else:
-                    goal_pmfs[i, k] = sp * poisson.pmf(k, cal_gl_if_scorer)
+        for i in range(len(df)):
+            # Goals: lambda_if_scorer is interpreted as E[goals | goals>=1] (scorers only).
+            sp = float(np.clip(scorer_prob[i], 0.0, 1.0))
+            raw_mean_if = max(float(lambda_if_scorer[i]), 1.0)
+
+            # Bucket-based lambda calibration is a heuristic; disable when isotonic is the chosen method.
+            if store is not None and cal_method != "isotonic":
+                cal_gl_if_scorer = float(store.get_lambda_calibration("goals", raw_mean_if))
+            else:
+                cal_gl_if_scorer = raw_mean_if
+            cal_gl_if_scorer = max(cal_gl_if_scorer, 1.0)
+
+            lambda_goals[i] = sp * cal_gl_if_scorer  # unconditional expected goals
+
+            # Goal PMF: two-stage mixture with a zero-free scorer component.
+            # P(X=0) = 1-p, and for k>=1: P(X=k) = p * Pois(k-1; mu)
+            # where mu = mean_if - 1 (shifted Poisson).
+            goal_pmfs[i, 0] = 1.0 - sp
+            mu = max(cal_gl_if_scorer - 1.0, 0.001)
+            for k in range(1, max_k):
+                goal_pmfs[i, k] = sp * poisson.pmf(k - 1, mu)
             goal_pmfs[i, max_k] = max(1.0 - goal_pmfs[i, :max_k].sum(), 0.0)
 
             # Behinds: raw lambda = prediction from ensemble (unchanged)
@@ -664,21 +713,35 @@ class AFLScoringModel:
             result[f"p_behinds_{k}"] = np.round(behind_pmfs[:, k], 4)
         result["p_behinds_4plus"] = np.round(behind_pmfs[:, 4], 4)
 
-        # Goal threshold probabilities: P(1+), P(2+), P(3+)
-        result["p_1plus_goals"] = np.round(1.0 - goal_pmfs[:, 0], 4)
-        result["p_2plus_goals"] = np.round(1.0 - goal_pmfs[:, 0] - goal_pmfs[:, 1], 4)
-        result["p_3plus_goals"] = np.round(
-            1.0 - goal_pmfs[:, 0] - goal_pmfs[:, 1] - goal_pmfs[:, 2], 4
-        )
+        # Goal threshold probabilities: raw values derived from the PMF
+        p1_raw = np.clip(1.0 - goal_pmfs[:, 0], 0.0, 1.0)
+        p2_raw = np.clip(1.0 - goal_pmfs[:, 0] - goal_pmfs[:, 1], 0.0, 1.0)
+        p3_raw = np.clip(1.0 - goal_pmfs[:, 0] - goal_pmfs[:, 1] - goal_pmfs[:, 2], 0.0, 1.0)
+        result["p_1plus_goals_raw"] = np.round(p1_raw, 4)
+        result["p_2plus_goals_raw"] = np.round(p2_raw, 4)
+        result["p_3plus_goals_raw"] = np.round(p3_raw, 4)
+
+        # Default outputs (may be calibrated below)
+        result["p_1plus_goals"] = result["p_1plus_goals_raw"].copy()
+        result["p_2plus_goals"] = result["p_2plus_goals_raw"].copy()
+        result["p_3plus_goals"] = result["p_3plus_goals_raw"].copy()
 
         # Apply isotonic calibration to goal thresholds if available
-        if store is not None and getattr(config, "CALIBRATION_METHOD", "bucket") == "isotonic":
+        if store is not None and cal_method == "isotonic":
             calibrator = store.load_isotonic_calibrator() if hasattr(store, "load_isotonic_calibrator") else None
             if calibrator is not None:
                 for threshold, name in [(1, "1plus_goals"), (2, "2plus_goals"), (3, "3plus_goals")]:
                     col = f"p_{name}"
                     if calibrator.has_calibrator(name) and col in result.columns:
                         result[col] = np.round(calibrator.transform(name, result[col].values), 4)
+
+        # Independent calibration can break cross-threshold ordering; enforce monotonicity.
+        _enforce_non_increasing_probs(
+            result, ["p_1plus_goals", "p_2plus_goals", "p_3plus_goals"], round_dp=4
+        )
+
+        # Keep p_scorer aligned to the (possibly calibrated) 1+ probability.
+        result["p_scorer"] = result["p_1plus_goals"].values
 
         # Confidence intervals
         result["conf_lower_gl"] = conf_lower_gl.astype(int)
@@ -1620,6 +1683,7 @@ class AFLDisposalModel:
         self.training_info = {}
         # Distribution-specific parameters (estimated from training residuals)
         self._residual_std = None   # for Gaussian: global residual std
+        self._std_params = None     # (a, b) for std(mu) = a + b*sqrt(mu) (optional)
         self._negbin_r = None       # for NegBin: dispersion parameter r
         # Instance-level params (override config defaults)
         self.gbt_params = gbt_params or getattr(config, "DISPOSAL_GBT_PARAMS_BACKTEST", config.HIST_GBT_PARAMS_BACKTEST)
@@ -1664,22 +1728,23 @@ class AFLDisposalModel:
         # Poisson regressor
         print("  Training Poisson regressor for disposals...")
         self.disp_poisson = PoissonRegressor(
-            alpha=config.POISSON_PARAMS["alpha"],
-            max_iter=config.POISSON_PARAMS["max_iter"],
+            alpha=self.poisson_params["alpha"],
+            max_iter=self.poisson_params["max_iter"],
         )
         self.disp_poisson.fit(X_train_scaled, y_train, sample_weight=weights_train)
 
         # GBT regressor
         print("  Training GBT regressor for disposals...")
-        self.disp_gbt = GradientBoostingRegressor(**config.GBT_PARAMS)
-        self.disp_gbt.fit(X_train_clean, y_train, sample_weight=weights_train)
+        # Use HistGBT consistently with backtest path and instance-level params.
+        self.disp_gbt = HistGradientBoostingRegressor(**self.gbt_params)
+        self.disp_gbt.fit(X_train_raw, y_train, sample_weight=weights_train)
 
         # Estimate distribution-specific parameters from training data
         if self.distribution != "poisson":
-            self._estimate_distribution_params(X_train_clean, X_train_scaled, y_train)
+            self._estimate_distribution_params(X_train_raw, X_train_scaled, y_train)
 
         # Evaluate
-        pred = self._predict_raw(X_val_clean, X_val_scaled)
+        pred = self._predict_raw(X_val_raw, X_val_scaled)
         mae = mean_absolute_error(y_val, pred)
         rmse = np.sqrt(mean_squared_error(y_val, pred))
         baseline = y_train.mean()
@@ -1793,7 +1858,10 @@ class AFLDisposalModel:
         if self._std_params is not None:
             a, b = self._std_params
             return max(a + b * np.sqrt(max(mu, 0.1)), 1.0)
-        return max(self._residual_std, 1.0)
+        if self._residual_std is not None:
+            return max(float(self._residual_std), 1.0)
+        # Fallback when the model is untrained or metadata is missing.
+        return max(1.0, 0.5 * np.sqrt(max(mu, 0.1)) + 3.0)
 
     def _gaussian_tail_prob(self, mu, threshold, sigma):
         """Gaussian disposal probability with optional upper-tail correction."""
@@ -1885,7 +1953,8 @@ class AFLDisposalModel:
                 pred_poi,
             )
 
-        pred_gbt = self.disp_gbt.predict(X_raw)
+        X_clean = X_raw.fillna(0) if hasattr(X_raw, "fillna") else X_raw
+        pred_gbt = _predict_with_compatible_input(self.disp_gbt, X_raw, X_clean)
         return np.clip(w_poi * pred_poi + w_gbt * pred_gbt, 0, None)
 
     def predict(self, df, feature_cols=None, store=None):
@@ -1899,7 +1968,7 @@ class AFLDisposalModel:
         feature_cols = feature_cols or self.feature_cols
         X_raw, X_clean, X_scaled = _prepare_features(df, feature_cols, scaler=self.scaler)
 
-        pred_disp = self._predict_raw(X_clean, X_scaled, df=df)
+        pred_disp = self._predict_raw(X_raw, X_scaled, df=df)
 
         round_col = "round_number" if "round_number" in df.columns else "round"
         result = df[["player", "team", "opponent", "venue", round_col]].copy()
@@ -1925,6 +1994,12 @@ class AFLDisposalModel:
                     if calibrator.has_calibrator(tgt) and col in result.columns:
                         result[col] = np.round(calibrator.transform(tgt, result[col].values), 4)
 
+        _enforce_non_increasing_probs(
+            result,
+            [f"p_{t}plus_disp" for t in thresholds],
+            round_dp=4,
+        )
+
         # Confidence intervals (80%)
         ci = [self._confidence_interval(mu) for mu in pred_disp]
         result["conf_lower_di"] = [c[0] for c in ci]
@@ -1944,7 +2019,7 @@ class AFLDisposalModel:
         """
         feature_cols = feature_cols or self.feature_cols
         X_raw, X_clean, X_scaled = _prepare_features(df, feature_cols, scaler=self.scaler)
-        pred_disp = self._predict_raw(X_clean, X_scaled, df=df)
+        pred_disp = self._predict_raw(X_raw, X_scaled, df=df)
 
         round_col = "round_number" if "round_number" in df.columns else "round"
         result = pd.DataFrame({
@@ -1955,9 +2030,11 @@ class AFLDisposalModel:
 
         # Calibrate lambda
         lambda_disp = np.zeros(len(df))
+        cal_method = getattr(config, "CALIBRATION_METHOD", "bucket")
         for i in range(len(df)):
             raw_lam = max(pred_disp[i], 0.001)
-            if store is not None:
+            # Bucket-based lambda calibration is a heuristic; disable when isotonic is used.
+            if store is not None and cal_method != "isotonic":
                 lambda_disp[i] = store.get_lambda_calibration("disposals", raw_lam)
             else:
                 lambda_disp[i] = raw_lam
@@ -1982,6 +2059,12 @@ class AFLDisposalModel:
                         result[col] = np.round(
                             calibrator.transform(tgt, result[col].values), 4
                         )
+
+        _enforce_non_increasing_probs(
+            result,
+            [f"p_{t}plus_disp" for t in thresholds],
+            round_dp=4,
+        )
 
         # Confidence intervals (80%)
         ci = [self._confidence_interval(mu) for mu in lambda_disp]
@@ -2065,6 +2148,7 @@ class AFLMarksModel:
         self.eval_metrics = {}
         self.training_info = {}
         self._residual_std = None
+        self._std_params = None
         self._negbin_r = None
         self.gbt_params = gbt_params or getattr(config, "MARKS_GBT_PARAMS_BACKTEST", config.HIST_GBT_PARAMS_BACKTEST)
         self.poisson_params = poisson_params or getattr(config, "MARKS_POISSON_PARAMS", config.POISSON_PARAMS)
@@ -2106,19 +2190,19 @@ class AFLMarksModel:
 
         print("  Training Poisson regressor for marks...")
         self.marks_poisson = PoissonRegressor(
-            alpha=config.POISSON_PARAMS["alpha"],
-            max_iter=config.POISSON_PARAMS["max_iter"],
+            alpha=self.poisson_params["alpha"],
+            max_iter=self.poisson_params["max_iter"],
         )
         self.marks_poisson.fit(X_train_scaled, y_train, sample_weight=weights_train)
 
         print("  Training GBT regressor for marks...")
-        self.marks_gbt = GradientBoostingRegressor(**config.GBT_PARAMS)
-        self.marks_gbt.fit(X_train_clean, y_train, sample_weight=weights_train)
+        self.marks_gbt = HistGradientBoostingRegressor(**self.gbt_params)
+        self.marks_gbt.fit(X_train_raw, y_train, sample_weight=weights_train)
 
         if self.distribution != "poisson":
-            self._estimate_distribution_params(X_train_clean, X_train_scaled, y_train)
+            self._estimate_distribution_params(X_train_raw, X_train_scaled, y_train)
 
-        pred = self._predict_raw(X_val_clean, X_val_scaled)
+        pred = self._predict_raw(X_val_raw, X_val_scaled)
         mae = mean_absolute_error(y_val, pred)
         rmse = np.sqrt(mean_squared_error(y_val, pred))
         baseline = y_train.mean()
@@ -2216,10 +2300,13 @@ class AFLMarksModel:
 
     def _get_std_for_mu(self, mu):
         """Get estimated std for a given predicted mean (Gaussian distribution)."""
-        if hasattr(self, '_std_params') and self._std_params is not None:
+        if self._std_params is not None:
             a, b = self._std_params
             return max(a + b * np.sqrt(max(mu, 0.1)), 0.5)
-        return max(self._residual_std, 0.5)
+        if self._residual_std is not None:
+            return max(float(self._residual_std), 0.5)
+        # Fallback when the model is untrained or metadata is missing.
+        return max(0.5, 0.6 * np.sqrt(max(mu, 0.1)) + 1.5)
 
     def _threshold_prob(self, mu, threshold):
         """Compute P(X >= threshold) using the configured distribution."""
@@ -2262,7 +2349,8 @@ class AFLMarksModel:
         w_gbt = self.ensemble_weights["gbt"]
 
         pred_poi = self.marks_poisson.predict(X_scaled)
-        pred_gbt = self.marks_gbt.predict(X_raw)
+        X_clean = X_raw.fillna(0) if hasattr(X_raw, "fillna") else X_raw
+        pred_gbt = _predict_with_compatible_input(self.marks_gbt, X_raw, X_clean)
         return np.clip(w_poi * pred_poi + w_gbt * pred_gbt, 0, None)
 
     def predict(self, df, feature_cols=None, store=None):
@@ -2270,7 +2358,7 @@ class AFLMarksModel:
         feature_cols = feature_cols or self.feature_cols
         X_raw, X_clean, X_scaled = _prepare_features(df, feature_cols, scaler=self.scaler)
 
-        pred_marks = self._predict_raw(X_clean, X_scaled, df=df)
+        pred_marks = self._predict_raw(X_raw, X_scaled, df=df)
 
         round_col = "round_number" if "round_number" in df.columns else "round"
         result = df[["player", "team", "opponent", "venue", round_col]].copy()
@@ -2294,6 +2382,12 @@ class AFLMarksModel:
                     if calibrator.has_calibrator(tgt) and col in result.columns:
                         result[col] = np.round(calibrator.transform(tgt, result[col].values), 4)
 
+        _enforce_non_increasing_probs(
+            result,
+            [f"p_{t}plus_mk" for t in thresholds],
+            round_dp=4,
+        )
+
         ci = [self._confidence_interval(mu) for mu in pred_marks]
         result["conf_lower_mk"] = [c[0] for c in ci]
         result["conf_upper_mk"] = [c[1] for c in ci]
@@ -2312,7 +2406,7 @@ class AFLMarksModel:
         """
         feature_cols = feature_cols or self.feature_cols
         X_raw, X_clean, X_scaled = _prepare_features(df, feature_cols, scaler=self.scaler)
-        pred_marks = self._predict_raw(X_clean, X_scaled, df=df)
+        pred_marks = self._predict_raw(X_raw, X_scaled, df=df)
 
         result = pd.DataFrame({
             "player": df["player"].values,
@@ -2321,9 +2415,11 @@ class AFLMarksModel:
         })
 
         lambda_marks = np.zeros(len(df))
+        cal_method = getattr(config, "CALIBRATION_METHOD", "bucket")
         for i in range(len(df)):
             raw_lam = max(pred_marks[i], 0.001)
-            if store is not None:
+            # Bucket-based lambda calibration is a heuristic; disable when isotonic is used.
+            if store is not None and cal_method != "isotonic":
                 lambda_marks[i] = store.get_lambda_calibration("marks", raw_lam)
             else:
                 lambda_marks[i] = raw_lam
@@ -2346,6 +2442,12 @@ class AFLMarksModel:
                         result[col] = np.round(
                             calibrator.transform(tgt, result[col].values), 4
                         )
+
+        _enforce_non_increasing_probs(
+            result,
+            [f"p_{t}plus_mk" for t in thresholds],
+            round_dp=4,
+        )
 
         ci = [self._confidence_interval(mu) for mu in lambda_marks]
         result["conf_lower_mk"] = [c[0] for c in ci]

@@ -398,7 +398,7 @@ For each player in a given round, the pipeline produces:
 | `home_win_prob` | P(home team wins) |
 | `predicted_winner` | Predicted winning team |
 
-Output files: `data/predictions/round_N_predictions.csv` and `round_N_thresholds.csv`
+Output files: `data/predictions/{YEAR}/round_N_predictions.csv` and `round_N_thresholds.csv` (current season also writes legacy top-level `round_N_*.csv`)
 
 ---
 
