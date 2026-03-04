@@ -1850,6 +1850,10 @@ def cmd_sequential(args, disposal_distribution=None):
         if len(train_df) < 50 or test_df.empty:
             continue
 
+        # Recompute sample weights dynamically for this round
+        from features import add_dynamic_sample_weights
+        train_df = add_dynamic_sample_weights(train_df, year, rnd)
+
         # 2. TRAIN
         scoring_model = AFLScoringModel()
         scoring_model.train_backtest(train_df, feature_cols)
@@ -3070,6 +3074,150 @@ def cmd_sequential_year_range(args, disposal_distribution=None):
     print(f"Output: {config.SEQUENTIAL_DIR}")
 
 
+def cmd_simulate(args):
+    """Run Monte Carlo simulation for a round using trained models."""
+    import json
+    import time
+
+    year = args.year or config.SEQUENTIAL_YEAR
+    rnd = args.round
+    n_sims = getattr(args, "n_sims", 10000)
+
+    if not rnd:
+        print("Error: --simulate requires --round N")
+        return
+
+    print(f"\nMonte Carlo Simulation — {year} Round {rnd} ({n_sims:,} sims)")
+    print("=" * 60)
+
+    # Load feature matrix
+    feat_path = config.FEATURES_DIR / "feature_matrix.parquet"
+    if not feat_path.exists():
+        print("No feature matrix found. Run --features first.")
+        return
+
+    feature_df = pd.read_parquet(feat_path)
+    feat_cols_path = config.FEATURES_DIR / "feature_columns.json"
+    with open(feat_cols_path) as f:
+        feature_cols = json.load(f)
+
+    # Filter to target round
+    test_df = feature_df[
+        (feature_df["year"] == year)
+        & (feature_df["round_number"] == rnd)
+    ].copy()
+    train_df = feature_df[
+        (feature_df["year"] < year)
+        | ((feature_df["year"] == year) & (feature_df["round_number"] < rnd))
+    ].copy()
+
+    if test_df.empty:
+        print(f"No data for {year} R{rnd}")
+        return
+
+    print(f"  Players: {len(test_df)}")
+
+    # Train models (backtest-style)
+    scoring_model = AFLScoringModel()
+    scoring_model.train_backtest(train_df, feature_cols)
+
+    disposal_model = AFLDisposalModel(
+        distribution=config.DISPOSAL_DISTRIBUTION
+    )
+    disposal_model.train_backtest(train_df, feature_cols)
+
+    # Predict distributions
+    scoring_preds = scoring_model.predict_distributions(test_df, feature_cols=feature_cols)
+    disposal_preds = disposal_model.predict_distributions(test_df, feature_cols=feature_cols)
+    merged_preds = _merge_predictions(scoring_preds, disposal_preds)
+
+    # Propagate is_home from test_df
+    if "is_home" in test_df.columns:
+        merged_preds["is_home"] = test_df["is_home"].values
+
+    # Game winner predictions
+    game_preds = pd.DataFrame()
+    tm_path = config.BASE_STORE_DIR / "team_matches.parquet"
+    if tm_path.exists():
+        team_match_df = pd.read_parquet(tm_path)
+        team_match_df["date"] = pd.to_datetime(team_match_df["date"])
+        tm_train = team_match_df[
+            (team_match_df["year"] < year)
+            | ((team_match_df["year"] == year) & (team_match_df["round_number"] < rnd))
+        ].copy()
+        tm_round = team_match_df[
+            (team_match_df["year"] == year) & (team_match_df["round_number"] == rnd)
+        ].copy()
+
+        if len(tm_train) >= 20 and not tm_round.empty:
+            winner_model = AFLGameWinnerModel()
+            try:
+                winner_model.train_backtest(tm_train)
+                game_preds = _predict_games_for_round(
+                    winner_model, tm_train, tm_round
+                )
+            except Exception as e:
+                print(f"  Warning: Game winner model failed: {e}")
+
+    # Create simulator and estimate correlations
+    from model import MonteCarloSimulator
+    simulator = MonteCarloSimulator(
+        scoring_model=scoring_model,
+        disposal_model=disposal_model,
+    )
+    simulator.estimate_correlation_factors(train_df, team_match_df if tm_path.exists() else None)
+
+    # Run simulation
+    t0 = time.time()
+    mc_results = simulator.simulate_round(
+        merged_preds, game_preds_df=game_preds, n_sims=n_sims
+    )
+    elapsed = time.time() - t0
+    print(f"\n  Simulation completed in {elapsed:.1f}s ({n_sims:,} sims x {len(test_df)} players)")
+
+    # Save results
+    out_dir = Path(config.SEQUENTIAL_DIR) / "simulations"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / f"{year}_R{rnd:02d}_simulated.csv"
+    mc_results.to_csv(out_path, index=False)
+    print(f"  Saved to {out_path}")
+
+    # Print comparison table
+    _print_mc_comparison(mc_results)
+
+
+def _print_mc_comparison(mc_df, n_show=15):
+    """Print comparison table: direct model vs Monte Carlo probabilities."""
+    # Sort by direct p_1plus descending, show top N
+    df = mc_df.sort_values("direct_p_1plus_goals", ascending=False).head(n_show)
+
+    print(f"\n{'=' * 95}")
+    print(f"  Direct Model vs Monte Carlo — Top {n_show} by P(1+ Goals)")
+    print(f"{'=' * 95}")
+    print(f"{'Player':<22} {'Team':<12} {'Direct':>8} {'MC':>8} {'Diff':>7}  "
+          f"{'D_20+d':>7} {'MC_20+d':>7} {'Diff':>7}")
+    print("-" * 95)
+
+    for _, row in df.iterrows():
+        d1 = row["direct_p_1plus_goals"]
+        m1 = row["mc_p_1plus_goals"]
+        diff1 = m1 - d1
+        d20 = row.get("direct_p_20plus_disp", float("nan"))
+        m20 = row.get("mc_p_20plus_disp", float("nan"))
+        diff20 = m20 - d20 if not (np.isnan(d20) or np.isnan(m20)) else float("nan")
+
+        d1_s = f"{d1:.1%}" if not np.isnan(d1) else "N/A"
+        m1_s = f"{m1:.1%}"
+        diff1_s = f"{diff1:+.1%}" if not np.isnan(diff1) else "N/A"
+        d20_s = f"{d20:.1%}" if not np.isnan(d20) else "N/A"
+        m20_s = f"{m20:.1%}"
+        diff20_s = f"{diff20:+.1%}" if not np.isnan(diff20) else "N/A"
+
+        print(f"{str(row['player']):<22} {str(row['team']):<12} "
+              f"{d1_s:>8} {m1_s:>8} {diff1_s:>7}  "
+              f"{d20_s:>7} {m20_s:>7} {diff20_s:>7}")
+
+
 def cmd_evaluate(args):
     """Evaluate model on validation set with detailed breakdown."""
     model = AFLScoringModel()
@@ -3199,6 +3347,10 @@ Examples:
     parser.add_argument("--scrape-footywire", action="store_true",
                         dest="scrape_footywire",
                         help="Scrape FootyWire advanced stats (ED, DE%%, CCL, SCL, TO, MG, TOG%%)")
+    parser.add_argument("--simulate", action="store_true",
+                        help="Run Monte Carlo simulation after prediction (requires --round or --sequential)")
+    parser.add_argument("--n-sims", type=int, dest="n_sims", default=10000,
+                        help="Number of Monte Carlo simulations (default: 10000)")
     parser.add_argument("--save-experiment", type=str, dest="save_experiment",
                         help="Save backtest results as named experiment JSON (e.g. 'baseline_pre')")
 
@@ -3225,7 +3377,7 @@ Examples:
                 args.backtest_winner, args.tune,
                 args.diagnose, args.sequential, args.sequential_report,
                 args.year_range, args.player, args.scrape_profiles,
-                args.scrape_footywire]):
+                args.scrape_footywire, args.simulate]):
         parser.print_help()
         return
 
@@ -3292,6 +3444,9 @@ Examples:
     if args.player:
         from player import cmd_player
         cmd_player(args)
+
+    if args.simulate:
+        cmd_simulate(args)
 
     if args.year_range:
         cmd_sequential_year_range(args)

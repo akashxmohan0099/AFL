@@ -364,6 +364,17 @@ def add_rolling_features(df):
         lambda s: s.shift(1).expanding().sum()
     ).fillna(0)
 
+    # Season hit-rate features (% of current-season games meeting thresholds)
+    df_real["season_gl_1plus_rate"] = season_group["GL"].transform(
+        lambda s: s.shift(1).expanding().apply(lambda x: (x >= 1).mean(), raw=False)
+    ).fillna(0)
+    df_real["season_disp_20plus_rate"] = season_group["DI"].transform(
+        lambda s: s.shift(1).expanding().apply(lambda x: (x >= 20).mean(), raw=False)
+    ).fillna(0)
+    df_real["season_mk_3plus_rate"] = season_group["MK"].transform(
+        lambda s: s.shift(1).expanding().apply(lambda x: (x >= 3).mean(), raw=False)
+    ).fillna(0)
+
     # Season-to-date rate aggregations
     if "GL_rate" in df_real.columns:
         df_real["season_goals_rate_avg"] = season_group["GL_rate"].transform(
@@ -450,6 +461,24 @@ def add_rolling_features(df):
     di_low = shifted_di.lt(12).fillna(False).astype(int)
     epoch_di_low = (di_low == 0).cumsum()
     df_real["player_di_streak_low"] = di_low.groupby(epoch_di_low, observed=True).cumsum()
+
+    # Disposal cold streak: consecutive games with < 15 disposals
+    disp_cold = shifted_di.lt(15).fillna(False).astype(int)
+    epoch_di_cold = (disp_cold == 0).cumsum()
+    df_real["player_disp_cold_streak"] = disp_cold.groupby(epoch_di_cold, observed=True).cumsum()
+
+    # --- Mark streaks ---
+    shifted_mk = grouped["MK"].shift(1)
+
+    # Mark streak: consecutive games with 3+ marks
+    mk_3plus = shifted_mk.ge(3).fillna(False).astype(int)
+    epoch_mk = (mk_3plus == 0).cumsum()
+    df_real["player_mk_streak_3plus"] = mk_3plus.groupby(epoch_mk, observed=True).cumsum()
+
+    # Mark cold streak: consecutive games with < 2 marks
+    mk_cold = shifted_mk.lt(2).fillna(False).astype(int)
+    epoch_mk_cold = (mk_cold == 0).cumsum()
+    df_real["player_mk_cold_streak"] = mk_cold.groupby(epoch_mk_cold, observed=True).cumsum()
 
     # Disposal form ratio: last 3 avg / last 10 avg
     di_recent_3 = grouped["DI"].transform(
@@ -1962,9 +1991,17 @@ def add_era_features(df):
 # L. Sample Weights
 # ---------------------------------------------------------------------------
 
-def add_sample_weights(df):
-    """Add sample_weight column for model training.
-    Combines era weight * time decay."""
+def add_dynamic_sample_weights(df, pred_year, pred_round):
+    """Add sample_weight column with dynamic current-season boosting.
+
+    Computes: weight = era_w × decay_w × current_season_boost × within_season_recency.
+
+    Parameters
+    ----------
+    df : DataFrame with 'date', 'year', 'round_number' columns
+    pred_year : int — the year being predicted
+    pred_round : int — the round being predicted (training data is < this)
+    """
     df = df.copy()
     now = df["date"].max()
 
@@ -1972,13 +2009,40 @@ def add_sample_weights(df):
     era_w = df["year"].apply(_era_weight)
     decay_w = days_ago.apply(_decay_weight)
 
-    df["sample_weight"] = era_w * decay_w
+    # Current-season boost: scales up with how many rounds of current-season data exist
+    is_current = df["year"] == pred_year
+    rounds_available = max(pred_round - 1, 0)
+    boost_val = min(
+        config.CURRENT_SEASON_BOOST_BASE + config.CURRENT_SEASON_BOOST_PER_ROUND * rounds_available,
+        config.CURRENT_SEASON_BOOST_MAX,
+    )
+    season_boost = np.where(is_current, boost_val, 1.0)
+
+    # Within-season recency: recent rounds within current season weighted higher
+    half_life = config.WITHIN_SEASON_RECENCY_HALF_LIFE
+    rounds_ago = pred_round - df["round_number"]
+    within_recency = np.where(
+        is_current & (rounds_ago >= 0),
+        0.5 ** (rounds_ago / half_life),
+        1.0,  # prior-season rows: no additional penalty (day-decay handles it)
+    )
+
+    df["sample_weight"] = era_w * decay_w * season_boost * within_recency
     # Normalize so mean weight ≈ 1
     mean_w = df["sample_weight"].mean()
     if mean_w > 0:
         df["sample_weight"] = df["sample_weight"] / mean_w
 
     return df
+
+
+def add_sample_weights(df):
+    """Add sample_weight column for model training.
+    Combines era weight * time decay. Delegates to add_dynamic_sample_weights
+    using the max year/round in the data."""
+    max_year = int(df["year"].max())
+    max_round = int(df.loc[df["year"] == max_year, "round_number"].max()) + 1
+    return add_dynamic_sample_weights(df, max_year, max_round)
 
 
 # ---------------------------------------------------------------------------

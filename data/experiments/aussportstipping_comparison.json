@@ -1,0 +1,1938 @@
+{
+  "year": 2025,
+  "last_n": 6,
+  "elo_rankings": [
+    {
+      "rank": 1,
+      "team": "Brisbane Lions",
+      "elo": 1738.5,
+      "win_prob_vs_avg": 0.7979
+    },
+    {
+      "rank": 2,
+      "team": "Geelong",
+      "elo": 1736.8,
+      "win_prob_vs_avg": 0.7962
+    },
+    {
+      "rank": 3,
+      "team": "Hawthorn",
+      "elo": 1699.6,
+      "win_prob_vs_avg": 0.7593
+    },
+    {
+      "rank": 4,
+      "team": "Collingwood",
+      "elo": 1663.3,
+      "win_prob_vs_avg": 0.7191
+    },
+    {
+      "rank": 5,
+      "team": "Adelaide",
+      "elo": 1642.4,
+      "win_prob_vs_avg": 0.6942
+    },
+    {
+      "rank": 6,
+      "team": "Western Bulldogs",
+      "elo": 1633.4,
+      "win_prob_vs_avg": 0.6831
+    },
+    {
+      "rank": 7,
+      "team": "Greater Western Sydney",
+      "elo": 1625.1,
+      "win_prob_vs_avg": 0.6727
+    },
+    {
+      "rank": 8,
+      "team": "Fremantle",
+      "elo": 1613.2,
+      "win_prob_vs_avg": 0.6573
+    },
+    {
+      "rank": 9,
+      "team": "Gold Coast",
+      "elo": 1566.1,
+      "win_prob_vs_avg": 0.594
+    },
+    {
+      "rank": 10,
+      "team": "Sydney",
+      "elo": 1518.3,
+      "win_prob_vs_avg": 0.5263
+    },
+    {
+      "rank": 11,
+      "team": "Carlton",
+      "elo": 1435.1,
+      "win_prob_vs_avg": 0.4076
+    },
+    {
+      "rank": 12,
+      "team": "Port Adelaide",
+      "elo": 1425.8,
+      "win_prob_vs_avg": 0.3949
+    },
+    {
+      "rank": 13,
+      "team": "St Kilda",
+      "elo": 1423.8,
+      "win_prob_vs_avg": 0.392
+    },
+    {
+      "rank": 14,
+      "team": "Melbourne",
+      "elo": 1405.0,
+      "win_prob_vs_avg": 0.3665
+    },
+    {
+      "rank": 15,
+      "team": "Essendon",
+      "elo": 1304.7,
+      "win_prob_vs_avg": 0.2452
+    },
+    {
+      "rank": 16,
+      "team": "North Melbourne",
+      "elo": 1273.9,
+      "win_prob_vs_avg": 0.2139
+    },
+    {
+      "rank": 17,
+      "team": "Richmond",
+      "elo": 1252.6,
+      "win_prob_vs_avg": 0.194
+    },
+    {
+      "rank": 18,
+      "team": "West Coast",
+      "elo": 1190.9,
+      "win_prob_vs_avg": 0.1444
+    }
+  ],
+  "ats_record": [
+    {
+      "team": "Hawthorn",
+      "covers": 16,
+      "fails": 10,
+      "pushes": 0,
+      "cover_pct": 0.6154
+    },
+    {
+      "team": "Geelong",
+      "covers": 16,
+      "fails": 10,
+      "pushes": 0,
+      "cover_pct": 0.6154
+    },
+    {
+      "team": "North Melbourne",
+      "covers": 14,
+      "fails": 9,
+      "pushes": 0,
+      "cover_pct": 0.6087
+    },
+    {
+      "team": "Brisbane Lions",
+      "covers": 15,
+      "fails": 12,
+      "pushes": 0,
+      "cover_pct": 0.5556
+    },
+    {
+      "team": "Greater Western Sydney",
+      "covers": 13,
+      "fails": 11,
+      "pushes": 0,
+      "cover_pct": 0.5417
+    },
+    {
+      "team": "Richmond",
+      "covers": 12,
+      "fails": 11,
+      "pushes": 0,
+      "cover_pct": 0.5217
+    },
+    {
+      "team": "Melbourne",
+      "covers": 12,
+      "fails": 11,
+      "pushes": 0,
+      "cover_pct": 0.5217
+    },
+    {
+      "team": "Adelaide",
+      "covers": 13,
+      "fails": 12,
+      "pushes": 0,
+      "cover_pct": 0.52
+    },
+    {
+      "team": "Gold Coast",
+      "covers": 12,
+      "fails": 13,
+      "pushes": 0,
+      "cover_pct": 0.48
+    },
+    {
+      "team": "Collingwood",
+      "covers": 12,
+      "fails": 13,
+      "pushes": 0,
+      "cover_pct": 0.48
+    },
+    {
+      "team": "Carlton",
+      "covers": 11,
+      "fails": 12,
+      "pushes": 0,
+      "cover_pct": 0.4783
+    },
+    {
+      "team": "Western Bulldogs",
+      "covers": 11,
+      "fails": 12,
+      "pushes": 0,
+      "cover_pct": 0.4783
+    },
+    {
+      "team": "Fremantle",
+      "covers": 11,
+      "fails": 13,
+      "pushes": 0,
+      "cover_pct": 0.4583
+    },
+    {
+      "team": "Port Adelaide",
+      "covers": 10,
+      "fails": 13,
+      "pushes": 0,
+      "cover_pct": 0.4348
+    },
+    {
+      "team": "St Kilda",
+      "covers": 10,
+      "fails": 13,
+      "pushes": 0,
+      "cover_pct": 0.4348
+    },
+    {
+      "team": "Sydney",
+      "covers": 10,
+      "fails": 13,
+      "pushes": 0,
+      "cover_pct": 0.4348
+    },
+    {
+      "team": "West Coast",
+      "covers": 10,
+      "fails": 13,
+      "pushes": 0,
+      "cover_pct": 0.4348
+    },
+    {
+      "team": "Essendon",
+      "covers": 8,
+      "fails": 15,
+      "pushes": 0,
+      "cover_pct": 0.3478
+    }
+  ],
+  "predictability_index": [
+    {
+      "team": "Hawthorn",
+      "predictability": 0.4954,
+      "residual_std": 30.56,
+      "avg_margin": 14.46
+    },
+    {
+      "team": "West Coast",
+      "predictability": 0.494,
+      "residual_std": 30.73,
+      "avg_margin": -41.78
+    },
+    {
+      "team": "Brisbane Lions",
+      "predictability": 0.4927,
+      "residual_std": 30.88,
+      "avg_margin": 12.81
+    },
+    {
+      "team": "Fremantle",
+      "predictability": 0.4742,
+      "residual_std": 33.26,
+      "avg_margin": 6.46
+    },
+    {
+      "team": "Melbourne",
+      "predictability": 0.4727,
+      "residual_std": 33.46,
+      "avg_margin": -6.09
+    },
+    {
+      "team": "Collingwood",
+      "predictability": 0.4725,
+      "residual_std": 33.5,
+      "avg_margin": 14.08
+    },
+    {
+      "team": "Sydney",
+      "predictability": 0.4611,
+      "residual_std": 35.06,
+      "avg_margin": -1.65
+    },
+    {
+      "team": "Richmond",
+      "predictability": 0.4591,
+      "residual_std": 35.34,
+      "avg_margin": -31.74
+    },
+    {
+      "team": "Greater Western Sydney",
+      "predictability": 0.4582,
+      "residual_std": 35.47,
+      "avg_margin": 10.71
+    },
+    {
+      "team": "Essendon",
+      "predictability": 0.4571,
+      "residual_std": 35.63,
+      "avg_margin": -29.65
+    },
+    {
+      "team": "St Kilda",
+      "predictability": 0.457,
+      "residual_std": 35.64,
+      "avg_margin": -9.57
+    },
+    {
+      "team": "Carlton",
+      "predictability": 0.4556,
+      "residual_std": 35.84,
+      "avg_margin": -3.35
+    },
+    {
+      "team": "Adelaide",
+      "predictability": 0.4545,
+      "residual_std": 36.01,
+      "avg_margin": 23.52
+    },
+    {
+      "team": "North Melbourne",
+      "predictability": 0.4368,
+      "residual_std": 38.68,
+      "avg_margin": -24.0
+    },
+    {
+      "team": "Geelong",
+      "predictability": 0.435,
+      "residual_std": 38.97,
+      "avg_margin": 27.5
+    },
+    {
+      "team": "Gold Coast",
+      "predictability": 0.4326,
+      "residual_std": 39.34,
+      "avg_margin": 14.68
+    },
+    {
+      "team": "Western Bulldogs",
+      "predictability": 0.414,
+      "residual_std": 42.46,
+      "avg_margin": 28.43
+    },
+    {
+      "team": "Port Adelaide",
+      "predictability": 0.3925,
+      "residual_std": 46.43,
+      "avg_margin": -17.83
+    }
+  ],
+  "score_statistics": [
+    {
+      "team": "Geelong",
+      "pts_for_avg": 102.46,
+      "pts_against_avg": 74.96,
+      "margin_avg": 27.5,
+      "win_pct": 0.7308,
+      "games": 26
+    },
+    {
+      "team": "Western Bulldogs",
+      "pts_for_avg": 106.0,
+      "pts_against_avg": 77.57,
+      "margin_avg": 28.43,
+      "win_pct": 0.6087,
+      "games": 23
+    },
+    {
+      "team": "Adelaide",
+      "pts_for_avg": 94.0,
+      "pts_against_avg": 70.48,
+      "margin_avg": 23.52,
+      "win_pct": 0.68,
+      "games": 25
+    },
+    {
+      "team": "Hawthorn",
+      "pts_for_avg": 87.92,
+      "pts_against_avg": 73.46,
+      "margin_avg": 14.46,
+      "win_pct": 0.6538,
+      "games": 26
+    },
+    {
+      "team": "Gold Coast",
+      "pts_for_avg": 89.44,
+      "pts_against_avg": 74.76,
+      "margin_avg": 14.68,
+      "win_pct": 0.6,
+      "games": 25
+    },
+    {
+      "team": "Collingwood",
+      "pts_for_avg": 83.36,
+      "pts_against_avg": 69.28,
+      "margin_avg": 14.08,
+      "win_pct": 0.68,
+      "games": 25
+    },
+    {
+      "team": "Brisbane Lions",
+      "pts_for_avg": 89.0,
+      "pts_against_avg": 76.19,
+      "margin_avg": 12.81,
+      "win_pct": 0.7037,
+      "games": 27
+    },
+    {
+      "team": "Greater Western Sydney",
+      "pts_for_avg": 89.67,
+      "pts_against_avg": 78.96,
+      "margin_avg": 10.71,
+      "win_pct": 0.6667,
+      "games": 24
+    },
+    {
+      "team": "Fremantle",
+      "pts_for_avg": 83.33,
+      "pts_against_avg": 76.88,
+      "margin_avg": 6.46,
+      "win_pct": 0.7083,
+      "games": 24
+    },
+    {
+      "team": "Sydney",
+      "pts_for_avg": 78.7,
+      "pts_against_avg": 80.35,
+      "margin_avg": -1.65,
+      "win_pct": 0.4783,
+      "games": 23
+    },
+    {
+      "team": "Carlton",
+      "pts_for_avg": 76.17,
+      "pts_against_avg": 79.52,
+      "margin_avg": -3.35,
+      "win_pct": 0.3913,
+      "games": 23
+    },
+    {
+      "team": "Melbourne",
+      "pts_for_avg": 80.7,
+      "pts_against_avg": 86.78,
+      "margin_avg": -6.09,
+      "win_pct": 0.3043,
+      "games": 23
+    },
+    {
+      "team": "St Kilda",
+      "pts_for_avg": 78.17,
+      "pts_against_avg": 87.74,
+      "margin_avg": -9.57,
+      "win_pct": 0.3913,
+      "games": 23
+    },
+    {
+      "team": "Port Adelaide",
+      "pts_for_avg": 72.52,
+      "pts_against_avg": 90.35,
+      "margin_avg": -17.83,
+      "win_pct": 0.3913,
+      "games": 23
+    },
+    {
+      "team": "North Melbourne",
+      "pts_for_avg": 76.7,
+      "pts_against_avg": 100.7,
+      "margin_avg": -24.0,
+      "win_pct": 0.2174,
+      "games": 23
+    },
+    {
+      "team": "Essendon",
+      "pts_for_avg": 64.52,
+      "pts_against_avg": 94.17,
+      "margin_avg": -29.65,
+      "win_pct": 0.2174,
+      "games": 23
+    },
+    {
+      "team": "Richmond",
+      "pts_for_avg": 61.0,
+      "pts_against_avg": 92.74,
+      "margin_avg": -31.74,
+      "win_pct": 0.1739,
+      "games": 23
+    },
+    {
+      "team": "West Coast",
+      "pts_for_avg": 62.35,
+      "pts_against_avg": 104.13,
+      "margin_avg": -41.78,
+      "win_pct": 0.087,
+      "games": 23
+    }
+  ],
+  "stadium_analysis": [
+    {
+      "team": "Adelaide",
+      "venue": "Docklands",
+      "games": 5,
+      "wins": 4,
+      "win_pct": 0.8,
+      "avg_margin": 4.0
+    },
+    {
+      "team": "Adelaide",
+      "venue": "Adelaide Oval",
+      "games": 41,
+      "wins": 26,
+      "win_pct": 0.6341,
+      "avg_margin": 20.37
+    },
+    {
+      "team": "Adelaide",
+      "venue": "Perth Stadium",
+      "games": 4,
+      "wins": 2,
+      "win_pct": 0.5,
+      "avg_margin": 0.25
+    },
+    {
+      "team": "Adelaide",
+      "venue": "M.C.G.",
+      "games": 7,
+      "wins": 2,
+      "win_pct": 0.2857,
+      "avg_margin": 11.43
+    },
+    {
+      "team": "Brisbane Lions",
+      "venue": "Docklands",
+      "games": 9,
+      "wins": 7,
+      "win_pct": 0.7778,
+      "avg_margin": 27.22
+    },
+    {
+      "team": "Brisbane Lions",
+      "venue": "M.C.G.",
+      "games": 13,
+      "wins": 10,
+      "win_pct": 0.7692,
+      "avg_margin": 15.38
+    },
+    {
+      "team": "Brisbane Lions",
+      "venue": "Gabba",
+      "games": 37,
+      "wins": 28,
+      "win_pct": 0.7568,
+      "avg_margin": 18.0
+    },
+    {
+      "team": "Brisbane Lions",
+      "venue": "Perth Stadium",
+      "games": 4,
+      "wins": 3,
+      "win_pct": 0.75,
+      "avg_margin": 12.25
+    },
+    {
+      "team": "Brisbane Lions",
+      "venue": "Carrara",
+      "games": 3,
+      "wins": 1,
+      "win_pct": 0.3333,
+      "avg_margin": -26.67
+    },
+    {
+      "team": "Brisbane Lions",
+      "venue": "Adelaide Oval",
+      "games": 5,
+      "wins": 1,
+      "win_pct": 0.2,
+      "avg_margin": -1.4
+    },
+    {
+      "team": "Carlton",
+      "venue": "Perth Stadium",
+      "games": 5,
+      "wins": 4,
+      "win_pct": 0.8,
+      "avg_margin": 45.6
+    },
+    {
+      "team": "Carlton",
+      "venue": "M.C.G.",
+      "games": 31,
+      "wins": 17,
+      "win_pct": 0.5484,
+      "avg_margin": 2.35
+    },
+    {
+      "team": "Carlton",
+      "venue": "Adelaide Oval",
+      "games": 6,
+      "wins": 3,
+      "win_pct": 0.5,
+      "avg_margin": -9.5
+    },
+    {
+      "team": "Carlton",
+      "venue": "Docklands",
+      "games": 22,
+      "wins": 10,
+      "win_pct": 0.4545,
+      "avg_margin": 9.27
+    },
+    {
+      "team": "Carlton",
+      "venue": "Gabba",
+      "games": 3,
+      "wins": 0,
+      "win_pct": 0.0,
+      "avg_margin": -13.33
+    },
+    {
+      "team": "Carlton",
+      "venue": "S.C.G.",
+      "games": 3,
+      "wins": 0,
+      "win_pct": 0.0,
+      "avg_margin": -35.0
+    },
+    {
+      "team": "Collingwood",
+      "venue": "Docklands",
+      "games": 9,
+      "wins": 7,
+      "win_pct": 0.7778,
+      "avg_margin": 19.67
+    },
+    {
+      "team": "Collingwood",
+      "venue": "Adelaide Oval",
+      "games": 7,
+      "wins": 5,
+      "win_pct": 0.7143,
+      "avg_margin": 7.86
+    },
+    {
+      "team": "Collingwood",
+      "venue": "Gabba",
+      "games": 3,
+      "wins": 2,
+      "win_pct": 0.6667,
+      "avg_margin": 13.33
+    },
+    {
+      "team": "Collingwood",
+      "venue": "Perth Stadium",
+      "games": 3,
+      "wins": 2,
+      "win_pct": 0.6667,
+      "avg_margin": 25.67
+    },
+    {
+      "team": "Collingwood",
+      "venue": "M.C.G.",
+      "games": 46,
+      "wins": 30,
+      "win_pct": 0.6522,
+      "avg_margin": 11.28
+    },
+    {
+      "team": "Collingwood",
+      "venue": "Carrara",
+      "games": 3,
+      "wins": 1,
+      "win_pct": 0.3333,
+      "avg_margin": 20.33
+    },
+    {
+      "team": "Essendon",
+      "venue": "Adelaide Oval",
+      "games": 5,
+      "wins": 3,
+      "win_pct": 0.6,
+      "avg_margin": -1.4
+    },
+    {
+      "team": "Essendon",
+      "venue": "Docklands",
+      "games": 25,
+      "wins": 14,
+      "win_pct": 0.56,
+      "avg_margin": -8.04
+    },
+    {
+      "team": "Essendon",
+      "venue": "Perth Stadium",
+      "games": 5,
+      "wins": 2,
+      "win_pct": 0.4,
+      "avg_margin": -4.0
+    },
+    {
+      "team": "Essendon",
+      "venue": "M.C.G.",
+      "games": 24,
+      "wins": 6,
+      "win_pct": 0.25,
+      "avg_margin": -13.46
+    },
+    {
+      "team": "Essendon",
+      "venue": "Gabba",
+      "games": 3,
+      "wins": 0,
+      "win_pct": 0.0,
+      "avg_margin": -23.0
+    },
+    {
+      "team": "Fremantle",
+      "venue": "M.C.G.",
+      "games": 7,
+      "wins": 5,
+      "win_pct": 0.7143,
+      "avg_margin": 6.86
+    },
+    {
+      "team": "Fremantle",
+      "venue": "S.C.G.",
+      "games": 3,
+      "wins": 2,
+      "win_pct": 0.6667,
+      "avg_margin": 3.0
+    },
+    {
+      "team": "Fremantle",
+      "venue": "Perth Stadium",
+      "games": 38,
+      "wins": 24,
+      "win_pct": 0.6316,
+      "avg_margin": 11.32
+    },
+    {
+      "team": "Fremantle",
+      "venue": "Docklands",
+      "games": 7,
+      "wins": 3,
+      "win_pct": 0.4286,
+      "avg_margin": -16.29
+    },
+    {
+      "team": "Fremantle",
+      "venue": "Sydney Showground",
+      "games": 3,
+      "wins": 1,
+      "win_pct": 0.3333,
+      "avg_margin": -15.0
+    },
+    {
+      "team": "Fremantle",
+      "venue": "Adelaide Oval",
+      "games": 4,
+      "wins": 1,
+      "win_pct": 0.25,
+      "avg_margin": -13.5
+    },
+    {
+      "team": "Geelong",
+      "venue": "Adelaide Oval",
+      "games": 7,
+      "wins": 6,
+      "win_pct": 0.8571,
+      "avg_margin": 29.29
+    },
+    {
+      "team": "Geelong",
+      "venue": "Kardinia Park",
+      "games": 28,
+      "wins": 20,
+      "win_pct": 0.7143,
+      "avg_margin": 28.32
+    },
+    {
+      "team": "Geelong",
+      "venue": "Perth Stadium",
+      "games": 3,
+      "wins": 2,
+      "win_pct": 0.6667,
+      "avg_margin": 6.67
+    },
+    {
+      "team": "Geelong",
+      "venue": "M.C.G.",
+      "games": 21,
+      "wins": 12,
+      "win_pct": 0.5714,
+      "avg_margin": 10.76
+    },
+    {
+      "team": "Geelong",
+      "venue": "Docklands",
+      "games": 5,
+      "wins": 2,
+      "win_pct": 0.4,
+      "avg_margin": 13.2
+    },
+    {
+      "team": "Geelong",
+      "venue": "Gabba",
+      "games": 3,
+      "wins": 1,
+      "win_pct": 0.3333,
+      "avg_margin": 4.0
+    },
+    {
+      "team": "Geelong",
+      "venue": "S.C.G.",
+      "games": 3,
+      "wins": 1,
+      "win_pct": 0.3333,
+      "avg_margin": 4.67
+    },
+    {
+      "team": "Gold Coast",
+      "venue": "Marrara Oval",
+      "games": 6,
+      "wins": 6,
+      "win_pct": 1.0,
+      "avg_margin": 28.67
+    },
+    {
+      "team": "Gold Coast",
+      "venue": "Carrara",
+      "games": 27,
+      "wins": 19,
+      "win_pct": 0.7037,
+      "avg_margin": 14.7
+    },
+    {
+      "team": "Gold Coast",
+      "venue": "M.C.G.",
+      "games": 3,
+      "wins": 2,
+      "win_pct": 0.6667,
+      "avg_margin": 10.33
+    },
+    {
+      "team": "Gold Coast",
+      "venue": "Docklands",
+      "games": 11,
+      "wins": 5,
+      "win_pct": 0.4545,
+      "avg_margin": -2.36
+    },
+    {
+      "team": "Gold Coast",
+      "venue": "Perth Stadium",
+      "games": 5,
+      "wins": 2,
+      "win_pct": 0.4,
+      "avg_margin": 25.2
+    },
+    {
+      "team": "Gold Coast",
+      "venue": "Adelaide Oval",
+      "games": 4,
+      "wins": 0,
+      "win_pct": 0.0,
+      "avg_margin": -31.75
+    },
+    {
+      "team": "Gold Coast",
+      "venue": "Gabba",
+      "games": 4,
+      "wins": 0,
+      "win_pct": 0.0,
+      "avg_margin": -35.25
+    },
+    {
+      "team": "Greater Western Sydney",
+      "venue": "Kardinia Park",
+      "games": 3,
+      "wins": 3,
+      "win_pct": 1.0,
+      "avg_margin": 6.33
+    },
+    {
+      "team": "Greater Western Sydney",
+      "venue": "M.C.G.",
+      "games": 6,
+      "wins": 4,
+      "win_pct": 0.6667,
+      "avg_margin": -1.17
+    },
+    {
+      "team": "Greater Western Sydney",
+      "venue": "Perth Stadium",
+      "games": 3,
+      "wins": 2,
+      "win_pct": 0.6667,
+      "avg_margin": 35.67
+    },
+    {
+      "team": "Greater Western Sydney",
+      "venue": "Sydney Showground",
+      "games": 26,
+      "wins": 17,
+      "win_pct": 0.6538,
+      "avg_margin": 17.58
+    },
+    {
+      "team": "Greater Western Sydney",
+      "venue": "Docklands",
+      "games": 7,
+      "wins": 3,
+      "win_pct": 0.4286,
+      "avg_margin": -5.0
+    },
+    {
+      "team": "Greater Western Sydney",
+      "venue": "Adelaide Oval",
+      "games": 5,
+      "wins": 2,
+      "win_pct": 0.4,
+      "avg_margin": -9.8
+    },
+    {
+      "team": "Greater Western Sydney",
+      "venue": "Manuka Oval",
+      "games": 9,
+      "wins": 3,
+      "win_pct": 0.3333,
+      "avg_margin": 7.56
+    },
+    {
+      "team": "Greater Western Sydney",
+      "venue": "S.C.G.",
+      "games": 4,
+      "wins": 1,
+      "win_pct": 0.25,
+      "avg_margin": -11.25
+    },
+    {
+      "team": "Hawthorn",
+      "venue": "York Park",
+      "games": 12,
+      "wins": 12,
+      "win_pct": 1.0,
+      "avg_margin": 34.92
+    },
+    {
+      "team": "Hawthorn",
+      "venue": "Docklands",
+      "games": 10,
+      "wins": 8,
+      "win_pct": 0.8,
+      "avg_margin": 16.4
+    },
+    {
+      "team": "Hawthorn",
+      "venue": "M.C.G.",
+      "games": 30,
+      "wins": 15,
+      "win_pct": 0.5,
+      "avg_margin": -0.23
+    },
+    {
+      "team": "Hawthorn",
+      "venue": "Adelaide Oval",
+      "games": 8,
+      "wins": 3,
+      "win_pct": 0.375,
+      "avg_margin": 0.75
+    },
+    {
+      "team": "Hawthorn",
+      "venue": "Perth Stadium",
+      "games": 3,
+      "wins": 1,
+      "win_pct": 0.3333,
+      "avg_margin": -7.67
+    },
+    {
+      "team": "Melbourne",
+      "venue": "Carrara",
+      "games": 3,
+      "wins": 2,
+      "win_pct": 0.6667,
+      "avg_margin": 14.33
+    },
+    {
+      "team": "Melbourne",
+      "venue": "Gabba",
+      "games": 3,
+      "wins": 2,
+      "win_pct": 0.6667,
+      "avg_margin": 0.33
+    },
+    {
+      "team": "Melbourne",
+      "venue": "M.C.G.",
+      "games": 41,
+      "wins": 23,
+      "win_pct": 0.561,
+      "avg_margin": 10.61
+    },
+    {
+      "team": "Melbourne",
+      "venue": "Perth Stadium",
+      "games": 4,
+      "wins": 2,
+      "win_pct": 0.5,
+      "avg_margin": 2.25
+    },
+    {
+      "team": "Melbourne",
+      "venue": "Docklands",
+      "games": 5,
+      "wins": 2,
+      "win_pct": 0.4,
+      "avg_margin": -2.6
+    },
+    {
+      "team": "Melbourne",
+      "venue": "Adelaide Oval",
+      "games": 7,
+      "wins": 2,
+      "win_pct": 0.2857,
+      "avg_margin": -12.29
+    },
+    {
+      "team": "Melbourne",
+      "venue": "Traeger Park",
+      "games": 3,
+      "wins": 0,
+      "win_pct": 0.0,
+      "avg_margin": -42.67
+    },
+    {
+      "team": "North Melbourne",
+      "venue": "Perth Stadium",
+      "games": 4,
+      "wins": 2,
+      "win_pct": 0.5,
+      "avg_margin": 0.75
+    },
+    {
+      "team": "North Melbourne",
+      "venue": "M.C.G.",
+      "games": 6,
+      "wins": 2,
+      "win_pct": 0.3333,
+      "avg_margin": -22.33
+    },
+    {
+      "team": "North Melbourne",
+      "venue": "Bellerive Oval",
+      "games": 10,
+      "wins": 2,
+      "win_pct": 0.2,
+      "avg_margin": -19.9
+    },
+    {
+      "team": "North Melbourne",
+      "venue": "Docklands",
+      "games": 31,
+      "wins": 4,
+      "win_pct": 0.129,
+      "avg_margin": -26.06
+    },
+    {
+      "team": "North Melbourne",
+      "venue": "Adelaide Oval",
+      "games": 3,
+      "wins": 0,
+      "win_pct": 0.0,
+      "avg_margin": -36.33
+    },
+    {
+      "team": "North Melbourne",
+      "venue": "York Park",
+      "games": 3,
+      "wins": 0,
+      "win_pct": 0.0,
+      "avg_margin": -75.33
+    },
+    {
+      "team": "Port Adelaide",
+      "venue": "Perth Stadium",
+      "games": 3,
+      "wins": 2,
+      "win_pct": 0.6667,
+      "avg_margin": -2.67
+    },
+    {
+      "team": "Port Adelaide",
+      "venue": "Adelaide Oval",
+      "games": 42,
+      "wins": 26,
+      "win_pct": 0.619,
+      "avg_margin": 8.26
+    },
+    {
+      "team": "Port Adelaide",
+      "venue": "Docklands",
+      "games": 7,
+      "wins": 4,
+      "win_pct": 0.5714,
+      "avg_margin": -9.86
+    },
+    {
+      "team": "Port Adelaide",
+      "venue": "M.C.G.",
+      "games": 7,
+      "wins": 3,
+      "win_pct": 0.4286,
+      "avg_margin": -23.29
+    },
+    {
+      "team": "Port Adelaide",
+      "venue": "Kardinia Park",
+      "games": 3,
+      "wins": 1,
+      "win_pct": 0.3333,
+      "avg_margin": -31.33
+    },
+    {
+      "team": "Port Adelaide",
+      "venue": "S.C.G.",
+      "games": 3,
+      "wins": 1,
+      "win_pct": 0.3333,
+      "avg_margin": -10.33
+    },
+    {
+      "team": "Richmond",
+      "venue": "Perth Stadium",
+      "games": 5,
+      "wins": 3,
+      "win_pct": 0.6,
+      "avg_margin": 1.0
+    },
+    {
+      "team": "Richmond",
+      "venue": "Adelaide Oval",
+      "games": 6,
+      "wins": 2,
+      "win_pct": 0.3333,
+      "avg_margin": -24.0
+    },
+    {
+      "team": "Richmond",
+      "venue": "M.C.G.",
+      "games": 39,
+      "wins": 9,
+      "win_pct": 0.2308,
+      "avg_margin": -18.59
+    },
+    {
+      "team": "Richmond",
+      "venue": "Docklands",
+      "games": 8,
+      "wins": 1,
+      "win_pct": 0.125,
+      "avg_margin": -39.88
+    },
+    {
+      "team": "St Kilda",
+      "venue": "Docklands",
+      "games": 40,
+      "wins": 23,
+      "win_pct": 0.575,
+      "avg_margin": 3.88
+    },
+    {
+      "team": "St Kilda",
+      "venue": "Perth Stadium",
+      "games": 4,
+      "wins": 2,
+      "win_pct": 0.5,
+      "avg_margin": -4.75
+    },
+    {
+      "team": "St Kilda",
+      "venue": "M.C.G.",
+      "games": 7,
+      "wins": 3,
+      "win_pct": 0.4286,
+      "avg_margin": -8.0
+    },
+    {
+      "team": "St Kilda",
+      "venue": "Adelaide Oval",
+      "games": 6,
+      "wins": 1,
+      "win_pct": 0.1667,
+      "avg_margin": -24.67
+    },
+    {
+      "team": "Sydney",
+      "venue": "Perth Stadium",
+      "games": 4,
+      "wins": 4,
+      "win_pct": 1.0,
+      "avg_margin": 36.0
+    },
+    {
+      "team": "Sydney",
+      "venue": "Docklands",
+      "games": 8,
+      "wins": 6,
+      "win_pct": 0.75,
+      "avg_margin": 15.75
+    },
+    {
+      "team": "Sydney",
+      "venue": "Adelaide Oval",
+      "games": 6,
+      "wins": 4,
+      "win_pct": 0.6667,
+      "avg_margin": -4.67
+    },
+    {
+      "team": "Sydney",
+      "venue": "Sydney Showground",
+      "games": 3,
+      "wins": 2,
+      "win_pct": 0.6667,
+      "avg_margin": 0.0
+    },
+    {
+      "team": "Sydney",
+      "venue": "S.C.G.",
+      "games": 35,
+      "wins": 21,
+      "win_pct": 0.6,
+      "avg_margin": 14.43
+    },
+    {
+      "team": "Sydney",
+      "venue": "M.C.G.",
+      "games": 10,
+      "wins": 3,
+      "win_pct": 0.3,
+      "avg_margin": -6.1
+    },
+    {
+      "team": "Sydney",
+      "venue": "Gabba",
+      "games": 3,
+      "wins": 0,
+      "win_pct": 0.0,
+      "avg_margin": -5.67
+    },
+    {
+      "team": "West Coast",
+      "venue": "Perth Stadium",
+      "games": 36,
+      "wins": 8,
+      "win_pct": 0.2222,
+      "avg_margin": -31.47
+    },
+    {
+      "team": "West Coast",
+      "venue": "Docklands",
+      "games": 12,
+      "wins": 1,
+      "win_pct": 0.0833,
+      "avg_margin": -46.83
+    },
+    {
+      "team": "West Coast",
+      "venue": "Adelaide Oval",
+      "games": 8,
+      "wins": 0,
+      "win_pct": 0.0,
+      "avg_margin": -65.38
+    },
+    {
+      "team": "West Coast",
+      "venue": "M.C.G.",
+      "games": 3,
+      "wins": 0,
+      "win_pct": 0.0,
+      "avg_margin": -33.33
+    },
+    {
+      "team": "Western Bulldogs",
+      "venue": "Eureka Stadium",
+      "games": 5,
+      "wins": 4,
+      "win_pct": 0.8,
+      "avg_margin": 42.8
+    },
+    {
+      "team": "Western Bulldogs",
+      "venue": "Docklands",
+      "games": 37,
+      "wins": 25,
+      "win_pct": 0.6757,
+      "avg_margin": 26.76
+    },
+    {
+      "team": "Western Bulldogs",
+      "venue": "Kardinia Park",
+      "games": 3,
+      "wins": 2,
+      "win_pct": 0.6667,
+      "avg_margin": 18.0
+    },
+    {
+      "team": "Western Bulldogs",
+      "venue": "S.C.G.",
+      "games": 3,
+      "wins": 2,
+      "win_pct": 0.6667,
+      "avg_margin": 14.0
+    },
+    {
+      "team": "Western Bulldogs",
+      "venue": "M.C.G.",
+      "games": 7,
+      "wins": 3,
+      "win_pct": 0.4286,
+      "avg_margin": -5.14
+    },
+    {
+      "team": "Western Bulldogs",
+      "venue": "Perth Stadium",
+      "games": 3,
+      "wins": 1,
+      "win_pct": 0.3333,
+      "avg_margin": 1.33
+    },
+    {
+      "team": "Western Bulldogs",
+      "venue": "Adelaide Oval",
+      "games": 4,
+      "wins": 0,
+      "win_pct": 0.0,
+      "avg_margin": -27.25
+    }
+  ],
+  "winning_margins": {
+    "distribution": [
+      {
+        "bucket": "1-6 (nail-biter)",
+        "count": 27,
+        "pct": 0.125
+      },
+      {
+        "bucket": "7-12 (close)",
+        "count": 29,
+        "pct": 0.1343
+      },
+      {
+        "bucket": "13-24 (comfortable)",
+        "count": 42,
+        "pct": 0.1944
+      },
+      {
+        "bucket": "25-48 (dominant)",
+        "count": 56,
+        "pct": 0.2593
+      },
+      {
+        "bucket": "49-100 (blowout)",
+        "count": 57,
+        "pct": 0.2639
+      },
+      {
+        "bucket": "100+ (historic)",
+        "count": 1,
+        "pct": 0.0046
+      }
+    ],
+    "by_team": [
+      {
+        "team": "Western Bulldogs",
+        "avg_win_margin": 55.79,
+        "max_win_margin": 94,
+        "wins": 14
+      },
+      {
+        "team": "Geelong",
+        "avg_win_margin": 45.84,
+        "max_win_margin": 101,
+        "wins": 19
+      },
+      {
+        "team": "Adelaide",
+        "avg_win_margin": 40.53,
+        "max_win_margin": 99,
+        "wins": 17
+      },
+      {
+        "team": "Gold Coast",
+        "avg_win_margin": 39.33,
+        "max_win_margin": 97,
+        "wins": 15
+      },
+      {
+        "team": "Carlton",
+        "avg_win_margin": 35.22,
+        "max_win_margin": 84,
+        "wins": 9
+      },
+      {
+        "team": "Melbourne",
+        "avg_win_margin": 34.29,
+        "max_win_margin": 81,
+        "wins": 7
+      },
+      {
+        "team": "Hawthorn",
+        "avg_win_margin": 33.47,
+        "max_win_margin": 85,
+        "wins": 17
+      },
+      {
+        "team": "Collingwood",
+        "avg_win_margin": 31.24,
+        "max_win_margin": 91,
+        "wins": 17
+      },
+      {
+        "team": "Greater Western Sydney",
+        "avg_win_margin": 30.5,
+        "max_win_margin": 80,
+        "wins": 16
+      },
+      {
+        "team": "Brisbane Lions",
+        "avg_win_margin": 28.05,
+        "max_win_margin": 59,
+        "wins": 19
+      },
+      {
+        "team": "Sydney",
+        "avg_win_margin": 27.36,
+        "max_win_margin": 69,
+        "wins": 11
+      },
+      {
+        "team": "North Melbourne",
+        "avg_win_margin": 27.2,
+        "max_win_margin": 56,
+        "wins": 5
+      },
+      {
+        "team": "Port Adelaide",
+        "avg_win_margin": 27.11,
+        "max_win_margin": 73,
+        "wins": 9
+      },
+      {
+        "team": "St Kilda",
+        "avg_win_margin": 24.67,
+        "max_win_margin": 82,
+        "wins": 9
+      },
+      {
+        "team": "Fremantle",
+        "avg_win_margin": 23.35,
+        "max_win_margin": 59,
+        "wins": 17
+      },
+      {
+        "team": "Richmond",
+        "avg_win_margin": 23.0,
+        "max_win_margin": 50,
+        "wins": 4
+      },
+      {
+        "team": "Essendon",
+        "avg_win_margin": 16.2,
+        "max_win_margin": 38,
+        "wins": 5
+      },
+      {
+        "team": "West Coast",
+        "avg_win_margin": 15.0,
+        "max_win_margin": 28,
+        "wins": 2
+      }
+    ]
+  },
+  "home_field_advantage": {
+    "splits": [
+      {
+        "team": "Adelaide",
+        "home_w": 10,
+        "home_l": 3,
+        "home_margin": 26.142857142857142,
+        "away_w": 7,
+        "away_l": 4,
+        "away_margin": 20.181818181818183
+      },
+      {
+        "team": "Brisbane Lions",
+        "home_w": 8,
+        "home_l": 3,
+        "home_margin": 6.583333333333333,
+        "away_w": 11,
+        "away_l": 3,
+        "away_margin": 17.8
+      },
+      {
+        "team": "Carlton",
+        "home_w": 5,
+        "home_l": 7,
+        "home_margin": -2.0833333333333335,
+        "away_w": 4,
+        "away_l": 7,
+        "away_margin": -4.7272727272727275
+      },
+      {
+        "team": "Collingwood",
+        "home_w": 9,
+        "home_l": 4,
+        "home_margin": 19.0,
+        "away_w": 8,
+        "away_l": 3,
+        "away_margin": 8.75
+      },
+      {
+        "team": "Essendon",
+        "home_w": 4,
+        "home_l": 7,
+        "home_margin": -29.636363636363637,
+        "away_w": 1,
+        "away_l": 11,
+        "away_margin": -29.666666666666668
+      },
+      {
+        "team": "Fremantle",
+        "home_w": 9,
+        "home_l": 3,
+        "home_margin": 12.916666666666666,
+        "away_w": 8,
+        "away_l": 4,
+        "away_margin": 0.0
+      },
+      {
+        "team": "Geelong",
+        "home_w": 11,
+        "home_l": 3,
+        "home_margin": 26.0,
+        "away_w": 8,
+        "away_l": 4,
+        "away_margin": 29.25
+      },
+      {
+        "team": "Gold Coast",
+        "home_w": 9,
+        "home_l": 2,
+        "home_margin": 25.0,
+        "away_w": 6,
+        "away_l": 8,
+        "away_margin": 6.571428571428571
+      },
+      {
+        "team": "Greater Western Sydney",
+        "home_w": 8,
+        "home_l": 4,
+        "home_margin": 14.416666666666666,
+        "away_w": 8,
+        "away_l": 4,
+        "away_margin": 7.0
+      },
+      {
+        "team": "Hawthorn",
+        "home_w": 10,
+        "home_l": 1,
+        "home_margin": 32.90909090909091,
+        "away_w": 7,
+        "away_l": 8,
+        "away_margin": 0.9333333333333333
+      },
+      {
+        "team": "Melbourne",
+        "home_w": 5,
+        "home_l": 7,
+        "home_margin": 2.0833333333333335,
+        "away_w": 2,
+        "away_l": 9,
+        "away_margin": -15.0
+      },
+      {
+        "team": "North Melbourne",
+        "home_w": 3,
+        "home_l": 8,
+        "home_margin": -23.666666666666668,
+        "away_w": 2,
+        "away_l": 9,
+        "away_margin": -24.363636363636363
+      },
+      {
+        "team": "Port Adelaide",
+        "home_w": 7,
+        "home_l": 5,
+        "home_margin": 8.833333333333334,
+        "away_w": 2,
+        "away_l": 9,
+        "away_margin": -46.90909090909091
+      },
+      {
+        "team": "Richmond",
+        "home_w": 3,
+        "home_l": 8,
+        "home_margin": -19.333333333333332,
+        "away_w": 1,
+        "away_l": 10,
+        "away_margin": -45.27272727272727
+      },
+      {
+        "team": "St Kilda",
+        "home_w": 5,
+        "home_l": 7,
+        "home_margin": -2.75,
+        "away_w": 4,
+        "away_l": 7,
+        "away_margin": -17.0
+      },
+      {
+        "team": "Sydney",
+        "home_w": 5,
+        "home_l": 6,
+        "home_margin": -6.909090909090909,
+        "away_w": 6,
+        "away_l": 5,
+        "away_margin": 3.1666666666666665
+      },
+      {
+        "team": "West Coast",
+        "home_w": 2,
+        "home_l": 9,
+        "home_margin": -34.63636363636363,
+        "away_w": 0,
+        "away_l": 11,
+        "away_margin": -48.333333333333336
+      },
+      {
+        "team": "Western Bulldogs",
+        "home_w": 7,
+        "home_l": 5,
+        "home_margin": 37.416666666666664,
+        "away_w": 7,
+        "away_l": 4,
+        "away_margin": 18.636363636363637
+      }
+    ],
+    "trends": [
+      {
+        "year": 2020,
+        "home_win_pct": 0.5679,
+        "home_margin_avg": 6.81
+      },
+      {
+        "year": 2021,
+        "home_win_pct": 0.5217,
+        "home_margin_avg": 4.49
+      },
+      {
+        "year": 2022,
+        "home_win_pct": 0.6039,
+        "home_margin_avg": 4.29
+      },
+      {
+        "year": 2023,
+        "home_win_pct": 0.5648,
+        "home_margin_avg": 8.7
+      },
+      {
+        "year": 2024,
+        "home_win_pct": 0.5509,
+        "home_margin_avg": 5.62
+      },
+      {
+        "year": 2025,
+        "home_win_pct": 0.5556,
+        "home_margin_avg": 5.76
+      }
+    ]
+  },
+  "betting_form": [
+    {
+      "team": "Greater Western Sydney",
+      "bets": 24,
+      "profit": 8.39,
+      "roi": 0.3497
+    },
+    {
+      "team": "Brisbane Lions",
+      "bets": 27,
+      "profit": 8.28,
+      "roi": 0.3065
+    },
+    {
+      "team": "Fremantle",
+      "bets": 24,
+      "profit": 7.91,
+      "roi": 0.3296
+    },
+    {
+      "team": "Richmond",
+      "bets": 23,
+      "profit": 3.63,
+      "roi": 0.1578
+    },
+    {
+      "team": "Geelong",
+      "bets": 26,
+      "profit": 3.35,
+      "roi": 0.1288
+    },
+    {
+      "team": "Hawthorn",
+      "bets": 26,
+      "profit": 2.63,
+      "roi": 0.1013
+    },
+    {
+      "team": "Collingwood",
+      "bets": 25,
+      "profit": 1.08,
+      "roi": 0.0431
+    },
+    {
+      "team": "Adelaide",
+      "bets": 25,
+      "profit": -0.55,
+      "roi": -0.0219
+    },
+    {
+      "team": "Gold Coast",
+      "bets": 25,
+      "profit": -0.92,
+      "roi": -0.0368
+    },
+    {
+      "team": "Port Adelaide",
+      "bets": 23,
+      "profit": -2.39,
+      "roi": -0.1038
+    },
+    {
+      "team": "Western Bulldogs",
+      "bets": 23,
+      "profit": -2.74,
+      "roi": -0.1191
+    },
+    {
+      "team": "St Kilda",
+      "bets": 23,
+      "profit": -3.57,
+      "roi": -0.1551
+    },
+    {
+      "team": "Sydney",
+      "bets": 23,
+      "profit": -4.53,
+      "roi": -0.1968
+    },
+    {
+      "team": "Melbourne",
+      "bets": 23,
+      "profit": -6.24,
+      "roi": -0.2715
+    },
+    {
+      "team": "Carlton",
+      "bets": 23,
+      "profit": -8.02,
+      "roi": -0.3488
+    },
+    {
+      "team": "North Melbourne",
+      "bets": 23,
+      "profit": -10.31,
+      "roi": -0.4484
+    },
+    {
+      "team": "Essendon",
+      "bets": 23,
+      "profit": -13.54,
+      "roi": -0.5887
+    },
+    {
+      "team": "West Coast",
+      "bets": 23,
+      "profit": -16.02,
+      "roi": -0.6966
+    }
+  ],
+  "form_guide": [
+    {
+      "team": "Adelaide",
+      "form": "WWDWLL",
+      "wins_last_n": 3,
+      "last_n": 6,
+      "opp_elo_avg": 1503.2,
+      "margin_avg": -4.17
+    },
+    {
+      "team": "Brisbane Lions",
+      "form": "WWLWWW",
+      "wins_last_n": 5,
+      "last_n": 6,
+      "opp_elo_avg": 1650.0,
+      "margin_avg": 26.83
+    },
+    {
+      "team": "Carlton",
+      "form": "WLLLWW",
+      "wins_last_n": 3,
+      "last_n": 6,
+      "opp_elo_avg": 1503.1,
+      "margin_avg": 4.67
+    },
+    {
+      "team": "Collingwood",
+      "form": "LLDWWL",
+      "wins_last_n": 2,
+      "last_n": 6,
+      "opp_elo_avg": 1624.6,
+      "margin_avg": -14.83
+    },
+    {
+      "team": "Essendon",
+      "form": "LLLLLL",
+      "wins_last_n": 0,
+      "last_n": 6,
+      "opp_elo_avg": 1528.4,
+      "margin_avg": -46.83
+    },
+    {
+      "team": "Fremantle",
+      "form": "WWWLWW",
+      "wins_last_n": 5,
+      "last_n": 6,
+      "opp_elo_avg": 1499.8,
+      "margin_avg": 6.0
+    },
+    {
+      "team": "Geelong",
+      "form": "WWWWWL",
+      "wins_last_n": 5,
+      "last_n": 6,
+      "opp_elo_avg": 1547.2,
+      "margin_avg": 23.33
+    },
+    {
+      "team": "Gold Coast",
+      "form": "WLLWLL",
+      "wins_last_n": 2,
+      "last_n": 6,
+      "opp_elo_avg": 1507.8,
+      "margin_avg": 3.0
+    },
+    {
+      "team": "Greater Western Sydney",
+      "form": "WLWWWL",
+      "wins_last_n": 4,
+      "last_n": 6,
+      "opp_elo_avg": 1510.6,
+      "margin_avg": 5.83
+    },
+    {
+      "team": "Hawthorn",
+      "form": "WWLWWL",
+      "wins_last_n": 4,
+      "last_n": 6,
+      "opp_elo_avg": 1626.2,
+      "margin_avg": 19.17
+    },
+    {
+      "team": "Melbourne",
+      "form": "LLWLLL",
+      "wins_last_n": 1,
+      "last_n": 6,
+      "opp_elo_avg": 1485.6,
+      "margin_avg": 3.0
+    },
+    {
+      "team": "North Melbourne",
+      "form": "LLLLWL",
+      "wins_last_n": 1,
+      "last_n": 6,
+      "opp_elo_avg": 1517.4,
+      "margin_avg": -27.17
+    },
+    {
+      "team": "Port Adelaide",
+      "form": "LLLLLW",
+      "wins_last_n": 1,
+      "last_n": 6,
+      "opp_elo_avg": 1577.9,
+      "margin_avg": -46.0
+    },
+    {
+      "team": "Richmond",
+      "form": "WLLLLL",
+      "wins_last_n": 1,
+      "last_n": 6,
+      "opp_elo_avg": 1469.5,
+      "margin_avg": -26.17
+    },
+    {
+      "team": "St Kilda",
+      "form": "LWWWWL",
+      "wins_last_n": 4,
+      "last_n": 6,
+      "opp_elo_avg": 1420.2,
+      "margin_avg": -2.83
+    },
+    {
+      "team": "Sydney",
+      "form": "WLWDLW",
+      "wins_last_n": 3,
+      "last_n": 6,
+      "opp_elo_avg": 1457.8,
+      "margin_avg": 5.33
+    },
+    {
+      "team": "West Coast",
+      "form": "LLLLLL",
+      "wins_last_n": 0,
+      "last_n": 6,
+      "opp_elo_avg": 1515.8,
+      "margin_avg": -58.33
+    },
+    {
+      "team": "Western Bulldogs",
+      "form": "LWWWWL",
+      "wins_last_n": 4,
+      "last_n": 6,
+      "opp_elo_avg": 1479.8,
+      "margin_avg": 42.0
+    }
+  ]
+}
