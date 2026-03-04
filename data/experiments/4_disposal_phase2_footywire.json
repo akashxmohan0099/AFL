@@ -1,0 +1,54 @@
+{
+  "label": "4_disposal_phase2_footywire",
+  "season": 2025,
+  "n_predictions": 9931,
+  "n_rounds": 28,
+  "thresholds": {
+    "1plus_goals": {
+      "brier_score": 0.1594,
+      "n": 9931
+    },
+    "2plus_goals": {
+      "brier_score": 0.0938,
+      "base_rate": 0.125,
+      "n": 9931
+    },
+    "3plus_goals": {
+      "brier_score": 0.0431,
+      "base_rate": 0.0501,
+      "n": 9931
+    },
+    "15plus_disp": {
+      "brier_score": 0.2309,
+      "base_rate": 0.501,
+      "brier_skill_score": 7.6,
+      "n": 9931
+    },
+    "20plus_disp": {
+      "brier_score": 0.1847,
+      "base_rate": 0.272,
+      "brier_skill_score": 6.8,
+      "n": 9931
+    },
+    "25plus_disp": {
+      "brier_score": 0.1032,
+      "base_rate": 0.126,
+      "brier_skill_score": 6.1,
+      "n": 9931
+    },
+    "30plus_disp": {
+      "brier_score": 0.0385,
+      "base_rate": 0.043,
+      "brier_skill_score": 6.3,
+      "n": 9931
+    }
+  },
+  "scorer_auc": {
+    "overall": 0.8171
+  },
+  "mae": {
+    "goals": 0.5035,
+    "disposals": 3.8501
+  },
+  "calibration_ece": null
+}

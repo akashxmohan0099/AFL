@@ -129,6 +129,9 @@ FINALS_MAP = {
     "GRAND FINAL": 28,
 }
 
+# Opening Round (introduced 2026): maps to round_number 0
+OPENING_ROUND_STRINGS = {"OPENING ROUND", "OPENING"}
+
 # Canonical round label for finals (abbreviations)
 FINALS_LABEL_MAP = {
     25: "EF",   # Elimination/Qualifying both map to 25
@@ -140,6 +143,7 @@ FINALS_LABEL_MAP = {
 
 def parse_round_number(round_str):
     """Convert round string to a sortable integer.
+    'Opening Round' → 0,
     '1' → 1, 'Qualifying' → 25, 'Elimination' → 25, 'Semi' → 26,
     'Preliminary' → 27, 'Grand' → 28.
     Also handles abbreviations: QF/EF → 25, SF → 26, PF → 27, GF → 28."""
@@ -149,7 +153,10 @@ def parse_round_number(round_str):
     try:
         return int(s)
     except ValueError:
-        return FINALS_MAP.get(s.upper(), np.nan)
+        upper = s.upper()
+        if upper in OPENING_ROUND_STRINGS:
+            return 0
+        return FINALS_MAP.get(upper, np.nan)
 
 
 def is_finals_round(round_str):
@@ -163,11 +170,14 @@ def is_finals_round(round_str):
 
 def normalize_round_label(round_str, round_number):
     """Produce a canonical round label.
+    Opening Round: '0'.
     Regular rounds: '1', '2', etc.
     Finals: 'EF', 'SF', 'PF', 'GF' (abbreviations)."""
     if pd.isna(round_str):
         return str(int(round_number)) if pd.notna(round_number) else "0"
     s = str(round_str).strip().upper()
+    if s in OPENING_ROUND_STRINGS:
+        return "0"
     if s in FINALS_MAP:
         rn = FINALS_MAP[s]
         return FINALS_LABEL_MAP.get(rn, s)
@@ -274,6 +284,238 @@ def load_scoring(data_dir=None):
     df["quarter_num"] = df["quarter"].map(quarter_map).fillna(4).astype(int)
 
     return df
+
+
+# ---------------------------------------------------------------------------
+# Load umpire assignments
+# ---------------------------------------------------------------------------
+
+def load_umpires(data_dir=None):
+    """Load umpire assignment CSVs (per-year).
+    Returns a cleaned DataFrame with one row per (match_id, umpire_name)."""
+    data_dir = Path(data_dir or config.DATA_DIR)
+
+    ump_dir = data_dir / "umpires"
+    files = sorted(ump_dir.glob("umpires_*.csv"))
+    if not files:
+        master = data_dir / "all_umpires.csv"
+        if master.exists():
+            files = [master]
+        else:
+            return pd.DataFrame()
+
+    df = pd.concat([pd.read_csv(f, low_memory=False) for f in files],
+                   ignore_index=True)
+
+    if df.empty:
+        return df
+
+    required = {"match_id", "umpire_name", "umpire_career_games"}
+    if not required.issubset(df.columns):
+        return pd.DataFrame()
+
+    # Normalize IDs / names
+    df["match_id"] = pd.to_numeric(df["match_id"], errors="coerce")
+    df = df.dropna(subset=["match_id"]).copy()
+    df["match_id"] = df["match_id"].astype(np.int64)
+    if "year" in df.columns:
+        df["year"] = pd.to_numeric(df["year"], errors="coerce").fillna(0).astype(np.int16)
+    else:
+        df["year"] = np.int16(0)
+
+    df["umpire_name"] = (
+        df["umpire_name"]
+        .astype(str)
+        .str.replace(r"\s+", " ", regex=True)
+        .str.strip()
+    )
+    invalid_name = (
+        df["umpire_name"].isna()
+        | (df["umpire_name"] == "")
+        | (df["umpire_name"].str.lower() == "nan")
+    )
+    df = df[~invalid_name].copy()
+
+    # Parse career games and repair sparse zeros/missing values without lookahead:
+    # if an umpire has known non-zero values, carry their latest known value forward.
+    df["umpire_career_games"] = pd.to_numeric(
+        df["umpire_career_games"], errors="coerce"
+    )
+    df.loc[df["umpire_career_games"] < 0, "umpire_career_games"] = np.nan
+    df = df.sort_values(["umpire_name", "year", "match_id"])
+
+    def _repair_games(series):
+        s = pd.to_numeric(series, errors="coerce")
+        if not (s > 0).any():
+            return s.fillna(0)
+        repaired = s.mask(s <= 0, np.nan).ffill().fillna(0)
+        return repaired.cummax()
+
+    df["umpire_career_games"] = (
+        df.groupby("umpire_name", observed=True)["umpire_career_games"]
+        .transform(_repair_games)
+        .fillna(0)
+        .clip(lower=0)
+        .round()
+        .astype(np.int16)
+    )
+
+    # Drop duplicates (same umpire listed twice for a match)
+    df = df.drop_duplicates(subset=["match_id", "umpire_name"], keep="last")
+    return df
+
+
+# ---------------------------------------------------------------------------
+# Load coach data (from player_details rows with jumper=="C")
+# ---------------------------------------------------------------------------
+
+def load_coaches(data_dir=None):
+    """Extract coach rows from player_details CSVs.
+    Coaches have jumper='C' in the details table.
+    Parse career record string into wins/draws/losses/win_pct.
+    Returns DataFrame with one row per (match_id, team, coach)."""
+    data_dir = Path(data_dir or config.DATA_DIR)
+
+    pd_dir = data_dir / "player_details"
+    files = sorted(pd_dir.glob("player_details_*.csv"))
+    if not files:
+        master = data_dir / "all_player_details.csv"
+        if master.exists():
+            files = [master]
+        else:
+            return pd.DataFrame()
+
+    df = pd.concat([pd.read_csv(f, low_memory=False) for f in files],
+                   ignore_index=True)
+
+    # Filter to coach rows only (jumper == "C")
+    df["jumper"] = df["jumper"].astype(str).str.strip()
+    df = df[df["jumper"] == "C"].copy()
+    if df.empty:
+        return df
+
+    df["coach"] = df["player"].apply(normalize_player_name)
+
+    # Parse career record: "308 (190-3-115 62.18%)"
+    def _parse_coach_record(record_str):
+        if pd.isna(record_str) or not isinstance(record_str, str):
+            return np.nan, np.nan, np.nan, np.nan, np.nan
+        record_str = record_str.strip()
+        m = re.match(
+            r'(\d+)\s*\((\d+)-(\d+)-(\d+)\s+([\d.]+)%\)',
+            record_str,
+        )
+        if m:
+            total = int(m.group(1))
+            wins = int(m.group(2))
+            draws = int(m.group(3))
+            losses = int(m.group(4))
+            win_pct = float(m.group(5))
+            return total, wins, draws, losses, win_pct
+        # Try just total
+        m2 = re.match(r'^(\d+)$', record_str)
+        if m2:
+            return int(m2.group(1)), np.nan, np.nan, np.nan, np.nan
+        return np.nan, np.nan, np.nan, np.nan, np.nan
+
+    career_col = "Career Games (W-D-L W%)"
+    if career_col in df.columns:
+        parsed = df[career_col].apply(_parse_coach_record)
+        df["coach_career_games"] = parsed.apply(lambda x: x[0])
+        df["coach_wins"] = parsed.apply(lambda x: x[1])
+        df["coach_draws"] = parsed.apply(lambda x: x[2])
+        df["coach_losses"] = parsed.apply(lambda x: x[3])
+        df["coach_win_pct"] = parsed.apply(lambda x: x[4])
+    else:
+        for c in ["coach_career_games", "coach_wins", "coach_draws",
+                   "coach_losses", "coach_win_pct"]:
+            df[c] = np.nan
+
+    # Select output columns
+    keep_cols = ["match_id", "year", "team", "coach",
+                 "coach_career_games", "coach_wins", "coach_draws",
+                 "coach_losses", "coach_win_pct"]
+    df = df[[c for c in keep_cols if c in df.columns]].copy()
+    df = df.drop_duplicates(subset=["match_id", "team"])
+    return df
+
+
+# ---------------------------------------------------------------------------
+# Load player profiles (height/weight/DOB from scraped profile pages)
+# ---------------------------------------------------------------------------
+
+def load_player_profiles(data_dir=None):
+    """Load player physical attribute profiles.
+    Returns DataFrame with one row per player."""
+    data_dir = Path(data_dir or config.DATA_DIR)
+
+    profiles_path = data_dir / "player_profiles" / "profiles.csv"
+    if not profiles_path.exists():
+        return pd.DataFrame()
+
+    df = pd.read_csv(profiles_path)
+    if df.empty:
+        return df
+
+    df["player"] = df["player"].apply(normalize_player_name)
+
+    # Parse DOB
+    if "dob" in df.columns:
+        df["dob"] = pd.to_datetime(df["dob"], format="%d-%b-%Y", errors="coerce")
+
+    # Cast physical attributes
+    for col in ["height_cm", "weight_kg"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce").astype("float32")
+
+    df = df.drop_duplicates(subset=["player"], keep="last")
+    return df
+
+
+# ---------------------------------------------------------------------------
+# Load career split tables
+# ---------------------------------------------------------------------------
+
+def load_career_splits(data_dir=None):
+    """Load player career splits by opponent and venue.
+    Returns (vs_opponent_df, vs_venue_df)."""
+    data_dir = Path(data_dir or config.DATA_DIR)
+    profiles_dir = data_dir / "player_profiles"
+
+    opp_path = profiles_dir / "player_vs_opponent.csv"
+    venue_path = profiles_dir / "player_vs_venue.csv"
+
+    opp_df = pd.DataFrame()
+    venue_df = pd.DataFrame()
+
+    if opp_path.exists():
+        opp_df = pd.read_csv(opp_path)
+        if not opp_df.empty:
+            opp_df["player"] = opp_df["player"].apply(normalize_player_name)
+            # Normalize opponent names via config map
+            if "opponent" in opp_df.columns:
+                opp_df["opponent"] = opp_df["opponent"].map(
+                    config.TEAM_NAME_MAP
+                ).fillna(opp_df["opponent"])
+            # Cast stat columns to numeric
+            for c in ["P", "KI", "MK", "HB", "DI", "GL", "BH", "HO", "TK"]:
+                if c in opp_df.columns:
+                    opp_df[c] = pd.to_numeric(opp_df[c], errors="coerce")
+
+    if venue_path.exists():
+        venue_df = pd.read_csv(venue_path)
+        if not venue_df.empty:
+            venue_df["player"] = venue_df["player"].apply(normalize_player_name)
+            # Normalize venue names via config map
+            if "venue" in venue_df.columns:
+                venue_df["venue"] = venue_df["venue"].map(
+                    config.VENUE_NAME_MAP
+                ).fillna(venue_df["venue"])
+            for c in ["P", "KI", "MK", "HB", "DI", "GL", "BH", "HO", "TK"]:
+                if c in venue_df.columns:
+                    venue_df[c] = pd.to_numeric(venue_df[c], errors="coerce")
+
+    return opp_df, venue_df
 
 
 # ---------------------------------------------------------------------------
@@ -649,6 +891,56 @@ def build_player_games(data_dir=None, save=True):
         team_match_df.to_parquet(team_match_path, index=False)
         print(f"  Saved {team_match_path} ({len(team_match_df)} rows)")
 
+        # Umpire store
+        print("  Loading umpire data...")
+        umpires_df = load_umpires(data_dir)
+        if not umpires_df.empty:
+            from validate import validate_umpires
+            validate_umpires(umpires_df)
+            umpires_path = config.BASE_STORE_DIR / "umpires.parquet"
+            umpires_df.to_parquet(umpires_path, index=False)
+            print(f"  Saved {umpires_path} ({len(umpires_df)} rows)")
+        else:
+            print("  No umpire data found — skipping")
+
+        # Coach store
+        print("  Loading coach data...")
+        coaches_df = load_coaches(data_dir)
+        if not coaches_df.empty:
+            from validate import validate_coaches
+            validate_coaches(coaches_df)
+            coaches_path = config.BASE_STORE_DIR / "coaches.parquet"
+            coaches_df.to_parquet(coaches_path, index=False)
+            print(f"  Saved {coaches_path} ({len(coaches_df)} rows)")
+        else:
+            print("  No coach data found — skipping")
+
+        # Player profiles store
+        print("  Loading player profiles...")
+        profiles_df = load_player_profiles(data_dir)
+        if not profiles_df.empty:
+            from validate import validate_player_profiles
+            validate_player_profiles(profiles_df)
+            profiles_path = config.BASE_STORE_DIR / "player_profiles.parquet"
+            profiles_df.to_parquet(profiles_path, index=False)
+            print(f"  Saved {profiles_path} ({len(profiles_df)} rows)")
+        else:
+            print("  No player profile data found — skipping")
+
+        # Career splits store
+        print("  Loading career splits...")
+        opp_splits_df, venue_splits_df = load_career_splits(data_dir)
+        if not opp_splits_df.empty:
+            opp_path = config.BASE_STORE_DIR / "career_splits_opponent.parquet"
+            opp_splits_df.to_parquet(opp_path, index=False)
+            print(f"  Saved {opp_path} ({len(opp_splits_df)} rows)")
+        if not venue_splits_df.empty:
+            venue_path = config.BASE_STORE_DIR / "career_splits_venue.parquet"
+            venue_splits_df.to_parquet(venue_path, index=False)
+            print(f"  Saved {venue_path} ({len(venue_splits_df)} rows)")
+        if opp_splits_df.empty and venue_splits_df.empty:
+            print("  No career split data found — skipping")
+
     return df
 
 
@@ -780,3 +1072,153 @@ if __name__ == "__main__":
     print(f"\nRate columns: {len(rate_present)}")
     if rate_present:
         print(f"  Sample GL_rate: {df['GL_rate'].describe().to_dict()}")
+
+
+# ---------------------------------------------------------------------------
+# FootyWire Advanced Stats — Build Parquet
+# ---------------------------------------------------------------------------
+
+def _normalize_footywire_name(name):
+    """Convert FootyWire 'I Heeney' format to pipeline 'Heeney, I' for matching."""
+    if pd.isna(name) or not isinstance(name, str):
+        return name
+    name = name.strip()
+    # Remove sub indicators
+    name = re.sub(r"[↗↙]", "", name).strip()
+    if not name:
+        return name
+    parts = name.split()
+    if len(parts) >= 2:
+        # "I Heeney" → "Heeney, I"
+        first_initial = parts[0]
+        last_name = " ".join(parts[1:])
+        return f"{last_name}, {first_initial}"
+    return name
+
+
+def build_footywire_parquet():
+    """Load FootyWire CSVs, match to pipeline players, save as parquet.
+
+    Matches FootyWire rows to pipeline by (date, team, player_name).
+    FootyWire uses 'First Last' names; pipeline uses 'Last, First'.
+    We match on last name + first initial for robustness.
+
+    Output: data/base/footywire_advanced.parquet keyed by (match_id, player)
+    """
+    fw_dir = config.FOOTYWIRE_DIR
+    if not fw_dir.exists():
+        print("  FootyWire directory not found — skipping")
+        return None
+
+    csv_files = sorted(fw_dir.glob("advanced_stats_*.csv"))
+    if not csv_files:
+        print("  No FootyWire CSV files found — run --scrape-footywire first")
+        return None
+
+    # Load all FootyWire CSVs
+    dfs = []
+    for f in csv_files:
+        df = pd.read_csv(f, low_memory=False)
+        dfs.append(df)
+    fw = pd.concat(dfs, ignore_index=True)
+
+    print(f"  Loaded {len(fw)} FootyWire rows from {len(csv_files)} files")
+
+    # Normalize player names for matching
+    fw["player_match_key"] = fw["player"].apply(_normalize_footywire_name)
+
+    # Clean team names using config map
+    team_map = config.TEAM_NAME_MAP.copy()
+    # FootyWire-specific aliases
+    fw_team_map = {
+        "GWS": "Greater Western Sydney",
+        "GWS Giants": "Greater Western Sydney",
+        "Footscray": "Western Bulldogs",
+        "Brisbane": "Brisbane Lions",
+        "Kangaroos": "North Melbourne",
+    }
+    team_map.update(fw_team_map)
+    fw["team_clean"] = fw["team"].map(team_map).fillna(fw["team"])
+
+    # Parse dates from FootyWire format
+    # Format: "Thursday, 7th March 2024"
+    def _parse_fw_date(d):
+        if pd.isna(d):
+            return pd.NaT
+        d = str(d).strip()
+        # Remove day name and ordinal suffixes
+        d = re.sub(r"^\w+day,?\s*", "", d)
+        d = re.sub(r"(\d+)(st|nd|rd|th)", r"\1", d)
+        try:
+            return pd.to_datetime(d, format="%d %B %Y")
+        except Exception:
+            return pd.NaT
+
+    fw["date_parsed"] = fw["date"].apply(_parse_fw_date)
+
+    # Load pipeline player_games for matching
+    pg_path = config.BASE_STORE_DIR / "player_games.parquet"
+    if not pg_path.exists():
+        print("  player_games.parquet not found — run --clean first")
+        return None
+
+    pg = pd.read_parquet(pg_path, columns=["match_id", "player", "team", "date", "year"])
+    pg["date"] = pd.to_datetime(pg["date"])
+    pg["date_only"] = pg["date"].dt.date
+
+    # Create matching key: last name + first initial from pipeline names
+    def _pipeline_match_key(name):
+        if pd.isna(name):
+            return name
+        # "Heeney, Isaac" → "Heeney, I"
+        if "," in str(name):
+            parts = str(name).split(",")
+            last = parts[0].strip()
+            first = parts[1].strip()
+            return f"{last}, {first[0]}" if first else name
+        return name
+
+    pg["player_match_key"] = pg["player"].apply(_pipeline_match_key)
+
+    # Build join keys
+    fw["date_only"] = fw["date_parsed"].dt.date
+
+    # Merge on (date_only, team, player_match_key)
+    merged = fw.merge(
+        pg[["match_id", "player", "team", "date_only", "player_match_key"]],
+        left_on=["date_only", "team_clean", "player_match_key"],
+        right_on=["date_only", "team", "player_match_key"],
+        how="inner",
+        suffixes=("_fw", "_pg"),
+    )
+
+    n_matched = len(merged)
+    n_total = len(fw)
+    match_rate = n_matched / n_total * 100 if n_total > 0 else 0
+    print(f"  Matched {n_matched}/{n_total} FootyWire rows ({match_rate:.1f}%)")
+
+    if merged.empty:
+        print("  WARNING: No matches found — check team name mapping")
+        return None
+
+    # Select output columns — use player_pg (pipeline canonical name)
+    # After merge with suffixes, player column becomes player_fw and player_pg
+    player_col = "player_pg" if "player_pg" in merged.columns else "player"
+    keep_stats = ["ED", "DE_pct", "CCL", "SCL", "TO", "MG", "SI", "ITC", "T5", "TOG_pct"]
+    result = merged[["match_id", player_col] + keep_stats].copy()
+    result = result.rename(columns={player_col: "player"})
+
+    # Convert stats to numeric
+    for col in keep_stats:
+        result[col] = pd.to_numeric(result[col], errors="coerce").astype("float32")
+
+    # Deduplicate — keep first occurrence per (match_id, player)
+    result = result.drop_duplicates(subset=["match_id", "player"], keep="first")
+
+    # Save
+    out_path = config.BASE_STORE_DIR / "footywire_advanced.parquet"
+    result.to_parquet(out_path, index=False)
+    print(f"  Saved {len(result)} rows to {out_path}")
+    print(f"  Columns: {keep_stats}")
+
+    return result

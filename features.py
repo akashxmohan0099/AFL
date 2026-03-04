@@ -25,6 +25,8 @@ import config
 # Helpers
 # ---------------------------------------------------------------------------
 
+_MARKET_ENV_STATS_CACHE = None
+
 def _era_weight(year):
     """Return era weight for a given year based on config.ERA_WEIGHTS."""
     for (lo, hi), w in config.ERA_WEIGHTS.items():
@@ -46,6 +48,84 @@ def _combined_weight(year, days_ago):
     return _era_weight(year) * _decay_weight(days_ago)
 
 
+def _estimate_market_environment_stats():
+    """Estimate market-total-score conversion ratios from historical data.
+
+    Returns:
+      dict with:
+        - points_per_goal_from_market_total
+        - points_per_disposal_from_market_total
+        - n_matches
+    """
+    global _MARKET_ENV_STATS_CACHE
+    if _MARKET_ENV_STATS_CACHE is not None:
+        return _MARKET_ENV_STATS_CACHE
+
+    # Fallbacks if source data is unavailable
+    fallback_points_per_goal = float(getattr(config, "MARKET_POINTS_PER_GOAL_FALLBACK", 6.2))
+    fallback_points_per_disp = float(getattr(config, "MARKET_POINTS_PER_DISPOSAL_FALLBACK", 0.38))
+    stats = {
+        "points_per_goal_from_market_total": fallback_points_per_goal,
+        "points_per_disposal_from_market_total": fallback_points_per_disp,
+        "n_matches": 0,
+    }
+
+    tm_path = config.BASE_STORE_DIR / "team_matches.parquet"
+    odds_path = getattr(config, "ODDS_PARQUET_PATH", config.BASE_STORE_DIR / "odds.parquet")
+    if not tm_path.exists() or not odds_path.exists():
+        _MARKET_ENV_STATS_CACHE = stats
+        return stats
+
+    try:
+        tm = pd.read_parquet(tm_path, columns=["match_id", "score", "GL", "DI"])
+        odds = pd.read_parquet(odds_path, columns=["match_id", "market_total_score"])
+    except Exception:
+        _MARKET_ENV_STATS_CACHE = stats
+        return stats
+
+    match_totals = (
+        tm.groupby("match_id", observed=True)
+        .agg(
+            actual_total_score=("score", "sum"),
+            actual_total_goals=("GL", "sum"),
+            actual_total_disposals=("DI", "sum"),
+        )
+        .reset_index()
+    )
+    merged = match_totals.merge(odds, on="match_id", how="inner")
+    merged["market_total_score"] = pd.to_numeric(merged["market_total_score"], errors="coerce")
+    merged = merged[
+        merged["market_total_score"].notna()
+        & (merged["market_total_score"] > 0)
+    ].copy()
+
+    if merged.empty:
+        _MARKET_ENV_STATS_CACHE = stats
+        return stats
+
+    valid_goal = merged["actual_total_goals"] > 0
+    if valid_goal.any():
+        points_per_goal = (
+            merged.loc[valid_goal, "market_total_score"].sum()
+            / merged.loc[valid_goal, "actual_total_goals"].sum()
+        )
+        if np.isfinite(points_per_goal) and points_per_goal > 0:
+            stats["points_per_goal_from_market_total"] = float(points_per_goal)
+
+    valid_disp = merged["actual_total_disposals"] > 0
+    if valid_disp.any():
+        points_per_disp = (
+            merged.loc[valid_disp, "market_total_score"].sum()
+            / merged.loc[valid_disp, "actual_total_disposals"].sum()
+        )
+        if np.isfinite(points_per_disp) and points_per_disp > 0:
+            stats["points_per_disposal_from_market_total"] = float(points_per_disp)
+
+    stats["n_matches"] = int(len(merged))
+    _MARKET_ENV_STATS_CACHE = stats
+    return stats
+
+
 # ---------------------------------------------------------------------------
 # A. Career / Age Features
 # ---------------------------------------------------------------------------
@@ -54,7 +134,7 @@ def add_career_features(df):
     """Add features derived from player_details (already joined in clean.py).
     These columns already exist: age_years, career_games_pre, career_goal_avg_pre, etc.
     We add a few derived ones."""
-    df = df.copy()
+    df = df.sort_values(["player", "date"]).copy()
 
     # Age squared (captures non-linear peak-years effect ~25-29)
     df["age_squared"] = df["age_years"] ** 2
@@ -63,6 +143,24 @@ def add_career_features(df):
     # Uses pre-game version to avoid same-game leakage
     if "career_goal_avg_pre" in df.columns:
         df["career_goal_avg_capped"] = df["career_goal_avg_pre"].clip(upper=2.5)
+
+    # Career disposal average before this match (no leakage via shift(1))
+    # Needed for market-implied player disposal share.
+    if "career_disp_avg_pre" not in df.columns:
+        grp = df.groupby("player", observed=True)["DI"]
+        pre_avg = grp.transform(
+            lambda s: s.shift(1).expanding(min_periods=1).mean()
+        )
+        # Cold-start fallback: use past-only league prior by date.
+        # This avoids first-match leakage from current-row DI values.
+        sort_cols = ["date"] + (["match_id"] if "match_id" in df.columns else [])
+        date_sorted = df.sort_values(sort_cols)
+        league_prior = date_sorted["DI"].shift(1).expanding(min_periods=1).mean()
+        league_prior = league_prior.reindex(df.index)
+        fallback_disp = float(getattr(config, "CAREER_DISP_AVG_FALLBACK", 15.0))
+        df["career_disp_avg_pre"] = (
+            pre_avg.fillna(league_prior).fillna(fallback_disp).astype(np.float32)
+        )
 
     return df
 
@@ -107,6 +205,7 @@ def add_rolling_features(df):
         "GL": "gl", "BH": "bh", "DI": "di", "MK": "mk", "TK": "tk",
         "IF": "if50", "CL": "cl", "HO": "ho", "GA": "ga", "MI": "mi",
         "CM": "cm", "CP": "cp", "FF": "ff", "RB": "rb", "one_pct": "one_pct",
+        "pct_played": "tog", "UP": "up",
     }
 
     # Rate-normalised columns for rolling averages
@@ -120,7 +219,7 @@ def add_rolling_features(df):
     grouped = df_real.groupby(["player", "team"], observed=True)
 
     # Key stats get exponentially-weighted rolling means (recent form matters more)
-    ewm_cols = {"GL": "gl", "BH": "bh", "MI": "mi", "IF": "if50", "DI": "di", "MK": "mk"}
+    ewm_cols = {"GL": "gl", "BH": "bh", "MI": "mi", "IF": "if50", "DI": "di", "MK": "mk", "pct_played": "tog"}
     ewm_rate_cols = {"GL_rate": "gl_rate", "DI_rate": "di_rate", "MK_rate": "mk_rate"}
 
     for window in config.ROLLING_WINDOWS:
@@ -296,6 +395,73 @@ def add_rolling_features(df):
                 lambda x: np.polyfit(np.arange(len(x)), x, 1)[0], raw=True
             )
         ).fillna(0)
+
+    # --- Phase 1A: TOG volatility, trend, and disposal intensity ---
+    if "pct_played" in df_real.columns:
+        df_real["player_tog_volatility_5"] = grouped["pct_played"].transform(
+            lambda s: s.shift(1).rolling(5, min_periods=2).std()
+        ).fillna(0)
+        df_real["player_tog_trend_5"] = grouped["pct_played"].transform(
+            lambda s: s.shift(1).rolling(5, min_periods=3).apply(
+                lambda x: np.polyfit(np.arange(len(x)), x, 1)[0], raw=True
+            )
+        ).fillna(0)
+
+        # Disposal per minute proxy: DI / (pct_played/100 * 120) rolling avg
+        # 120 = typical game length in minutes (4 × 30min quarters incl. time-on)
+        tog_frac = df_real["pct_played"].clip(lower=1) / 100.0
+        df_real["_di_per_min"] = df_real["DI"] / (tog_frac * 120.0)
+        df_real["player_disp_per_minute_5"] = grouped["_di_per_min"].transform(
+            lambda s: s.shift(1).rolling(5, min_periods=2).mean()
+        ).fillna(0)
+        df_real = df_real.drop(columns=["_di_per_min"], errors="ignore")
+
+    # --- Phase 1C: Contested disposal ratio ---
+    cp_sum_5 = grouped["CP"].transform(
+        lambda s: s.shift(1).rolling(5, min_periods=2).sum()
+    )
+    di_sum_5 = grouped["DI"].transform(
+        lambda s: s.shift(1).rolling(5, min_periods=2).sum()
+    )
+    df_real["player_contested_disp_ratio_5"] = np.where(
+        di_sum_5 > 0, cp_sum_5 / di_sum_5, 0.5
+    )
+
+    # --- Phase 1G: Kick/handball ratio trend ---
+    df_real["player_ki_hb_trend_5"] = grouped["KI"].transform(
+        lambda s: s.shift(1).rolling(5, min_periods=3).apply(
+            lambda x: np.polyfit(np.arange(len(x)), x, 1)[0], raw=True
+        )
+    ).fillna(0) - grouped["HB"].transform(
+        lambda s: s.shift(1).rolling(5, min_periods=3).apply(
+            lambda x: np.polyfit(np.arange(len(x)), x, 1)[0], raw=True
+        )
+    ).fillna(0)
+
+    # --- Phase 1H: Disposal streak / form features ---
+    shifted_di = grouped["DI"].shift(1)
+
+    # High disposal streak: consecutive matches with DI >= 20
+    di_high = shifted_di.ge(20).fillna(False).astype(int)
+    epoch_di_high = (di_high == 0).cumsum()
+    df_real["player_di_streak_high"] = di_high.groupby(epoch_di_high, observed=True).cumsum()
+
+    # Low disposal streak: consecutive matches with DI < 12
+    di_low = shifted_di.lt(12).fillna(False).astype(int)
+    epoch_di_low = (di_low == 0).cumsum()
+    df_real["player_di_streak_low"] = di_low.groupby(epoch_di_low, observed=True).cumsum()
+
+    # Disposal form ratio: last 3 avg / last 10 avg
+    di_recent_3 = grouped["DI"].transform(
+        lambda s: s.shift(1).rolling(3, min_periods=1).mean()
+    )
+    di_career = grouped["DI"].transform(
+        lambda s: s.shift(1).expanding(min_periods=1).mean()
+    )
+    df_real["player_di_form_ratio"] = np.where(
+        di_career > 0, di_recent_3 / di_career, 1.0
+    )
+    df_real["player_di_form_ratio"] = df_real["player_di_form_ratio"].clip(0, 5.0)
 
     # --- Exclude DNP rows from output ---
     if n_dnp > 0:
@@ -551,6 +717,42 @@ def add_opponent_features(df):
     # Opponent contested possession differential: 0 = neutral
     df["opp_contested_poss_diff_5"] = df["opp_contested_poss_diff_5"].fillna(0)
 
+    # --- Phase 1D: Opponent tackle pressure ---
+    team_match_tk = (
+        df.groupby(["match_id", "team", "opponent"], observed=True)["TK"]
+        .sum()
+        .reset_index()
+        .rename(columns={"TK": "team_tk_total"})
+    )
+    tk_by_team = team_match_tk[["match_id", "team", "team_tk_total"]].copy()
+    tk_by_team = tk_by_team.merge(match_dates, on="match_id", how="left")
+    tk_by_team = tk_by_team.sort_values("date")
+
+    tk_group = tk_by_team.groupby("team", observed=True)
+    for window in [5, 10]:
+        tk_by_team[f"team_tk_avg_{window}"] = tk_group["team_tk_total"].transform(
+            lambda s: s.shift(1).rolling(window, min_periods=1).mean()
+        )
+
+    opp_tk = tk_by_team[
+        ["match_id", "team", "team_tk_avg_5", "team_tk_avg_10"]
+    ].drop_duplicates()
+
+    df = df.merge(
+        opp_tk.rename(columns={
+            "team": "_opp_tk_team",
+            "team_tk_avg_5": "opp_tackle_rate_avg_5",
+            "team_tk_avg_10": "opp_tackle_rate_avg_10",
+        }),
+        left_on=["match_id", "opponent"],
+        right_on=["match_id", "_opp_tk_team"],
+        how="left",
+    )
+    df = df.drop(columns=["_opp_tk_team"], errors="ignore")
+    for col in ["opp_tackle_rate_avg_5", "opp_tackle_rate_avg_10"]:
+        mean_val = df[col].dropna().mean()
+        df[col] = df[col].fillna(mean_val if pd.notna(mean_val) else 0)
+
     # For player vs opponent: fall back to player's overall career average
     if "career_goal_avg_pre" in df.columns:
         df["player_vs_opp_gl_avg"] = df["player_vs_opp_gl_avg"].fillna(
@@ -647,8 +849,13 @@ def add_team_features(df):
     # Team goals per match
     team_match = (
         df.groupby(["match_id", "team"], observed=True)
-        .agg(team_total_goals=("GL", "sum"), team_total_behinds=("BH", "sum"),
-             team_total_if=("IF", "sum"), team_total_cl=("CL", "sum"))
+        .agg(
+            team_total_goals=("GL", "sum"),
+            team_total_behinds=("BH", "sum"),
+            team_total_di=("DI", "sum"),
+            team_total_if=("IF", "sum"),
+            team_total_cl=("CL", "sum"),
+        )
         .reset_index()
     )
     match_dates = df[["match_id", "date"]].drop_duplicates()
@@ -661,6 +868,15 @@ def add_team_features(df):
         team_match[f"team_goals_avg_{window}"] = tg["team_total_goals"].transform(
             lambda s: s.shift(1).rolling(window, min_periods=1).mean()
         )
+        team_match[f"team_disp_avg_{window}"] = tg["team_total_di"].transform(
+            lambda s: s.shift(1).rolling(window, min_periods=1).mean()
+        )
+    team_match["team_goals_avg_pre"] = tg["team_total_goals"].transform(
+        lambda s: s.shift(1).expanding(min_periods=3).mean()
+    )
+    team_match["team_disp_avg_pre"] = tg["team_total_di"].transform(
+        lambda s: s.shift(1).expanding(min_periods=3).mean()
+    )
     team_match["team_if_avg_5"] = tg["team_total_if"].transform(
         lambda s: s.shift(1).rolling(5, min_periods=1).mean()
     )
@@ -673,7 +889,7 @@ def add_team_features(df):
     # Join back
     team_cols = [c for c in team_match.columns
                  if c not in ["date", "team_total_goals",
-                              "team_total_behinds", "team_total_if",
+                              "team_total_behinds", "team_total_di", "team_total_if",
                               "team_total_cl"]]
     df = df.merge(
         team_match[team_cols + ["team_total_goals"]],
@@ -752,6 +968,29 @@ def add_team_features(df):
         0,
     )
 
+    # --- Phase 1B: Player disposal share ---
+    # Need team total DI per match for the share calculation
+    team_match_di_totals = (
+        df.groupby(["match_id", "team"], observed=True)["DI"]
+        .sum()
+        .reset_index()
+        .rename(columns={"DI": "_team_total_di"})
+    )
+    df = df.merge(team_match_di_totals, on=["match_id", "team"], how="left")
+
+    for window in [5, 10]:
+        player_di_w = player_group["DI"].transform(
+            lambda s: s.shift(1).rolling(window, min_periods=1).sum()
+        )
+        team_di_w = df.groupby(["player", "team"], observed=True)["_team_total_di"].transform(
+            lambda s: s.shift(1).rolling(window, min_periods=1).sum()
+        )
+        df[f"player_disp_share_{window}"] = np.where(
+            team_di_w > 0, player_di_w / team_di_w, 0,
+        )
+
+    df = df.drop(columns=["_team_total_di"], errors="ignore")
+
     # Team win streak (approximate: did team score more than opponent last N?)
     # We need match results. Compute from team_total_goals vs opponent goals.
     opp_match = (
@@ -792,10 +1031,12 @@ def add_team_features(df):
     df = df.merge(win_cols, on=["match_id", "team"], how="left")
 
     # Fill NaN
-    for col in ["team_goals_avg_5", "team_goals_avg_10", "team_if_avg_5",
+    for col in ["team_goals_avg_5", "team_goals_avg_10", "team_goals_avg_pre",
+                "team_disp_avg_5", "team_disp_avg_10", "team_disp_avg_pre", "team_if_avg_5",
                 "team_cl_avg_5", "team_clearance_dominance_5",
                 "team_mid_quality_score",
-                "player_goal_share_5", "team_win_pct_5", "team_margin_avg_5"]:
+                "player_goal_share_5", "player_disp_share_5", "player_disp_share_10",
+                "team_win_pct_5", "team_margin_avg_5"]:
         if col in df.columns:
             fill_val = 1.0 if col == "team_clearance_dominance_5" else 0
             df[col] = df[col].fillna(fill_val)
@@ -1035,6 +1276,18 @@ def add_interaction_features(df):
     if "team_mid_quality_score" in df.columns and "forward_score" in df.columns:
         df["interact_mid_supply_forward"] = (
             df["team_mid_quality_score"].fillna(0) * df["forward_score"].fillna(0)
+        )
+
+    # --- Phase 1B: Disposal share × team form ---
+    if "player_disp_share_5" in df.columns and "team_win_pct_5" in df.columns:
+        df["interact_disp_share_team_form"] = (
+            df["player_disp_share_5"].fillna(0) * df["team_win_pct_5"].fillna(0)
+        )
+
+    # --- Phase 1A: TOG × disposal form ---
+    if "player_tog_avg_5" in df.columns and "player_di_ewm_5" in df.columns:
+        df["interact_tog_disp_form"] = (
+            df["player_tog_avg_5"].fillna(75) * df["player_di_ewm_5"].fillna(0)
         )
 
     return df
@@ -1366,9 +1619,36 @@ def add_game_environment_features(df):
 
         df = df.drop(columns=["opp_margin_avg_5"], errors="ignore")
 
+    # --- Phase 1E: Rest days from team_matches ---
+    tm_path = config.BASE_STORE_DIR / "team_matches.parquet"
+    if tm_path.exists():
+        tm = pd.read_parquet(tm_path, columns=["match_id", "team", "rest_days"])
+        tm = tm.dropna(subset=["rest_days"])
+        tm["rest_days"] = pd.to_numeric(tm["rest_days"], errors="coerce")
+
+        # Team rest days
+        df = df.merge(
+            tm.rename(columns={"rest_days": "team_rest_days"}),
+            on=["match_id", "team"], how="left",
+        )
+        # Opponent rest days
+        df = df.merge(
+            tm.rename(columns={"team": "_opp_rd", "rest_days": "opp_rest_days"}),
+            left_on=["match_id", "opponent"],
+            right_on=["match_id", "_opp_rd"], how="left",
+        )
+        df = df.drop(columns=["_opp_rd"], errors="ignore")
+
+        df["rest_day_differential"] = (
+            df["team_rest_days"].fillna(7) - df["opp_rest_days"].fillna(7)
+        )
+        df["team_rest_days"] = df["team_rest_days"].fillna(7)
+        df["opp_rest_days"] = df["opp_rest_days"].fillna(7)
+
     # Fill NaN
     for col in ["venue_is_indoor", "game_pace_proxy",
-                "expected_margin_diff", "expected_margin_abs"]:
+                "expected_margin_diff", "expected_margin_abs",
+                "team_rest_days", "opp_rest_days", "rest_day_differential"]:
         if col in df.columns:
             df[col] = df[col].fillna(0)
 
@@ -1474,6 +1754,177 @@ def add_day_night_features(df):
 
 
 # ---------------------------------------------------------------------------
+# K-c4. Market / Odds Features
+# ---------------------------------------------------------------------------
+
+def add_market_features(df):
+    """Add market/odds features from odds.parquet as first-class features.
+
+    Match-level features (from bookmaker/Betfair odds):
+      - market_home_implied_prob, market_away_implied_prob
+      - market_handicap, market_total_score
+      - market_confidence, odds_movement_home, odds_movement_line
+      - betfair_home_implied_prob
+
+    Player-context derived columns vary by config.MARKET_PLAYER_FEATURE_CONFIG:
+      - "full": full chain (environment + player implied goals/disposals)
+      - "env_only": keep only market_expected_match_goals + market_expected_team_goals
+      - "player_goal_only": keep only market_implied_player_goals from the chain
+      - "v31_legacy": revert to v3.1 behavior (market_expected_team_goals = total*team_prob/6)
+
+    Handles missing odds.parquet gracefully (skip with warning).
+    """
+    if not getattr(config, "MARKET_FEATURES_ENABLED", True):
+        print("    Market features disabled in config — skipping")
+        return df
+
+    odds_path = getattr(config, "ODDS_PARQUET_PATH", config.BASE_STORE_DIR / "odds.parquet")
+    if not odds_path.exists():
+        print(f"    Warning: {odds_path} not found — skipping market features")
+        return df
+
+    df = df.copy()
+    odds = pd.read_parquet(odds_path)
+    mode = str(getattr(config, "MARKET_PLAYER_FEATURE_CONFIG", "full")).strip().lower()
+    valid_modes = {"full", "env_only", "player_goal_only", "v31_legacy"}
+    if mode not in valid_modes:
+        print(f"    Warning: unknown MARKET_PLAYER_FEATURE_CONFIG='{mode}', using 'full'")
+        mode = "full"
+    print(f"    Market feature mode: {mode}")
+
+    odds_cols = [c for c in odds.columns if c != "match_id"]
+
+    # Drop existing odds columns for idempotent re-runs
+    existing = [c for c in odds_cols if c in df.columns]
+    if existing:
+        df = df.drop(columns=existing)
+
+    # Also drop derived columns we'll recreate
+    for c in [
+        "market_team_implied_prob",
+        "market_team_scoring_share",
+        "market_expected_match_goals",
+        "market_expected_team_goals",
+        "market_player_goal_share_pre",
+        "market_implied_player_goals",
+        "market_expected_match_disposals",
+        "market_expected_team_disposals",
+        "market_player_disposal_share_pre",
+        "market_implied_player_disposals",
+        "market_is_favourite",
+    ]:
+        if c in df.columns:
+            df = df.drop(columns=[c])
+
+    # Merge on match_id
+    df = df.merge(odds, on="match_id", how="left")
+
+    # Derive player-context columns
+    is_home = df["is_home"].astype(bool) if "is_home" in df.columns else pd.Series(True, index=df.index)
+    home_prob = pd.to_numeric(df.get("market_home_implied_prob", np.nan), errors="coerce")
+    away_prob = pd.to_numeric(df.get("market_away_implied_prob", np.nan), errors="coerce")
+    away_prob = away_prob.where(away_prob.notna(), 1.0 - home_prob)
+    team_prob = np.where(is_home, home_prob, away_prob).astype(np.float32)
+    df["market_team_implied_prob"] = team_prob
+
+    total = pd.to_numeric(df.get("market_total_score", np.nan), errors="coerce")
+
+    if mode == "v31_legacy":
+        # v3.1 behavior: expected team goals directly from implied team win probability
+        df["market_expected_team_goals"] = (
+            total * pd.Series(team_prob, index=df.index) / 6.0
+        ).astype(np.float32)
+    else:
+        # Split market total by normalized implied probabilities
+        prob_sum = (home_prob.fillna(0) + away_prob.fillna(0)).astype(float)
+        valid_prob_sum = prob_sum > 0
+        home_share = np.where(valid_prob_sum, home_prob / prob_sum, 0.5)
+        away_share = np.where(valid_prob_sum, away_prob / prob_sum, 0.5)
+        team_scoring_share = np.where(is_home, home_share, away_share).astype(np.float32)
+
+        env = _estimate_market_environment_stats()
+        pts_per_goal = float(env["points_per_goal_from_market_total"])
+        pts_per_disp = float(env["points_per_disposal_from_market_total"])
+        n_env = int(env["n_matches"])
+        if n_env > 0:
+            print(
+                "    Market totals verified: "
+                f"{n_env} matches, points/goal={pts_per_goal:.3f}, "
+                f"goals/point={1.0/pts_per_goal:.4f}"
+            )
+
+        exp_match_goals = total / max(pts_per_goal, 1e-6)
+        exp_team_goals = exp_match_goals * team_scoring_share
+
+        if mode == "full":
+            df["market_team_scoring_share"] = team_scoring_share
+
+        if mode in {"full", "env_only"}:
+            df["market_expected_match_goals"] = exp_match_goals.astype(np.float32)
+            df["market_expected_team_goals"] = exp_team_goals.astype(np.float32)
+
+        # Player historical goal share of team scoring
+        team_goal_avg = pd.to_numeric(
+            df.get("team_goals_avg_pre", df.get("team_goals_avg_10", np.nan)),
+            errors="coerce",
+        )
+        player_goal_avg = pd.to_numeric(df.get("career_goal_avg_pre", np.nan), errors="coerce")
+        raw_goal_share = np.where(team_goal_avg > 0, player_goal_avg / team_goal_avg, np.nan)
+        fallback_goal_share = pd.to_numeric(df.get("player_goal_share_5", np.nan), errors="coerce")
+        raw_goal_share = np.where(np.isfinite(raw_goal_share), raw_goal_share, fallback_goal_share)
+        raw_goal_share = np.where(np.isfinite(raw_goal_share), raw_goal_share, 0.08)
+        goal_share = np.clip(raw_goal_share, 0.0, 0.6).astype(np.float32)
+
+        if mode == "full":
+            df["market_player_goal_share_pre"] = goal_share
+        if mode in {"full", "player_goal_only"}:
+            df["market_implied_player_goals"] = (
+                exp_team_goals * goal_share
+            ).astype(np.float32)
+
+        # Disposal market chain only in full mode
+        if mode == "full":
+            exp_match_disp = total / max(pts_per_disp, 1e-6)
+            exp_team_disp = exp_match_disp * team_scoring_share
+            df["market_expected_match_disposals"] = exp_match_disp.astype(np.float32)
+            df["market_expected_team_disposals"] = exp_team_disp.astype(np.float32)
+
+            team_disp_avg = pd.to_numeric(
+                df.get("team_disp_avg_pre", df.get("team_disp_avg_10", np.nan)),
+                errors="coerce",
+            )
+            player_disp_avg = pd.to_numeric(df.get("career_disp_avg_pre", np.nan), errors="coerce")
+            raw_disp_share = np.where(team_disp_avg > 0, player_disp_avg / team_disp_avg, np.nan)
+            fallback_player_di = pd.to_numeric(df.get("player_di_avg_10", np.nan), errors="coerce")
+            fallback_team_di = pd.to_numeric(df.get("team_disp_avg_10", np.nan), errors="coerce")
+            fallback_disp_share = np.where(
+                fallback_team_di > 0, fallback_player_di / fallback_team_di, np.nan
+            )
+            raw_disp_share = np.where(np.isfinite(raw_disp_share), raw_disp_share, fallback_disp_share)
+            raw_disp_share = np.where(np.isfinite(raw_disp_share), raw_disp_share, 0.06)
+            disp_share = np.clip(raw_disp_share, 0.0, 0.25).astype(np.float32)
+
+            df["market_player_disposal_share_pre"] = disp_share
+            df["market_implied_player_disposals"] = (
+                exp_team_disp * disp_share
+            ).astype(np.float32)
+
+    df["market_is_favourite"] = (df["market_team_implied_prob"] > 0.5).astype(np.int8)
+
+    # Cast odds columns to float32
+    for c in odds_cols:
+        if c in df.columns:
+            df[c] = df[c].astype(np.float32)
+
+    n_with_odds = df["market_home_implied_prob"].notna().sum()
+    n_total = len(df)
+    print(f"    Market features: {n_with_odds}/{n_total} rows with odds data "
+          f"({n_with_odds/n_total*100:.1f}%)")
+
+    return df
+
+
+# ---------------------------------------------------------------------------
 # K-d. Season Era / Rule Regime Features
 # ---------------------------------------------------------------------------
 
@@ -1561,6 +2012,7 @@ def add_weather_features(df):
         "feels_like_delta", "humidity_discomfort",
         "temperature_range", "is_overcast",
         "weather_difficulty_score", "slippery_conditions",
+        "wind_direction_variability",
         "is_roofed",
     ]
 
@@ -1581,6 +2033,1009 @@ def add_weather_features(df):
                 df[col] = df[col].fillna(0)
 
     print(f"    Joined {len(available)} weather features from {len(weather)} matches")
+    return df
+
+
+# ---------------------------------------------------------------------------
+# N. Umpire Features (match-level)
+# ---------------------------------------------------------------------------
+
+def add_umpire_features(df):
+    """Add umpire panel features: experience, scoring tendency, home bias, familiarity.
+
+    Loads umpires.parquet and computes rolling umpire stats.
+    All temporal features use shift(1) to prevent leakage.
+    Gracefully skips if umpires.parquet is missing.
+    """
+    umpire_path = config.BASE_STORE_DIR / "umpires.parquet"
+    if not umpire_path.exists():
+        print("    umpires.parquet not found — skipping umpire features")
+        return df
+
+    umpires = pd.read_parquet(umpire_path)
+    if umpires.empty:
+        return df
+
+    umpires = umpires.copy()
+    umpires["umpire_career_games_pre"] = (
+        pd.to_numeric(umpires["umpire_career_games"], errors="coerce")
+        .fillna(0)
+        .clip(lower=0)
+        .sub(1)
+        .clip(lower=0)
+    ).astype(np.float32)
+
+    df = df.copy()
+    match_dates = df[["match_id", "date"]].drop_duplicates()
+    match_dates["date"] = pd.to_datetime(match_dates["date"], errors="coerce")
+
+    # --- Panel average experience (static per match) ---
+    panel_exp = (
+        umpires.groupby("match_id")["umpire_career_games_pre"]
+        .mean()
+        .reset_index()
+        .rename(columns={"umpire_career_games_pre": "umpire_panel_avg_experience"})
+    )
+    df = df.merge(panel_exp, on="match_id", how="left")
+    panel_exp_fallback = umpires["umpire_career_games_pre"].replace(0, np.nan).median()
+    if pd.isna(panel_exp_fallback):
+        panel_exp_fallback = 0.0
+    df["umpire_panel_avg_experience"] = (
+        df["umpire_panel_avg_experience"]
+        .fillna(panel_exp_fallback)
+        .astype(np.float32)
+    )
+
+    # --- Umpire scoring tendency ---
+    # Need match total goals for each umpire's past matches
+    match_goals = (
+        df.groupby("match_id", observed=True)["GL"]
+        .sum()
+        .reset_index()
+        .rename(columns={"GL": "match_total_goals"})
+    )
+    match_goals = (
+        match_goals.merge(match_dates, on="match_id", how="left")
+        .sort_values(["date", "match_id"])
+        .reset_index(drop=True)
+    )
+    match_goals["league_goals_prior"] = (
+        match_goals["match_total_goals"].shift(1).expanding(min_periods=1).mean()
+    )
+    ump_match = umpires.merge(match_goals, on="match_id", how="left")
+
+    # Match dates for sorting
+    ump_match = ump_match.sort_values(["date", "match_id", "umpire_name"])
+
+    lookback = config.UMPIRE_LOOKBACK_MATCHES
+    ug = ump_match.groupby("umpire_name")
+    ump_match["umpire_scoring_tendency"] = ug["match_total_goals"].transform(
+        lambda s: s.shift(1).rolling(lookback, min_periods=3).mean()
+    )
+
+    # Average across panel for each match
+    panel_tendency = (
+        ump_match.groupby("match_id")["umpire_scoring_tendency"]
+        .mean()
+        .reset_index()
+    )
+    df = df.merge(panel_tendency, on="match_id", how="left")
+    df = df.merge(
+        match_goals[["match_id", "league_goals_prior"]],
+        on="match_id", how="left",
+    )
+    goals_fallback = ump_match["match_total_goals"].dropna().mean()
+    if pd.isna(goals_fallback):
+        goals_fallback = 22.0
+    df["umpire_scoring_tendency"] = (
+        df["umpire_scoring_tendency"]
+        .fillna(df["league_goals_prior"])
+        .fillna(goals_fallback)
+        .astype(np.float32)
+    )
+    df = df.drop(columns=["league_goals_prior"], errors="ignore")
+
+    # --- Umpire home bias ---
+    # Need home/away free kicks per match
+    ff_by_team = (
+        df.groupby(["match_id", "is_home"], observed=True)["FF"]
+        .sum()
+        .reset_index()
+    )
+    home_ff = ff_by_team[ff_by_team["is_home"] == 1][["match_id", "FF"]].rename(
+        columns={"FF": "home_ff"}
+    )
+    away_ff = ff_by_team[ff_by_team["is_home"] == 0][["match_id", "FF"]].rename(
+        columns={"FF": "away_ff"}
+    )
+    match_ff = home_ff.merge(away_ff, on="match_id", how="outer").fillna(0)
+    match_ff["ff_home_diff"] = match_ff["home_ff"] - match_ff["away_ff"]
+
+    ump_ff = umpires.merge(match_ff[["match_id", "ff_home_diff"]], on="match_id", how="left")
+    ump_ff = ump_ff.merge(match_dates, on="match_id", how="left")
+    ump_ff = ump_ff.sort_values(["date", "match_id", "umpire_name"])
+
+    ug_ff = ump_ff.groupby("umpire_name")
+    ump_ff["umpire_home_bias"] = ug_ff["ff_home_diff"].transform(
+        lambda s: s.shift(1).rolling(lookback, min_periods=3).mean()
+    )
+
+    panel_bias = (
+        ump_ff.groupby("match_id")["umpire_home_bias"]
+        .mean()
+        .reset_index()
+    )
+    df = df.merge(panel_bias, on="match_id", how="left")
+    df["umpire_home_bias"] = df["umpire_home_bias"].fillna(0).astype(np.float32)
+
+    # --- Umpire familiarity (per-team) ---
+    # For each (umpire, team), count of prior games together
+    # We need team info per match — expand umpires to team level
+    match_teams = df[["match_id", "team"]].drop_duplicates()
+    ump_teams = umpires.merge(match_teams, on="match_id", how="left")
+    ump_teams = ump_teams.merge(match_dates, on="match_id", how="left")
+    ump_teams = ump_teams.sort_values(["date", "match_id", "umpire_name", "team"])
+
+    ut_grp = ump_teams.groupby(["umpire_name", "team"])
+    ump_teams["_ump_team_games"] = ut_grp["match_id"].transform(
+        lambda s: s.shift(1).expanding().count()
+    )
+
+    # Average familiarity across panel for each (match_id, team)
+    panel_fam = (
+        ump_teams.groupby(["match_id", "team"], observed=True)["_ump_team_games"]
+        .mean()
+        .reset_index()
+        .rename(columns={"_ump_team_games": "umpire_familiarity"})
+    )
+    df = df.merge(panel_fam, on=["match_id", "team"], how="left")
+    df["umpire_familiarity"] = df["umpire_familiarity"].fillna(0).astype(np.float32)
+
+    n_with = df["umpire_panel_avg_experience"].notna().sum()
+    print(f"    Umpire features: {n_with}/{len(df)} rows with data")
+    return df
+
+
+# ---------------------------------------------------------------------------
+# O. Coach Features (team-level)
+# ---------------------------------------------------------------------------
+
+def add_coach_features(df):
+    """Add coach features: win rate, experience, tenure, vs-opponent win rate.
+
+    Loads coaches.parquet and computes expanding/rolling coach stats.
+    Uses team_matches.parquet for result history.
+    Gracefully skips if coaches.parquet is missing.
+    """
+    coaches_path = config.BASE_STORE_DIR / "coaches.parquet"
+    if not coaches_path.exists():
+        print("    coaches.parquet not found — skipping coach features")
+        return df
+
+    coaches = pd.read_parquet(coaches_path)
+    if coaches.empty:
+        return df
+
+    df = df.copy()
+
+    # Load team results from team_matches
+    tm_path = config.BASE_STORE_DIR / "team_matches.parquet"
+    if not tm_path.exists():
+        print("    team_matches.parquet not found — skipping coach features")
+        return df
+    tm = pd.read_parquet(tm_path, columns=["match_id", "team", "opponent", "result", "date"])
+    tm["date"] = pd.to_datetime(tm["date"])
+
+    # Join coach to team results
+    coach_results = tm.merge(
+        coaches[["match_id", "team", "coach"]],
+        on=["match_id", "team"],
+        how="left",
+    )
+    coach_results = coach_results.dropna(subset=["coach"])
+    coach_results = coach_results.sort_values("date")
+
+    if coach_results.empty:
+        return df
+
+    coach_results["won"] = (coach_results["result"] == "W").astype(int)
+
+    # --- Coach expanding win rate ---
+    cg = coach_results.groupby("coach")
+    coach_results["coach_win_rate"] = cg["won"].transform(
+        lambda s: s.shift(1).expanding(min_periods=config.COACH_MIN_GAMES).mean()
+    )
+
+    # --- Coach experience (game count) ---
+    coach_results["coach_experience_games"] = cg["won"].transform(
+        lambda s: s.shift(1).expanding().count()
+    )
+
+    # --- Coach tenure (years with current team) ---
+    # Find first game with current team per (coach, team)
+    first_game = (
+        coach_results.groupby(["coach", "team"])["date"]
+        .transform("first")
+    )
+    coach_results["coach_tenure"] = (
+        (coach_results["date"] - first_game).dt.days / 365.25
+    ).clip(lower=0)
+
+    # --- Coach vs opponent win rate ---
+    co_grp = coach_results.groupby(["coach", "opponent"], observed=True)
+    coach_results["coach_vs_opp_win_rate"] = co_grp["won"].transform(
+        lambda s: s.shift(1).expanding(min_periods=config.COACH_H2H_MIN_MATCHES).mean()
+    )
+
+    # Select merge columns
+    coach_feat = coach_results[[
+        "match_id", "team", "coach_win_rate", "coach_experience_games",
+        "coach_tenure", "coach_vs_opp_win_rate",
+    ]].drop_duplicates(subset=["match_id", "team"])
+
+    df = df.merge(coach_feat, on=["match_id", "team"], how="left")
+
+    # Fill NaN
+    df["coach_win_rate"] = df["coach_win_rate"].fillna(0.5).astype(np.float32)
+    df["coach_experience_games"] = df["coach_experience_games"].fillna(0).astype(np.float32)
+    df["coach_tenure"] = df["coach_tenure"].fillna(0).astype(np.float32)
+    df["coach_vs_opp_win_rate"] = df["coach_vs_opp_win_rate"].fillna(0.5).astype(np.float32)
+
+    n_with = (df["coach_experience_games"] > 0).sum()
+    print(f"    Coach features: {n_with}/{len(df)} rows with data")
+    return df
+
+
+# ---------------------------------------------------------------------------
+# P. Player Physical Features (player-level)
+# ---------------------------------------------------------------------------
+
+def add_physical_features(df):
+    """Add player physical features: height, weight, BMI, age_at_match,
+    height_for_role, weight_for_role.
+
+    Loads player_profiles.parquet.  Must run after archetypes (Stage K)
+    so the 'archetype' column exists for role-relative features.
+    Gracefully skips if profiles are missing.
+    """
+    profiles_path = config.BASE_STORE_DIR / "player_profiles.parquet"
+    if not profiles_path.exists():
+        print("    player_profiles.parquet not found — skipping physical features")
+        return df
+
+    profiles = pd.read_parquet(profiles_path)
+    if profiles.empty:
+        return df
+
+    df = df.copy()
+
+    # Merge on player name
+    prof_cols = ["player", "height_cm", "weight_kg", "dob"]
+    available = [c for c in prof_cols if c in profiles.columns]
+    df = df.merge(profiles[available], on="player", how="left")
+
+    # Fill missing with config fallbacks
+    height_fb = config.PLAYER_PROFILE_HEIGHT_FALLBACK
+    weight_fb = config.PLAYER_PROFILE_WEIGHT_FALLBACK
+
+    df["height_cm"] = df["height_cm"].fillna(height_fb).astype(np.float32)
+    df["weight_kg"] = df["weight_kg"].fillna(weight_fb).astype(np.float32)
+
+    # BMI
+    df["bmi"] = (
+        df["weight_kg"] / (df["height_cm"] / 100.0) ** 2
+    ).astype(np.float32)
+
+    # Age at match (more precise than age_years from player_details)
+    if "dob" in df.columns:
+        df["dob"] = pd.to_datetime(df["dob"], errors="coerce")
+        df["age_at_match"] = (
+            (df["date"] - df["dob"]).dt.days / 365.25
+        ).astype(np.float32)
+        # Fill missing DOB with existing age_years or fallback
+        if "age_years" in df.columns:
+            df["age_at_match"] = df["age_at_match"].fillna(
+                df["age_years"]
+            )
+        df["age_at_match"] = df["age_at_match"].fillna(
+            config.PLAYER_PROFILE_AGE_FALLBACK
+        ).astype(np.float32)
+        df = df.drop(columns=["dob"], errors="ignore")
+    elif "age_years" in df.columns:
+        df["age_at_match"] = df["age_years"].fillna(
+            config.PLAYER_PROFILE_AGE_FALLBACK
+        ).astype(np.float32)
+    else:
+        df["age_at_match"] = np.float32(config.PLAYER_PROFILE_AGE_FALLBACK)
+
+    # Height/weight relative to archetype mean
+    if "archetype" in df.columns:
+        arch_means = df.groupby("archetype", observed=True).agg(
+            arch_mean_height=("height_cm", "mean"),
+            arch_mean_weight=("weight_kg", "mean"),
+        )
+        df = df.merge(arch_means, on="archetype", how="left")
+
+        df["height_for_role"] = np.where(
+            df["arch_mean_height"] > 0,
+            df["height_cm"] / df["arch_mean_height"],
+            1.0,
+        ).astype(np.float32)
+        df["weight_for_role"] = np.where(
+            df["arch_mean_weight"] > 0,
+            df["weight_kg"] / df["arch_mean_weight"],
+            1.0,
+        ).astype(np.float32)
+
+        df = df.drop(columns=["arch_mean_height", "arch_mean_weight"], errors="ignore")
+    else:
+        df["height_for_role"] = np.float32(1.0)
+        df["weight_for_role"] = np.float32(1.0)
+
+    n_with = (df["height_cm"] != height_fb).sum()
+    print(f"    Physical features: {n_with}/{len(df)} rows with profile data")
+    return df
+
+
+# ---------------------------------------------------------------------------
+# Q. Career Split Features (player + context level)
+# ---------------------------------------------------------------------------
+
+def add_career_split_features(df):
+    """Add career split features from profile scrape data.
+
+    Uses career totals by opponent and by venue to create matchup boost features.
+    Gracefully skips if split data is missing.
+    """
+    if not getattr(config, "CAREER_SPLIT_FEATURES_ENABLED", False):
+        print("    career split features disabled in config (leakage guard)")
+        return df
+
+    opp_path = config.BASE_STORE_DIR / "career_splits_opponent.parquet"
+    venue_path = config.BASE_STORE_DIR / "career_splits_venue.parquet"
+
+    has_opp = opp_path.exists()
+    has_venue = venue_path.exists()
+
+    if not has_opp and not has_venue:
+        print("    career splits not found — skipping career split features")
+        return df
+
+    df = df.copy()
+    min_games = config.CAREER_SPLIT_MIN_GAMES
+
+    if has_opp:
+        opp_df = pd.read_parquet(opp_path)
+        if not opp_df.empty and "P" in opp_df.columns:
+            # Filter to minimum games
+            opp_df = opp_df[opp_df["P"] >= min_games].copy()
+
+            # Compute per-game averages
+            if "GL" in opp_df.columns:
+                opp_df["career_vs_opp_gl_avg"] = (
+                    opp_df["GL"] / opp_df["P"]
+                ).astype(np.float32)
+            if "DI" in opp_df.columns:
+                opp_df["career_vs_opp_di_avg"] = (
+                    opp_df["DI"] / opp_df["P"]
+                ).astype(np.float32)
+
+            # Overall career average per player (for boost ratio)
+            player_overall = (
+                opp_df.groupby("player")
+                .agg(
+                    _total_gl=("GL", "sum") if "GL" in opp_df.columns else ("P", "first"),
+                    _total_di=("DI", "sum") if "DI" in opp_df.columns else ("P", "first"),
+                    _total_p=("P", "sum"),
+                )
+                .reset_index()
+            )
+            if "GL" in opp_df.columns:
+                player_overall["_career_gl_avg"] = (
+                    player_overall["_total_gl"] / player_overall["_total_p"]
+                )
+            if "DI" in opp_df.columns:
+                player_overall["_career_di_avg"] = (
+                    player_overall["_total_di"] / player_overall["_total_p"]
+                )
+
+            # Merge opponent averages
+            merge_cols = ["player", "opponent"]
+            opp_feat_cols = [c for c in ["career_vs_opp_gl_avg", "career_vs_opp_di_avg"]
+                            if c in opp_df.columns]
+            if opp_feat_cols:
+                df = df.merge(
+                    opp_df[merge_cols + opp_feat_cols].drop_duplicates(subset=merge_cols),
+                    on=["player", "opponent"],
+                    how="left",
+                )
+
+            # Compute opponent boost ratios
+            if "_career_gl_avg" in player_overall.columns and "career_vs_opp_gl_avg" in df.columns:
+                df = df.merge(
+                    player_overall[["player", "_career_gl_avg"]],
+                    on="player", how="left",
+                )
+                df["career_opponent_boost"] = np.where(
+                    df["_career_gl_avg"] > 0,
+                    df["career_vs_opp_gl_avg"] / df["_career_gl_avg"],
+                    1.0,
+                )
+                df["career_opponent_boost"] = df["career_opponent_boost"].clip(0.2, 5.0).astype(np.float32)
+                df = df.drop(columns=["_career_gl_avg"], errors="ignore")
+
+    if has_venue:
+        venue_df = pd.read_parquet(venue_path)
+        if not venue_df.empty and "P" in venue_df.columns:
+            venue_df = venue_df[venue_df["P"] >= min_games].copy()
+
+            if "GL" in venue_df.columns:
+                venue_df["career_at_venue_gl_avg"] = (
+                    venue_df["GL"] / venue_df["P"]
+                ).astype(np.float32)
+            if "DI" in venue_df.columns:
+                venue_df["career_at_venue_di_avg"] = (
+                    venue_df["DI"] / venue_df["P"]
+                ).astype(np.float32)
+
+            # Overall career average per player for venue boost
+            player_overall_v = (
+                venue_df.groupby("player")
+                .agg(
+                    _total_gl_v=("GL", "sum") if "GL" in venue_df.columns else ("P", "first"),
+                    _total_p_v=("P", "sum"),
+                )
+                .reset_index()
+            )
+            if "GL" in venue_df.columns:
+                player_overall_v["_career_gl_avg_v"] = (
+                    player_overall_v["_total_gl_v"] / player_overall_v["_total_p_v"]
+                )
+
+            merge_cols_v = ["player", "venue"]
+            venue_feat_cols = [c for c in ["career_at_venue_gl_avg", "career_at_venue_di_avg"]
+                              if c in venue_df.columns]
+            if venue_feat_cols:
+                df = df.merge(
+                    venue_df[merge_cols_v + venue_feat_cols].drop_duplicates(subset=merge_cols_v),
+                    on=["player", "venue"],
+                    how="left",
+                )
+
+            if "_career_gl_avg_v" in player_overall_v.columns and "career_at_venue_gl_avg" in df.columns:
+                df = df.merge(
+                    player_overall_v[["player", "_career_gl_avg_v"]],
+                    on="player", how="left",
+                )
+                df["career_venue_boost"] = np.where(
+                    df["_career_gl_avg_v"] > 0,
+                    df["career_at_venue_gl_avg"] / df["_career_gl_avg_v"],
+                    1.0,
+                )
+                df["career_venue_boost"] = df["career_venue_boost"].clip(0.2, 5.0).astype(np.float32)
+                df = df.drop(columns=["_career_gl_avg_v"], errors="ignore")
+
+    # Fill NaN for all career split features
+    for col in ["career_vs_opp_gl_avg", "career_vs_opp_di_avg",
+                "career_at_venue_gl_avg", "career_at_venue_di_avg",
+                "career_opponent_boost", "career_venue_boost"]:
+        if col in df.columns:
+            fill = 1.0 if "boost" in col else 0.0
+            df[col] = df[col].fillna(fill).astype(np.float32)
+
+    n_opp = (df.get("career_vs_opp_gl_avg", pd.Series(0)) > 0).sum() if "career_vs_opp_gl_avg" in df.columns else 0
+    n_venue = (df.get("career_at_venue_gl_avg", pd.Series(0)) > 0).sum() if "career_at_venue_gl_avg" in df.columns else 0
+    print(f"    Career splits: {n_opp} opp matches, {n_venue} venue matches")
+    return df
+
+
+# ---------------------------------------------------------------------------
+# R. Team Venue Features (derived from team_matches.parquet)
+# ---------------------------------------------------------------------------
+
+def add_team_venue_features(df):
+    """Add team venue record features: win rate, average score at venue.
+
+    Computed from team_matches.parquet — no additional scraping needed.
+    Uses a rolling time window and past-only priors by date to avoid lookahead.
+    """
+    tm_path = config.BASE_STORE_DIR / "team_matches.parquet"
+    if not tm_path.exists():
+        print("    team_matches.parquet not found — skipping team venue features")
+        return df
+
+    tm = pd.read_parquet(tm_path, columns=["match_id", "team", "opponent", "venue",
+                                             "score", "result", "date", "year"])
+    if tm.empty:
+        return df
+
+    df = df.copy()
+    if "date" not in df.columns:
+        print("    date column missing — skipping team venue features")
+        return df
+
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    tm["date"] = pd.to_datetime(tm["date"], errors="coerce")
+    tm = tm.dropna(subset=["date"]).sort_values(["team", "venue", "date", "match_id"]).copy()
+    tm["won"] = (tm["result"] == "W").astype(np.int8)
+
+    min_games = max(1, int(config.TEAM_VENUE_MIN_GAMES))
+    lookback_days = max(1, int(round(config.TEAM_VENUE_LOOKBACK_YEARS * 365.25)))
+    lookback_delta = np.timedelta64(lookback_days, "D")
+
+    # Compute per-(team, venue) rolling metrics using only prior matches
+    tm["_tv_win_rate"] = np.nan
+    tm["_tv_avg_score"] = np.nan
+    for _, grp in tm.groupby(["team", "venue"], observed=True):
+        idx = grp.index.to_numpy()
+        dates = grp["date"].to_numpy(dtype="datetime64[ns]")
+        wins = grp["won"].to_numpy(dtype=np.float64)
+        scores = grp["score"].to_numpy(dtype=np.float64)
+        out_win = np.full(len(grp), np.nan, dtype=np.float64)
+        out_score = np.full(len(grp), np.nan, dtype=np.float64)
+
+        left = 0
+        for i in range(len(grp)):
+            cutoff = dates[i] - lookback_delta
+            while left < i and dates[left] < cutoff:
+                left += 1
+            n_hist = i - left
+            if n_hist >= min_games:
+                out_win[i] = wins[left:i].mean()
+                out_score[i] = scores[left:i].mean()
+
+        tm.loc[idx, "_tv_win_rate"] = out_win
+        tm.loc[idx, "_tv_avg_score"] = out_score
+
+    # Build as-of lookup for requested rows (supports synthetic future match_ids)
+    req = df[["match_id", "team", "opponent", "venue", "date"]].drop_duplicates().copy()
+    req_valid = req.dropna(subset=["date"]).copy()
+    hist = tm[["team", "venue", "date", "_tv_win_rate", "_tv_avg_score"]].copy()
+    req_valid["team"] = req_valid["team"].astype(str)
+    req_valid["venue"] = req_valid["venue"].astype(str)
+    hist["team"] = hist["team"].astype(str)
+    hist["venue"] = hist["venue"].astype(str)
+
+    if not req_valid.empty and not hist.empty:
+        parts = []
+        for (team, venue), req_grp in req_valid.groupby(["team", "venue"], observed=True):
+            hist_grp = hist[
+                (hist["team"] == team) & (hist["venue"] == venue)
+            ][["date", "_tv_win_rate", "_tv_avg_score"]]
+            req_sorted = req_grp.sort_values("date")
+            if hist_grp.empty:
+                merged = req_sorted.copy()
+                merged["_tv_win_rate"] = np.nan
+                merged["_tv_avg_score"] = np.nan
+            else:
+                merged = pd.merge_asof(
+                    req_sorted,
+                    hist_grp.sort_values("date"),
+                    on="date",
+                    direction="backward",
+                    allow_exact_matches=True,
+                )
+            parts.append(merged)
+        req_tv = pd.concat(parts, ignore_index=True) if parts else req_valid.copy()
+    else:
+        req_tv = req_valid.copy()
+        req_tv["_tv_win_rate"] = np.nan
+        req_tv["_tv_avg_score"] = np.nan
+
+    tv_feat = req_tv[["match_id", "team", "_tv_win_rate", "_tv_avg_score"]].rename(
+        columns={
+            "_tv_win_rate": "team_venue_win_rate",
+            "_tv_avg_score": "team_venue_avg_score",
+        }
+    )
+    tv_feat["team"] = tv_feat["team"].astype(str)
+    df = df.merge(tv_feat, on=["match_id", "team"], how="left")
+
+    # Opponent venue win rate from the same as-of lookup
+    opp_tv = tv_feat.rename(
+        columns={
+            "team": "opponent",
+            "team_venue_win_rate": "opponent_venue_win_rate",
+        }
+    )
+    df = df.merge(
+        opp_tv[["match_id", "opponent", "opponent_venue_win_rate"]],
+        on=["match_id", "opponent"],
+        how="left",
+    )
+
+    # Past-only league score prior for neutral fallback
+    league_tm = tm.sort_values(["date", "match_id", "team"]).copy()
+    league_tm["_league_score_prior"] = (
+        league_tm["score"].shift(1).expanding(min_periods=1).mean()
+    )
+    date_key = df[["match_id", "date"]].drop_duplicates().dropna(subset=["date"])
+    league_ref = league_tm[["date", "_league_score_prior"]].dropna().sort_values("date")
+    if not date_key.empty and not league_ref.empty:
+        prior = pd.merge_asof(
+            date_key.sort_values("date"),
+            league_ref,
+            on="date",
+            direction="backward",
+            allow_exact_matches=True,
+        )
+        df = df.merge(prior, on=["match_id", "date"], how="left")
+    else:
+        df["_league_score_prior"] = np.nan
+
+    # --- Venue advantage differential ---
+    df["venue_advantage_diff"] = (
+        df["team_venue_win_rate"].fillna(0.5) -
+        df["opponent_venue_win_rate"].fillna(0.5)
+    ).astype(np.float32)
+
+    # Fill NaN with leakage-safe defaults
+    score_fallback = float(getattr(config, "TEAM_VENUE_SCORE_FALLBACK", 80.0))
+    df["team_venue_win_rate"] = df["team_venue_win_rate"].fillna(0.5).astype(np.float32)
+    df["team_venue_avg_score"] = (
+        df["team_venue_avg_score"]
+        .fillna(df["_league_score_prior"])
+        .fillna(score_fallback)
+        .astype(np.float32)
+    )
+    df["opponent_venue_win_rate"] = df["opponent_venue_win_rate"].fillna(0.5).astype(np.float32)
+    df = df.drop(columns=["_league_score_prior"], errors="ignore")
+
+    n_with = (df["team_venue_win_rate"] != 0.5).sum()
+    print(f"    Team venue features: {n_with}/{len(df)} rows with venue history")
+    return df
+
+
+# ---------------------------------------------------------------------------
+# S. Player Market Odds Features
+# ---------------------------------------------------------------------------
+
+def add_player_odds_features(df):
+    """Merge player-level Betfair market features (disposal lines, FGS, goals).
+
+    Loads player_odds.parquet and left-joins on (match_id, player).
+    Gracefully skips if player_odds.parquet is missing.
+    """
+    odds_path = config.BASE_STORE_DIR / "player_odds.parquet"
+    if not odds_path.exists():
+        print("    WARNING: player_odds.parquet not found — skipping player market features")
+        print("    Run: python integrate_player_odds.py")
+        return df
+
+    odds = pd.read_parquet(odds_path)
+    if odds.empty:
+        print("    WARNING: player_odds.parquet is empty — skipping player market features")
+        return df
+
+    if "match_id" not in odds.columns or "player" not in odds.columns:
+        print("    WARNING: player_odds.parquet missing match_id/player keys — skipping")
+        return df
+
+    odds = odds.copy()
+    odds["match_id"] = pd.to_numeric(odds["match_id"], errors="coerce")
+    odds["player"] = odds["player"].astype(str).str.strip()
+    odds = odds.dropna(subset=["match_id", "player"])
+    odds = odds[(odds["player"] != "") & (odds["player"].str.lower() != "nan")]
+    odds["match_id"] = odds["match_id"].astype(np.int64)
+
+    # Player market feature columns
+    feature_cols = [c for c in odds.columns if c.startswith("market_")]
+
+    if not feature_cols:
+        print("    WARNING: No market_ columns in player_odds.parquet")
+        return df
+
+    # Drop existing columns if re-running (idempotent)
+    existing = [c for c in feature_cols if c in df.columns]
+    if existing:
+        df = df.drop(columns=existing)
+
+    # De-duplicate newly pulled odds rows to avoid merge row explosion
+    dupes = odds.duplicated(subset=["match_id", "player"], keep=False)
+    if dupes.any():
+        n_keys = odds.loc[dupes, ["match_id", "player"]].drop_duplicates().shape[0]
+        print(f"    WARNING: deduplicating {n_keys} duplicate (match_id, player) odds keys")
+        odds = odds.drop_duplicates(subset=["match_id", "player"], keep="last")
+
+    # Clamp probability-like columns to [0, 1]
+    prob_cols = [c for c in feature_cols if ("implied" in c) or c.endswith("_prob")]
+    for col in prob_cols:
+        odds[col] = pd.to_numeric(odds[col], errors="coerce").clip(0, 1)
+
+    merge_cols = ["match_id", "player"] + feature_cols
+    available = [c for c in merge_cols if c in odds.columns]
+    df = df.merge(odds[available], on=["match_id", "player"], how="left")
+
+    # HistGBT handles NaN natively — no fill needed
+    n_with = 0
+    for col in feature_cols:
+        if col in df.columns:
+            n = df[col].notna().sum()
+            n_with = max(n_with, n)
+
+    print(f"    Player market features: {len(feature_cols)} columns, "
+          f"{n_with}/{len(df)} rows with data")
+    return df
+
+
+# ---------------------------------------------------------------------------
+# Venue Elevation Features
+# ---------------------------------------------------------------------------
+
+VENUE_ELEVATION = {
+    "M.C.G.": 30, "Docklands": 8, "Adelaide Oval": 48,
+    "Perth Stadium": 14, "Gabba": 27, "Carrara": 6,
+    "S.C.G.": 45, "Kardinia Park": 9, "Sydney Showground": 39,
+    "York Park": 165, "Bellerive Oval": 4, "Manuka Oval": 578,
+    "Marrara Oval": 30, "Eureka Stadium": 435, "Cazaly's Stadium": 5,
+    "Traeger Park": 546, "Stadium Australia": 7, "Jiangwan Stadium": 4,
+    "Riverway Stadium": 10, "Wellington": 35,
+    "Subiaco": 25, "Norwood Oval": 48, "Summit Sports Park": 100,
+    "Barossa Oval": 275, "Hands Oval": 435,
+}
+
+
+def add_venue_elevation_features(df):
+    """Add venue elevation and high-altitude flag.
+
+    High altitude (>200m): ball travels further, players fatigue faster.
+    Only 3+ venues are meaningfully elevated: Manuka (578m), Traeger (546m),
+    Eureka/Hands (435m), Barossa (275m).
+    """
+    df["venue_elevation_m"] = df["venue"].map(VENUE_ELEVATION).astype(np.float32)
+    # Fill unknown venues with median
+    median_elev = np.nanmedian(list(VENUE_ELEVATION.values()))
+    df["venue_elevation_m"] = df["venue_elevation_m"].fillna(median_elev).astype(np.float32)
+
+    df["is_high_altitude"] = (df["venue_elevation_m"] > 200).astype(np.int8)
+
+    n_high = (df["is_high_altitude"] == 1).sum()
+    print(f"    Venue elevation: {n_high}/{len(df)} rows at high-altitude venues")
+    return df
+
+
+# ---------------------------------------------------------------------------
+# U. Disposal-Specific Interaction Features (runs after weather + ground)
+# ---------------------------------------------------------------------------
+
+def add_disposal_interaction_features(df):
+    """Cross-feature interactions for disposal prediction.
+
+    Runs after weather, ground dimensions, rest days, and opponent tackle
+    features are available. Captures disposal-specific signal combinations.
+    """
+    df = df.copy()
+
+    # Weather × disposal form
+    if "rain_total" in df.columns and "player_di_ewm_5" in df.columns:
+        df["interact_rain_disp_form"] = (
+            df["rain_total"].fillna(0) * df["player_di_ewm_5"].fillna(0)
+        )
+    if "wind_speed_avg" in df.columns and "player_ki_hb_ratio_5" in df.columns:
+        df["interact_wind_kick_ratio"] = (
+            df["wind_speed_avg"].fillna(0) * df["player_ki_hb_ratio_5"].fillna(0.5)
+        )
+    if "weather_difficulty_score" in df.columns and "player_di_ewm_5" in df.columns:
+        df["interact_weather_disp"] = (
+            df["weather_difficulty_score"].fillna(0) * df["player_di_ewm_5"].fillna(0)
+        )
+    if "slippery_conditions" in df.columns and "player_cp_avg_5" in df.columns:
+        df["interact_slippery_contested"] = (
+            df["slippery_conditions"].fillna(0) * df["player_cp_avg_5"].fillna(0)
+        )
+
+    # Kick/handball ratio × ground length
+    if "player_ki_hb_ratio_5" in df.columns and "ground_length" in df.columns:
+        df["interact_kick_ratio_ground"] = (
+            df["player_ki_hb_ratio_5"].fillna(0.5) * df["ground_length"].fillna(165)
+        )
+
+    # Disposal form × opponent tackle pressure
+    if "player_di_ewm_5" in df.columns and "opp_tackle_rate_avg_5" in df.columns:
+        df["interact_disp_vs_opp_tackles"] = (
+            df["player_di_ewm_5"].fillna(0) * df["opp_tackle_rate_avg_5"].fillna(0)
+        )
+
+    # Disposal form × rest day differential
+    if "player_di_ewm_5" in df.columns and "rest_day_differential" in df.columns:
+        df["interact_disp_rest_diff"] = (
+            df["player_di_ewm_5"].fillna(0) * df["rest_day_differential"].fillna(0)
+        )
+
+    count = sum(1 for c in df.columns if c.startswith("interact_") and "disp" in c.lower()
+                or c in ("interact_rain_disp_form", "interact_wind_kick_ratio",
+                         "interact_weather_disp", "interact_slippery_contested",
+                         "interact_kick_ratio_ground"))
+    print(f"    Added {count} disposal-specific interaction features")
+    return df
+
+
+# ---------------------------------------------------------------------------
+# V. FootyWire Advanced Stats Features
+# ---------------------------------------------------------------------------
+
+def add_footywire_features(df):
+    """Add features from FootyWire advanced stats (ED, DE%, CCL, SCL, TO, MG, TOG%, ITC).
+
+    Loads footywire_advanced.parquet and computes rolling averages of
+    advanced stats that are NOT available from AFLTables. All features
+    use shift(1) to prevent leakage.
+
+    Gracefully skips if footywire_advanced.parquet is missing (pre-scrape).
+    """
+    fw_path = config.BASE_STORE_DIR / "footywire_advanced.parquet"
+    if not fw_path.exists():
+        print("    footywire_advanced.parquet not found — skipping FootyWire features")
+        return df
+
+    fw = pd.read_parquet(fw_path)
+    if fw.empty:
+        return df
+
+    df = df.copy()
+
+    # Merge FootyWire stats onto the main DataFrame
+    fw_cols = ["ED", "DE_pct", "CCL", "SCL", "TO", "MG", "SI", "ITC", "T5", "TOG_pct"]
+    # Prefix with fw_ to avoid collision with existing columns
+    fw_rename = {c: f"_fw_{c}" for c in fw_cols}
+    fw_merge = fw[["match_id", "player"] + fw_cols].rename(columns=fw_rename)
+
+    df = df.merge(fw_merge, on=["match_id", "player"], how="left")
+
+    n_with = df["_fw_ED"].notna().sum()
+    n_total = len(df)
+    print(f"    FootyWire data: {n_with}/{n_total} rows matched ({n_with/n_total*100:.1f}%)")
+
+    if n_with == 0:
+        df = df.drop(columns=[f"_fw_{c}" for c in fw_cols], errors="ignore")
+        return df
+
+    # Compute rolling features from FootyWire stats
+    df = df.sort_values(["player", "team", "date"]).copy()
+    grouped = df.groupby(["player", "team"], observed=True)
+
+    # Rolling averages for key advanced stats
+    fw_roll_stats = {
+        "_fw_ED": "fw_ed",
+        "_fw_DE_pct": "fw_de_pct",
+        "_fw_CCL": "fw_ccl",
+        "_fw_SCL": "fw_scl",
+        "_fw_TO": "fw_to",
+        "_fw_MG": "fw_mg",
+        "_fw_ITC": "fw_itc",
+        "_fw_TOG_pct": "fw_tog_pct",
+    }
+
+    for src_col, feat_name in fw_roll_stats.items():
+        if src_col not in df.columns:
+            continue
+        for window in [5, 10]:
+            col_name = f"player_{feat_name}_avg_{window}"
+            min_p = min(2, window)
+            df[col_name] = grouped[src_col].transform(
+                lambda s: s.shift(1).rolling(window, min_periods=min_p).mean()
+            )
+
+    # EWM for key stats
+    for src_col, feat_name in [("_fw_ED", "fw_ed"), ("_fw_DE_pct", "fw_de_pct"),
+                                ("_fw_TOG_pct", "fw_tog_pct")]:
+        if src_col in df.columns:
+            df[f"player_{feat_name}_ewm_5"] = grouped[src_col].transform(
+                lambda s: s.shift(1).ewm(span=5, min_periods=2).mean()
+            )
+
+    # Derived features
+    # CCL / (CCL + SCL) ratio — inside-mid vs centre-mid
+    if "_fw_CCL" in df.columns and "_fw_SCL" in df.columns:
+        ccl_sum = grouped["_fw_CCL"].transform(
+            lambda s: s.shift(1).rolling(5, min_periods=2).sum()
+        )
+        scl_sum = grouped["_fw_SCL"].transform(
+            lambda s: s.shift(1).rolling(5, min_periods=2).sum()
+        )
+        total_cl = ccl_sum + scl_sum
+        df["player_fw_ccl_scl_ratio_5"] = np.where(total_cl > 0, ccl_sum / total_cl, 0.5)
+
+    # Turnover rate: TO / DI
+    if "_fw_TO" in df.columns:
+        to_sum = grouped["_fw_TO"].transform(
+            lambda s: s.shift(1).rolling(5, min_periods=2).sum()
+        )
+        di_sum = grouped["DI"].transform(
+            lambda s: s.shift(1).rolling(5, min_periods=2).sum()
+        )
+        df["player_fw_turnover_rate_5"] = np.where(di_sum > 0, to_sum / di_sum, 0.0)
+
+    # Disposal efficiency trend
+    if "_fw_DE_pct" in df.columns:
+        df["player_fw_de_trend_5"] = grouped["_fw_DE_pct"].transform(
+            lambda s: s.shift(1).rolling(5, min_periods=3).apply(
+                lambda x: np.polyfit(np.arange(len(x)), x, 1)[0], raw=True
+            )
+        ).fillna(0)
+
+    # Interaction: disposal efficiency × opponent tackle pressure
+    if "player_fw_de_pct_avg_5" in df.columns and "opp_tackle_rate_avg_5" in df.columns:
+        df["interact_fw_de_opp_pressure"] = (
+            df["player_fw_de_pct_avg_5"].fillna(0) * df["opp_tackle_rate_avg_5"].fillna(0)
+        )
+
+    # Interaction: centre clearances × disposal form
+    if "player_fw_ccl_avg_5" in df.columns and "player_di_ewm_5" in df.columns:
+        df["interact_fw_ccl_disp_form"] = (
+            df["player_fw_ccl_avg_5"].fillna(0) * df["player_di_ewm_5"].fillna(0)
+        )
+
+    # Drop raw FootyWire columns (keep only rolling features)
+    raw_fw_cols = [f"_fw_{c}" for c in fw_cols]
+    df = df.drop(columns=raw_fw_cols, errors="ignore")
+
+    # Count new features
+    fw_features = [c for c in df.columns if "fw_" in c]
+    print(f"    Added {len(fw_features)} FootyWire-derived features")
+
+    return df
+
+
+# ---------------------------------------------------------------------------
+# W. DFS Australia CBA Features
+# ---------------------------------------------------------------------------
+
+def add_cba_features(df):
+    """Add Centre Bounce Attendance features from DFS Australia data.
+
+    CBA% is the single best proxy for midfield role centrality (2020+ only).
+    Gracefully skips if CBA data is not available.
+    """
+    cba_path = config.BASE_STORE_DIR / "cba_stats.parquet"
+    if not cba_path.exists():
+        print("    cba_stats.parquet not found — skipping CBA features")
+        return df
+
+    cba = pd.read_parquet(cba_path)
+    if cba.empty:
+        return df
+
+    df = df.copy()
+
+    # Merge CBA stats
+    cba_merge = cba[["match_id", "player", "CBA_pct"]].copy()
+    cba_merge = cba_merge.rename(columns={"CBA_pct": "_cba_pct"})
+    df = df.merge(cba_merge, on=["match_id", "player"], how="left")
+
+    n_with = df["_cba_pct"].notna().sum()
+    print(f"    CBA data: {n_with}/{len(df)} rows matched")
+
+    if n_with == 0:
+        df = df.drop(columns=["_cba_pct"], errors="ignore")
+        return df
+
+    df = df.sort_values(["player", "team", "date"]).copy()
+    grouped = df.groupby(["player", "team"], observed=True)
+
+    # Rolling CBA%
+    df["player_cba_pct_avg_5"] = grouped["_cba_pct"].transform(
+        lambda s: s.shift(1).rolling(5, min_periods=2).mean()
+    )
+
+    # CBA trend
+    df["player_cba_trend_5"] = grouped["_cba_pct"].transform(
+        lambda s: s.shift(1).rolling(5, min_periods=3).apply(
+            lambda x: np.polyfit(np.arange(len(x)), x, 1)[0], raw=True
+        )
+    ).fillna(0)
+
+    # CBA × TOG interaction
+    if "player_tog_avg_5" in df.columns:
+        df["interact_cba_tog"] = (
+            df["player_cba_pct_avg_5"].fillna(0) * df["player_tog_avg_5"].fillna(75)
+        )
+
+    df = df.drop(columns=["_cba_pct"], errors="ignore")
+
+    cba_features = [c for c in df.columns if "cba" in c.lower()]
+    print(f"    Added {len(cba_features)} CBA features")
+
     return df
 
 
@@ -1608,6 +3063,14 @@ def build_features(df=None, data_dir=None, save=True):
     # Cache check: skip rebuild if features are newer than all source data
     weather_path = config.BASE_STORE_DIR / "weather.parquet"
     dims_path = config.DATA_DIR / "venue_dimensions.json"
+    umpires_path = config.BASE_STORE_DIR / "umpires.parquet"
+    coaches_path = config.BASE_STORE_DIR / "coaches.parquet"
+    profiles_path = config.BASE_STORE_DIR / "player_profiles.parquet"
+    opp_splits_path = config.BASE_STORE_DIR / "career_splits_opponent.parquet"
+    venue_splits_path = config.BASE_STORE_DIR / "career_splits_venue.parquet"
+    player_odds_path = config.BASE_STORE_DIR / "player_odds.parquet"
+    footywire_path = config.BASE_STORE_DIR / "footywire_advanced.parquet"
+    cba_path = config.BASE_STORE_DIR / "cba_stats.parquet"
     if save and df is None and cached_path.exists() and base_path.exists():
         cache_mtime = cached_path.stat().st_mtime
         sources_fresh = cache_mtime > base_path.stat().st_mtime
@@ -1615,6 +3078,11 @@ def build_features(df=None, data_dir=None, save=True):
             sources_fresh = sources_fresh and cache_mtime > weather_path.stat().st_mtime
         if dims_path.exists():
             sources_fresh = sources_fresh and cache_mtime > dims_path.stat().st_mtime
+        for extra_path in [umpires_path, coaches_path, profiles_path,
+                           opp_splits_path, venue_splits_path, player_odds_path,
+                           footywire_path, cba_path]:
+            if extra_path.exists():
+                sources_fresh = sources_fresh and cache_mtime > extra_path.stat().st_mtime
         if sources_fresh:
             print("Using cached features (base data unchanged)")
             cached = pd.read_parquet(cached_path)
@@ -1705,6 +3173,10 @@ def build_features(df=None, data_dir=None, save=True):
     print("  [K-c3] Day/night classification...")
     df = add_day_night_features(df)
 
+    # K-c4. Market / odds features
+    print("  [K-c4] Market / odds features...")
+    df = add_market_features(df)
+
     # Save archetypes to LearningStore if we have a GMM model
     if gmm_model is not None and save:
         from store import LearningStore
@@ -1726,6 +3198,48 @@ def build_features(df=None, data_dir=None, save=True):
     # M. Sample weights
     print("  [M] Sample weights...")
     df = add_sample_weights(df)
+
+    # N. Umpire features
+    print("  [N] Umpire features...")
+    df = add_umpire_features(df)
+
+    # O. Coach features
+    print("  [O] Coach features...")
+    df = add_coach_features(df)
+
+    # P. Player physical features (needs archetype column from K)
+    print("  [P] Player physical features...")
+    df = add_physical_features(df)
+
+    # Q. Career split features
+    print("  [Q] Career split features...")
+    df = add_career_split_features(df)
+
+    # R. Team venue features
+    print("  [R] Team venue features...")
+    df = add_team_venue_features(df)
+
+    # S. Player market odds features
+    print("  [S] Player market odds features...")
+    df = add_player_odds_features(df)
+
+    # T. Venue elevation features
+    print("  [T] Venue elevation features...")
+    df = add_venue_elevation_features(df)
+
+    # U. Disposal-specific interaction features (needs weather + ground + rest days)
+    print("  [U] Disposal interaction features...")
+    df = add_disposal_interaction_features(df)
+
+    # V. FootyWire advanced stats features — DISABLED (Phase 2 A/B test showed BSS regression)
+    # FootyWire features add noise without improving disposal probability calibration.
+    # Keeping code for future reference but not including in feature matrix.
+    # print("  [V] FootyWire advanced stats features...")
+    # df = add_footywire_features(df)
+
+    # W. CBA features (DFS Australia, 2020+ only)
+    print("  [W] CBA features...")
+    df = add_cba_features(df)
 
     # Assemble feature column list
 
@@ -1773,6 +3287,8 @@ def build_features(df=None, data_dir=None, save=True):
         "team_goal_avg", "team_goals_total", "team_games_total",
         "Age", "Career Games (W-D-L W%)", "Career Goals (Ave.)",
         "team_games", "team_goals",
+        # Physical feature intermediates (dob used to derive age_at_match)
+        "dob",
     }
 
     # Accept any numeric/bool dtype (int8/16/32/64, float32/64, uint8, bool)
@@ -1783,8 +3299,9 @@ def build_features(df=None, data_dir=None, save=True):
     print(f"  Dataset shape: {df.shape}")
 
     # Validate feature matrix
-    from validate import validate_features
+    from validate import validate_features, validate_temporal_integrity
     validate_features(df, FEATURE_COLS)
+    validate_temporal_integrity(df, FEATURE_COLS)
 
     if save:
         # Downcast float64 → float32 for feature columns (halves memory + disk)

@@ -139,6 +139,211 @@ def validate_features(df, feature_cols):
     print(f"  Validation passed (feature matrix: {len(present_cols)} features, {len(df)} rows)")
 
 
+def validate_temporal_integrity(df, feature_cols):
+    """Validate that feature columns are pre-match safe.
+
+    Checks:
+      - No raw current-match stats slipped into model feature columns
+      - career_disp_avg_pre does not mirror same-row DI for first player-team match
+      - Obvious post-game marker columns are not in feature set
+
+    Raises ValidationError on critical failures, prints warnings otherwise.
+    """
+    errors = []
+    warnings = []
+
+    stat_cols = {
+        "KI", "MK", "HB", "DI", "GL", "BH", "HO", "TK", "RB", "IF", "CL",
+        "CG", "FF", "FA", "BR", "CP", "UP", "CM", "MI", "one_pct", "BO", "GA",
+    }
+    forbidden_exact = (
+        stat_cols
+        | {f"{c}_rate" for c in stat_cols}
+        | {
+            "pct_played", "q1_goals", "q1_behinds", "q2_goals", "q2_behinds",
+            "q3_goals", "q3_behinds", "q4_goals", "q4_behinds",
+        }
+    )
+
+    leaked = [c for c in feature_cols if c in forbidden_exact]
+    if leaked:
+        errors.append(
+            f"{len(leaked)} forbidden current-match columns present in features: {leaked[:10]}"
+        )
+
+    post_cols = [
+        c for c in feature_cols
+        if ("_post" in c.lower()) or c.lower().endswith("_result")
+    ]
+    if post_cols:
+        errors.append(
+            f"{len(post_cols)} post-match style columns present in features: {post_cols[:10]}"
+        )
+
+    # First-row leakage check for career_disp_avg_pre.
+    # If this equals same-row DI for first appearances, it indicates lookahead fallback.
+    needed = {"player", "team", "date", "DI", "career_disp_avg_pre"}
+    if needed.issubset(df.columns):
+        order_cols = ["player", "team", "date"] + (["match_id"] if "match_id" in df.columns else [])
+        ordered = df.sort_values(order_cols)
+        first_rows = ordered.groupby(["player", "team"], observed=True).head(1)
+        first_rows = first_rows[["career_disp_avg_pre", "DI"]].dropna()
+        if not first_rows.empty:
+            same = np.isclose(
+                first_rows["career_disp_avg_pre"].to_numpy(dtype=float),
+                first_rows["DI"].to_numpy(dtype=float),
+                atol=1e-8,
+                rtol=0.0,
+            )
+            n_same = int(same.sum())
+            if n_same > 0:
+                pct = 100.0 * n_same / len(first_rows)
+                msg = (
+                    f"career_disp_avg_pre equals current DI on "
+                    f"{n_same} first rows ({pct:.2f}%)"
+                )
+                # A tiny overlap can occur by coincidence (e.g., fallback equals DI).
+                if pct > 1.0:
+                    errors.append(msg)
+                else:
+                    warnings.append(msg)
+
+    # Soft signal: excessive defaults for team_venue features often indicates bad joins.
+    if "team_venue_win_rate" in df.columns:
+        default_rate = float((df["team_venue_win_rate"] == 0.5).mean())
+        if default_rate > 0.85:
+            warnings.append(
+                f"team_venue_win_rate defaulted to 0.5 for {default_rate:.1%} of rows"
+            )
+
+    if warnings:
+        for w in warnings:
+            print(f"  VALIDATION WARNING (temporal): {w}")
+
+    if errors:
+        msg = "Temporal integrity validation failed:\n" + "\n".join(f"  - {e}" for e in errors)
+        raise ValidationError(msg)
+
+    print(f"  Validation passed (temporal integrity: {len(feature_cols)} features)")
+
+
+def validate_umpires(df):
+    """Validate umpire data.
+
+    Checks:
+      - Required columns present
+      - Umpire panel sizes (typically 3 per match)
+      - Career games within reasonable range
+
+    Prints warnings for issues, no exceptions raised.
+    """
+    warnings = []
+
+    required = ["match_id", "umpire_name", "umpire_career_games"]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        warnings.append(f"Missing columns: {missing}")
+
+    if not missing:
+        dupes = df.duplicated(subset=["match_id", "umpire_name"], keep=False).sum()
+        if dupes > 0:
+            warnings.append(f"{dupes} duplicate (match_id, umpire_name) rows")
+
+        blank_names = (
+            df["umpire_name"].isna()
+            | (df["umpire_name"].astype(str).str.strip() == "")
+        ).sum()
+        if blank_names > 0:
+            warnings.append(f"{blank_names} rows with blank umpire names")
+
+        # Panel sizes
+        panel_sizes = df.groupby("match_id")["umpire_name"].nunique()
+        unusual = panel_sizes[(panel_sizes < 3) | (panel_sizes > 4)]
+        if len(unusual) > 0:
+            warnings.append(
+                f"{len(unusual)} matches with unusual panel size "
+                f"(min={panel_sizes.min()}, max={panel_sizes.max()})"
+            )
+
+        # Career games range
+        if "umpire_career_games" in df.columns:
+            neg = (df["umpire_career_games"] < 0).sum()
+            if neg > 0:
+                warnings.append(f"{neg} rows with negative career games")
+            zero_rate = float((df["umpire_career_games"] == 0).mean())
+            if zero_rate > 0.35:
+                warnings.append(
+                    f"high zero-rate in umpire_career_games ({zero_rate:.1%})"
+                )
+
+    if warnings:
+        for w in warnings:
+            print(f"  VALIDATION WARNING (umpires): {w}")
+    else:
+        print(f"  Validation passed (umpires: {len(df)} rows, "
+              f"{df['match_id'].nunique()} matches)")
+
+
+def validate_coaches(df):
+    """Validate coach data.
+
+    Checks:
+      - Required columns present
+      - Win pct within [0, 100]
+      - One coach per (match_id, team)
+    """
+    warnings = []
+
+    required = ["match_id", "team", "coach"]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        warnings.append(f"Missing columns: {missing}")
+
+    if not missing:
+        dupes = df.duplicated(subset=["match_id", "team"], keep=False).sum()
+        if dupes > 0:
+            warnings.append(f"{dupes} duplicate (match_id, team) rows")
+
+        if "coach_win_pct" in df.columns:
+            invalid = ((df["coach_win_pct"] < 0) | (df["coach_win_pct"] > 100)).sum()
+            if invalid > 0:
+                warnings.append(f"{invalid} rows with win_pct outside [0, 100]")
+
+    if warnings:
+        for w in warnings:
+            print(f"  VALIDATION WARNING (coaches): {w}")
+    else:
+        print(f"  Validation passed (coaches: {len(df)} rows)")
+
+
+def validate_player_profiles(df):
+    """Validate player profile data.
+
+    Checks:
+      - Height within reasonable range (150-220 cm)
+      - Weight within reasonable range (60-130 kg)
+    """
+    warnings = []
+
+    if "height_cm" in df.columns:
+        h = df["height_cm"].dropna()
+        out_of_range = ((h < 150) | (h > 220)).sum()
+        if out_of_range > 0:
+            warnings.append(f"{out_of_range} players with height outside 150-220 cm")
+
+    if "weight_kg" in df.columns:
+        w = df["weight_kg"].dropna()
+        out_of_range = ((w < 60) | (w > 130)).sum()
+        if out_of_range > 0:
+            warnings.append(f"{out_of_range} players with weight outside 60-130 kg")
+
+    if warnings:
+        for w in warnings:
+            print(f"  VALIDATION WARNING (profiles): {w}")
+    else:
+        print(f"  Validation passed (profiles: {len(df)} rows)")
+
+
 def validate_predictions(pred_df):
     """Validate prediction output before returning.
 

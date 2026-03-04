@@ -1,0 +1,19 @@
+{
+  "target": "scoring",
+  "best_value": 0.5055476196850056,
+  "best_params": {
+    "max_iter": 250,
+    "max_depth": 5,
+    "learning_rate": 0.1466846537325341,
+    "min_samples_leaf": 20,
+    "poisson_alpha": 0.013827246148846907,
+    "w_poisson": 0.7985540186570469
+  },
+  "n_trials": 50,
+  "n_folds": 3,
+  "fold_years": [
+    "2023",
+    "2024",
+    "2025"
+  ]
+}

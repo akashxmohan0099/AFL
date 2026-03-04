@@ -1,0 +1,15 @@
+team,opponent,venue,date,is_home
+Western Bulldogs,Adelaide,Marvel Stadium,2026-06-11,1
+Adelaide,Western Bulldogs,Marvel Stadium,2026-06-11,0
+Geelong,Gold Coast,GMHBA Stadium,2026-06-12,1
+Gold Coast,Geelong,GMHBA Stadium,2026-06-12,0
+Melbourne,Essendon,MCG,2026-06-13,1
+Essendon,Melbourne,MCG,2026-06-13,0
+North Melbourne,West Coast,Optus Stadium,2026-06-13,1
+West Coast,North Melbourne,Optus Stadium,2026-06-13,0
+Port Adelaide,Sydney,Adelaide Oval,2026-06-13,1
+Sydney,Port Adelaide,Adelaide Oval,2026-06-13,0
+Richmond,Brisbane Lions,Ninja Stadium,2026-06-14,1
+Brisbane Lions,Richmond,Ninja Stadium,2026-06-14,0
+St Kilda,Greater Western Sydney,Marvel Stadium,2026-06-14,1
+Greater Western Sydney,St Kilda,Marvel Stadium,2026-06-14,0

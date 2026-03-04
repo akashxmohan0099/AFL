@@ -1,0 +1,18 @@
+{
+  "target": "disposals",
+  "best_value": 3.899876355123196,
+  "best_params": {
+    "max_iter": 217,
+    "max_depth": 5,
+    "learning_rate": 0.05245721095495446,
+    "min_samples_leaf": 10,
+    "poisson_alpha": 0.01544196470361505
+  },
+  "n_trials": 50,
+  "n_folds": 3,
+  "fold_years": [
+    "2023",
+    "2024",
+    "2025"
+  ]
+}

@@ -91,3 +91,43 @@ written to run-versioned directories to avoid overwriting previous experiments.
 - Calibration state: stored under `calibration/run_<run_id>/calibration_state.parquet`
 - Use `--run-id <id>` to force a specific run id.
 - Sequential mode keeps calibration by default and only clears it when `--reset-calibration` is provided.
+
+## Hybrid Winner Baseline
+
+Game winner predictions now support a hybrid path:
+
+- Market prior: `market_home_implied_prob`
+- Residual model: `AFLGameWinnerModel` classifier output
+- Final probability: logit-space blend of prior + residual controlled by config:
+  - `WINNER_HYBRID_ENABLED`
+  - `WINNER_HYBRID_ALPHA`
+  - `WINNER_HYBRID_BETA`
+  - `WINNER_HYBRID_BIAS`
+
+Benchmark command:
+
+```bash
+python pipeline.py --backtest-winner --year 2024
+```
+
+The backtest now reports weighted/macro accuracy, AUC, and Brier for:
+- Hybrid model
+- Legacy residual-only model
+- Market baseline
+
+## Repo Hygiene Policy
+
+To reduce git churn while preserving benchmark reproducibility:
+
+- `data/predictions/` keeps curated benchmark snapshots only:
+  - rounds `1`, `2`, `10`, `13`, `22` (`*_predictions.csv` and `*_thresholds.csv`)
+- other generated prediction rounds are ignored by `.gitignore`
+- `data/tuning/` keeps canonical `best_params_*.json` files only
+- `app/*.pdf` and `Fixtures/` are treated as generated/manual artifacts and ignored
+
+Quick pre-commit hygiene checks:
+
+```bash
+git status --short
+git ls-files data/predictions | sort
+```

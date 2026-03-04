@@ -1,0 +1,19 @@
+team,opponent,venue,date,is_home
+Adelaide,Collingwood,Adelaide Oval,2026-07-23,1
+Collingwood,Adelaide,Adelaide Oval,2026-07-23,0
+Brisbane Lions,Port Adelaide,The Gabba,2026-07-23,1
+Port Adelaide,Brisbane Lions,The Gabba,2026-07-23,0
+Carlton,Gold Coast,Marvel Stadium,2026-07-23,1
+Gold Coast,Carlton,Marvel Stadium,2026-07-23,0
+Fremantle,West Coast,Optus Stadium,2026-07-23,1
+West Coast,Fremantle,Optus Stadium,2026-07-23,0
+Greater Western Sydney,Sydney,ENGIE Stadium,2026-07-23,1
+Sydney,Greater Western Sydney,ENGIE Stadium,2026-07-23,0
+Hawthorn,Essendon,MCG,2026-07-23,1
+Essendon,Hawthorn,MCG,2026-07-23,0
+North Melbourne,St Kilda,Marvel Stadium,2026-07-23,1
+St Kilda,North Melbourne,Marvel Stadium,2026-07-23,0
+Melbourne,Geelong,MCG,2026-07-23,1
+Geelong,Melbourne,MCG,2026-07-23,0
+Western Bulldogs,Richmond,Marvel Stadium,2026-07-23,1
+Richmond,Western Bulldogs,Marvel Stadium,2026-07-23,0

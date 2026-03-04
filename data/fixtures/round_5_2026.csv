@@ -1,0 +1,19 @@
+team,opponent,venue,date,is_home
+Adelaide,Carlton,Adelaide Oval,2026-04-09,1
+Carlton,Adelaide,Adelaide Oval,2026-04-09,0
+Collingwood,Fremantle,Adelaide Oval,2026-04-10,1
+Fremantle,Collingwood,Adelaide Oval,2026-04-10,0
+North Melbourne,Brisbane Lions,Barossa Park,2026-04-11,1
+Brisbane Lions,North Melbourne,Barossa Park,2026-04-11,0
+Essendon,Melbourne,Adelaide Oval,2026-04-11,1
+Melbourne,Essendon,Adelaide Oval,2026-04-11,0
+Sydney,Gold Coast,Norwood Oval,2026-04-11,1
+Gold Coast,Sydney,Norwood Oval,2026-04-11,0
+Hawthorn,Western Bulldogs,Adelaide Oval,2026-04-11,1
+Western Bulldogs,Hawthorn,Adelaide Oval,2026-04-11,0
+Geelong,West Coast,Norwood Oval,2026-04-12,1
+West Coast,Geelong,Norwood Oval,2026-04-12,0
+Greater Western Sydney,Richmond,Barossa Park,2026-04-12,1
+Richmond,Greater Western Sydney,Barossa Park,2026-04-12,0
+Port Adelaide,St Kilda,Adelaide Oval,2026-04-12,1
+St Kilda,Port Adelaide,Adelaide Oval,2026-04-12,0

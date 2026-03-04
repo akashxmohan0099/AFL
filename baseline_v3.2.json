@@ -1,0 +1,172 @@
+{
+  "version": "3.2",
+  "label": "BASELINE v3.2 \u2014 Config C v3.1 legacy feature set (revert)",
+  "season": 2025,
+  "run_id": "ablate_c_v31_legacy_2025",
+  "settings": {
+    "market_player_feature_config": "v31_legacy",
+    "selection_rule": "A must be at/better than v3.1 on all disposal Briers (15+/20+/25+/30+)"
+  },
+  "n_predictions": 9931,
+  "n_rounds": 28,
+  "thresholds": {
+    "1plus_goals": {
+      "brier_score": 0.1588,
+      "log_loss": 0.4787,
+      "n": 9931,
+      "base_rate": 0.3305,
+      "hit_rate_p50": 0.6969,
+      "n_confident_p50": 2554,
+      "hit_rate_p70": 0.791,
+      "n_confident_p70": 1249
+    },
+    "2plus_goals": {
+      "brier_score": 0.0859,
+      "log_loss": 0.2807,
+      "n": 9931,
+      "base_rate": 0.125,
+      "hit_rate_p50": 0.6447,
+      "n_confident_p50": 152,
+      "hit_rate_p70": 0.6842,
+      "n_confident_p70": 19
+    },
+    "3plus_goals": {
+      "brier_score": 0.0408,
+      "log_loss": 0.1473,
+      "n": 9931,
+      "base_rate": 0.0501,
+      "hit_rate_p50": 0.5238,
+      "n_confident_p50": 21,
+      "hit_rate_p70": 1.0,
+      "n_confident_p70": 1
+    },
+    "15plus_disp": {
+      "brier_score": 0.234,
+      "log_loss": 0.6578,
+      "n": 9931,
+      "base_rate": 0.5008,
+      "hit_rate_p50": 0.5932,
+      "n_confident_p50": 7820,
+      "hit_rate_p70": 0.9233,
+      "n_confident_p70": 352
+    },
+    "20plus_disp": {
+      "brier_score": 0.1851,
+      "log_loss": 0.5519,
+      "n": 9931,
+      "base_rate": 0.2722,
+      "hit_rate_p50": 0.8306,
+      "n_confident_p50": 183,
+      "hit_rate_p70": 0.9,
+      "n_confident_p70": 50
+    },
+    "25plus_disp": {
+      "brier_score": 0.1044,
+      "log_loss": 0.358,
+      "n": 9931,
+      "base_rate": 0.1258,
+      "hit_rate_p50": 0.6138,
+      "n_confident_p50": 145,
+      "hit_rate_p70": 0.6792,
+      "n_confident_p70": 53
+    },
+    "30plus_disp": {
+      "brier_score": 0.0389,
+      "log_loss": 0.1586,
+      "n": 9931,
+      "base_rate": 0.0429,
+      "hit_rate_p50": null,
+      "n_confident_p50": 0,
+      "hit_rate_p70": null,
+      "n_confident_p70": 0
+    }
+  },
+  "scorer_auc": {
+    "overall": 0.8172
+  },
+  "mae": {
+    "goals": 0.5094,
+    "disposals": 3.8611,
+    "baseline_goals": 0.5391,
+    "improvement_pct": 5.5
+  },
+  "game_winner": {
+    "accuracy": 0.7176,
+    "margin_mae": 25.9,
+    "auc": 0.788,
+    "n_games": 216
+  },
+  "calibration_1plus_goals": [
+    {
+      "bin": "0-10%",
+      "predicted_mean": 0.0472,
+      "actual_rate": 0.0309,
+      "gap": 0.0163,
+      "n": 2040
+    },
+    {
+      "bin": "10-20%",
+      "predicted_mean": 0.1498,
+      "actual_rate": 0.1527,
+      "gap": 0.0028,
+      "n": 1415
+    },
+    {
+      "bin": "20-30%",
+      "predicted_mean": 0.2523,
+      "actual_rate": 0.2577,
+      "gap": 0.0055,
+      "n": 1808
+    },
+    {
+      "bin": "30-40%",
+      "predicted_mean": 0.3434,
+      "actual_rate": 0.3222,
+      "gap": 0.0212,
+      "n": 1347
+    },
+    {
+      "bin": "40-50%",
+      "predicted_mean": 0.4459,
+      "actual_rate": 0.4211,
+      "gap": 0.0248,
+      "n": 767
+    },
+    {
+      "bin": "50-60%",
+      "predicted_mean": 0.5504,
+      "actual_rate": 0.5509,
+      "gap": 0.0005,
+      "n": 599
+    },
+    {
+      "bin": "60-70%",
+      "predicted_mean": 0.6503,
+      "actual_rate": 0.6544,
+      "gap": 0.004,
+      "n": 706
+    },
+    {
+      "bin": "70-80%",
+      "predicted_mean": 0.7474,
+      "actual_rate": 0.7554,
+      "gap": 0.008,
+      "n": 830
+    },
+    {
+      "bin": "80-90%",
+      "predicted_mean": 0.8355,
+      "actual_rate": 0.8402,
+      "gap": 0.0047,
+      "n": 363
+    },
+    {
+      "bin": "90-100%",
+      "predicted_mean": 0.9294,
+      "actual_rate": 1.0,
+      "gap": 0.0706,
+      "n": 56
+    }
+  ],
+  "calibration_ece": 0.0111
+}
