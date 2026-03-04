@@ -1,0 +1,20 @@
+{
+  "target": "winner",
+  "best_value": -0.7410211488769821,
+  "best_params": {
+    "k_factor": 12.306252982643414,
+    "home_advantage": 16.225401526418757,
+    "season_regression": 0.28527397761704854,
+    "max_iter": 64,
+    "max_depth": 4,
+    "learning_rate": 0.031618257689671296,
+    "min_samples_leaf": 13
+  },
+  "n_trials": 50,
+  "n_folds": 3,
+  "fold_years": [
+    "2023",
+    "2024",
+    "2025"
+  ]
+}

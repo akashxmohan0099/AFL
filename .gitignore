@@ -18,3 +18,40 @@ data/models/*.pkl
 # Logs and images
 scraper.log
 *.png
+
+# ---------------------------------------------------------------------------
+# Generated artifacts / selective tracking policy
+# ---------------------------------------------------------------------------
+
+# App-generated documents (keep source, ignore rendered binaries)
+app/*.pdf
+
+# Local fixture source documents (manual working assets, root folder only)
+/Fixtures/
+
+# Prediction outputs:
+# ignore all generated round files by default,
+# keep curated benchmark snapshots tracked.
+data/predictions/round_*_predictions.csv
+data/predictions/round_*_thresholds.csv
+!data/predictions/round_1_predictions.csv
+!data/predictions/round_1_thresholds.csv
+!data/predictions/round_2_predictions.csv
+!data/predictions/round_2_thresholds.csv
+!data/predictions/round_10_predictions.csv
+!data/predictions/round_10_thresholds.csv
+!data/predictions/round_13_predictions.csv
+!data/predictions/round_13_thresholds.csv
+!data/predictions/round_22_predictions.csv
+!data/predictions/round_22_thresholds.csv
+
+# Fixture inputs: keep canonical CSV/roster inputs, ignore other generated files.
+data/fixtures/*
+!data/fixtures/rosters_*.json
+!data/fixtures/round_*_*.csv
+
+# Hyperparameter tuning outputs: keep canonical best params only.
+data/tuning/*
+!data/tuning/best_params_scoring.json
+!data/tuning/best_params_disposals.json
+!data/tuning/best_params_winner.json

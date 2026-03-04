@@ -1,0 +1,201 @@
+{
+  "Adelaide": [
+    "Neal-Bullen, Alex", "Ludowyke, Archie", "Keays, Ben", "Dowling, Billy", "Cook, Brayden",
+    "Ah Chee, Callum", "Edwards, Charlie", "Jones, Chayce", "Curtin, Daniel", "Fogarty, Darcy",
+    "Maley, Finnbar", "Bond, Hugh", "Cotton, Indy", "Cumming, Isaac", "Rankine, Izak",
+    "Soligo, Jake", "Borlase, James", "Peatling, James", "Dawson, Jordan", "Butts, Jordon",
+    "Rachele, Josh", "Worrell, Josh", "McAndrew, Lachlan", "Sholl, Lachlan", "Nankervis, Luke",
+    "Pedlar, Luke", "Keane, Mark", "Michalanney, Max", "Hinge, Mitch", "Marsh, Mitchell",
+    "Murray, Nick", "Ryan, Oscar", "O'Brien, Reilly", "Thilthorpe, Riley", "Laird, Rory",
+    "Berry, Sam", "Draper, Sid", "Walker, Taylor", "Murray, Toby", "Welsh, Tyler",
+    "Milera, Wayne", "Taylor, Zac"
+  ],
+  "Brisbane Lions": [
+    "Murphy, Ben", "Reville, Bruce", "Rayner, Cam", "Cameron, Charlie", "Curtin, Cody",
+    "McKenna, Conor", "Annable, Daniel", "Fort, Darcy", "Gardiner, Darcy", "Wilmot, Darcy",
+    "Joyce, Darragh", "Zorko, Dayne", "Hipwood, Eric", "Andrews, Harris", "Smith, Henry",
+    "McCluggage, Hugh", "Payne, Jack", "Tunstill, James", "Berry, Jarrod", "Fletcher, Jaspa",
+    "Dunkley, Josh", "Lohmann, Kai", "Coleman, Keidean", "Evans, Koby", "Neale, Lachie",
+    "Ashcroft, Levi", "McCarthy, Lincoln", "Morris, Logan", "Beecken, Luke", "Lloyd, Luke",
+    "Answerth, Noah", "Allen, Oscar", "Torrent, Reece", "Lester, Ryan", "Draper, Sam",
+    "Marshall, Sam", "Brain, Shadeau", "Hayes, Tai", "Doedee, Tom", "Gallop, Ty",
+    "Ashcroft, Will", "McLachlan, Will", "Bailey, Zac", "Zakostelsky, Zane"
+  ],
+  "Carlton": [
+    "Cerra, Adam", "Saad, Adam", "Moir, Ashton", "Ainsworth, Ben", "Camporeale, Ben",
+    "Wilson, Billy", "Acres, Blake", "Kemp, Brodie", "Chesser, Campbell", "Lord, Cooper",
+    "Young, Flynn", "Evans, Francis", "Hewett, George", "Charleson, Harry", "Dean, Harry",
+    "McKay, Harry", "O'Farrell, Harry", "O'Keeffe, Hudson", "Ison, Jack", "Weitering, Jacob",
+    "Smith, Jagga", "Motlop, Jesse", "Boyd, Jordan", "Fogarty, Lachie", "Cowan, Lachlan",
+    "Young, Lewis", "Reidy, Liam", "Camporeale, Lucas", "Pittonet, Marc", "Duffy, Matt",
+    "Carroll, Matt", "Cottrell, Matthew", "McGovern, Mitch", "Newman, Nic", "Haynes, Nick",
+    "Florent, Oliver", "Hollands, Oliver", "Cripps, Patrick", "Monahan, Rob", "Walsh, Sam",
+    "Byrne, Talor", "Hayward, Will", "Williams, Zac"
+  ],
+  "Collingwood": [
+    "Anderson, Angus", "McCreery, Beau", "Frampton, Billy", "Hill, Bobby", "Maynard, Brayden",
+    "West, Charlie", "Houston, Dan", "McStay, Daniel", "Cameron, Darcy", "Moore, Darcy",
+    "Allan, Edward", "DeMattia, Harry", "Perryman, Harry", "Harrison, Harvey", "Smit, Iliro",
+    "Quaynor, Isaac", "Buller, Jack", "Crisp, Jack", "Saxena, Jai", "Ryan, Jakob",
+    "Elliott, Jamie", "Howe, Jeremy", "Cochran, Joel", "De Goey, Jordan", "Daicos, Josh",
+    "Schultz, Lachie", "Sullivan, Lachlan", "Long, Ned", "Daicos, Nick", "Howes, Noah",
+    "Steene, Oscar", "Lipinski, Patrick", "McInnes, Reef", "Steele, Roan", "Swadling, Sam",
+    "Pendlebury, Scott", "Sidebottom, Steele", "Jiath, Tew", "Membrey, Tim", "Prindable, Tyan",
+    "Parker, Wil", "Hayes, Will", "McCarthy, Zac"
+  ],
+  "Essendon": [
+    "McGrath, Andrew", "Clarke, Angus", "Day-Wicks, Archer", "May, Archie", "Perkins, Archie",
+    "Roberts, Archie", "McKay, Ben", "Fiorini, Brayden", "Bourke, Cillian", "Parish, Darcy",
+    "Sharp, Dyson", "Tsatas, Elijah", "Jones, Harry", "El Achkar, Hussien", "Kako, Isaac",
+    "Farrow, Jacob", "Gresham, Jade", "Prior, Jaxon", "Nguyen, Jayden", "Ridley, Jordan",
+    "Caldwell, Jye", "Gerreyn, Kayle", "Langford, Kyle", "Blakiston, Lachlan", "Hayes, Lewis",
+    "McMahon, Liam", "Redman, Mason", "Guelfi, Matt", "Kondogiannis, Max", "Caddy, Nate",
+    "Martin, Nic", "Bryan, Nick", "Cox, Nik", "Wright, Peter", "Unwin, Rhys",
+    "El-Hawli, Saad", "Durham, Sam", "Robey, Sullivan", "Edwards, Tom", "Visentini, Vigo",
+    "Setterfield, Will", "Duursma, Xavier", "Merrett, Zach", "Reid, Zach", "Johnson, Zak"
+  ],
+  "Fremantle": [
+    "Sweid, Adam", "Riddle, Aiden", "Pearce, Alex", "Brayshaw, Andrew", "Banfield, Bailey",
+    "Walker, Brandon", "Cox, Brennan", "Serong, Caleb", "Nicholls, Charlie", "Simpson, Cooper",
+    "Wagner, Corey", "Young, Hayden", "Chapman, Heath", "Davies, Hugh", "Dudley, Isaiah",
+    "O'Meara, Jaeger", "Carr, Jaren", "Sharp, Jeremy", "Clark, Jordan", "Treacy, Josh",
+    "Draper, Josh", "McVee, Judd", "Amiss, Jye", "Worner, Karl", "Kickett, Leon",
+    "Jackson, Luke", "Ryan, Luke", "Cox, Mason", "Johnson, Matthew", "Frederick, Michael",
+    "Reid, Murphy", "O'Driscoll, Nathan", "Erasmus, Neil", "Murphy, Ollie", "McDonald, Oscar",
+    "Voss, Patrick", "Luke, Ryda", "Sturt, Sam", "Switkowski, Sam", "Darcy, Sean",
+    "Bolton, Shai", "Whan, Toby", "Murray, Tobyn"
+  ],
+  "Geelong": [
+    "Smith, Bailey", "Close, Brad", "Burke, Cillian", "O'Sullivan, Connor", "Stevens, George",
+    "Miers, Gryan", "Barker, Harley", "Holmes, Hunter", "Bowes, Jack", "Henry, Jack",
+    "Martin, Jack", "Molier, Jacob", "Kolodjashnij, Jake", "Worpel, James", "Polkinghorne, James",
+    "Bews, Jed", "Cameron, Jeremy", "Mellor, Jesse", "Clark, Jhye", "Pike, Joe",
+    "Matofai-Forbes, Keighton", "Humphries, Lawson", "Hofmann, Lennox", "Blicavs, Mark",
+    "O'Connor, Mark", "Holmes, Max", "Knevitt, Mitch", "Edwards, Mitchell", "Driscoll, Nicholas",
+    "Mullin, Oisin", "Dempsey, Oliver", "Henry, Oliver", "Wiltshire, Oliver", "Dangerfield, Patrick",
+    "Stanley, Rhys", "De Koning, Sam", "Neale, Shannon", "Mannagh, Shaun", "Bruhn, Tanner",
+    "Conway, Toby", "Atkins, Tom", "Stewart, Tom", "Stengle, Tyson", "Guthrie, Zach"
+  ],
+  "Gold Coast": [
+    "Davies, Alex", "Eastham, Asher", "Thomas, Avery", "Humphrey, Bailey", "Addinsall, Beau",
+    "Jepson, Ben", "King, Ben", "Long, Ben", "Uwland, Bodhi", "Graham, Caleb",
+    "Lewis, Caleb", "Ballard, Charlie", "Petracca, Christian", "Bell, Cooper", "Rioli, Daniel",
+    "Patterson, Dylan", "Himmelberg, Elliott", "Read, Ethan", "Murray, Jai", "Rogers, Jake",
+    "Ugle-Hagan, Jamarra", "Witts, Jarrod", "Walter, Jed", "Jeffrey, Joel", "Noble, John",
+    "Farrar, Jy", "Coulson, Koby", "Weller, Lachie", "Gulbin, Lachlan", "Lombard, Leo",
+    "Andrew, Mac", "Rowell, Matt", "Knobel, Max", "Moyle, Ned", "Holman, Nick",
+    "Anderson, Noah", "Adams, Oscar", "Clohesy, Sam", "Collins, Sam", "Miller, Touk",
+    "Powell, Wil", "Graham, Will", "Evans, Zak", "Uwland, Zeke"
+  ],
+  "Greater Western Sydney": [
+    "Cadman, Aaron", "Daniels, Brent", "Brown, Callum", "Oliver, Clayton", "Angove, Cody",
+    "Idun, Connor", "Stone, Conor", "Jones, Darcy", "Callaghan, Finn", "Davis, Finnegan",
+    "Oliver, Harrison", "Himmelberg, Harry", "Rowston, Harry", "Thomas, Harvey", "Buckley, Jack",
+    "Ough, Jack", "Riccardi, Jake", "Stringer, Jake", "Leake, James", "Laverde, Jayden",
+    "Hogan, Jesse", "Fonti, Joe", "Delana, Josaia", "Kelly, Josh", "Briggs, Kieren",
+    "Ash, Lachie", "Whitfield, Lachie", "Aleer, Leek", "Smith, Logan", "Gruzewski, Max",
+    "Wardius, Nathan", "Madden, Nick", "Hannaford, Oliver", "Taylor, Oskar", "Gothard, Phoenix",
+    "Hamilton, Riley", "Angwin, Ryan", "Taylor, Sam", "Coniglio, Stephen", "Bedford, Toby",
+    "Greene, Toby", "McMullin, Toby", "Green, Tom", "O'Halloran, Xavier"
+  ],
+  "Hawthorn": [
+    "Schubert, Aidan", "Macdonald, Bailey", "Hardwick, Blake", "Ryan, Bodie", "Dear, Calsher",
+    "Mackenzie, Cam", "Nairn, Cameron", "Anderson, Cody", "Macdonald, Connor", "Nash, Conor",
+    "Moore, Dylan", "Maginness, Finn", "Morrison, Harry", "Hustwaite, Henry", "Dalton, Jack",
+    "Ginnivan, Jack", "Gunston, Jack", "Scrimshaw, Jack", "Newcombe, Jai", "Uhr-Henry, Jaime",
+    "Blanck, James", "Sicily, James", "Impey, Jarman", "Battle, Josh", "Ward, Josh",
+    "Weddle, Josh", "Amon, Karl", "Meek, Lloyd", "Chol, Mabior", "D'Ambrosio, Massimo",
+    "Hill, Matt", "LeRay, Matthew", "Ramsden, Max", "Lewis, Mitch", "Reeves, Ned",
+    "Watson, Nick", "Mraz, Noah", "Greeves, Oliver", "Butler, Sam", "Barrass, Tom",
+    "Day, Will", "McCabe, William"
+  ],
+  "Melbourne": [
+    "Johnson, Aidan", "Moniz-Wakefield, Andy", "Laurie, Bailey", "Fritsch, Bayley", "Howes, Blake",
+    "Mihocek, Brody", "Windsor, Caleb", "Jiath, Changkuoth", "Salem, Christian", "Turner, Daniel",
+    "Langdon, Ed", "Petty, Harry", "Sharp, Harry", "Langford, Harvey", "Henderson, Jack",
+    "Steele, Jack", "Viney, Jack", "van Rooyen, Jacob", "Culley, Jai", "Bowey, Jake",
+    "Lever, Jake", "Melksham, Jake", "Adams, Jed", "Chandler, Kade", "White, Kalani",
+    "Tholstrup, Koltyn", "Pickett, Kysaiah", "Pickett, Latrelle", "Kentfield, Luker",
+    "Jefferson, Matthew", "Gawn, Max", "Heath, Max", "Berry, Oscar", "Mentha, Ricky",
+    "Onley, Riley", "McAdam, Shane", "May, Steven", "Matthews, Thomas", "Campbell, Tom",
+    "McDonald, Tom", "Sparrow, Tom", "Rivers, Trent", "Lindsay, Xavier", "Taylor, Xavier"
+  ],
+  "North Melbourne": [
+    "Corr, Aidan", "Scott, Bailey", "Thredgold, Blake", "George, Brayden", "Daniel, Caleb",
+    "Coleman-Jones, Callum", "Zurhaar, Cameron", "Comben, Charlie", "Spargo, Charlie",
+    "McKercher, Colby", "Harvey, Cooper", "Trembath, Cooper", "Stephens, Dylan", "O'Sullivan, Finn",
+    "Wardlaw, George", "Logue, Griffin", "Sheezel, Harry", "Mikunda, Hugo", "Darling, Jack",
+    "Archer, Jackson", "Konstanty, Jacob", "Goater, Josh", "Simpkin, Jy", "Dovaston, Lachy",
+    "Davies-Uniacke, Luke", "McDonald, Luke", "Parker, Luke", "Urquhart, Luke", "Whitlock, Matt",
+    "Larkey, Nick", "Curtis, Paul", "Hardeman, Riley", "Stevens, River", "Hansen Jr, Robert",
+    "Goad, Taylor", "Pink, Toby", "Powell, Tom", "Xerri, Tristan", "Dawson, Wil",
+    "Banch, Zac", "Fisher, Zac", "Duursma, Zane"
+  ],
+  "Port Adelaide": [
+    "Aliir, Aliir", "Barrett, Benny", "Zerk-Thatcher, Brandon", "Moraes, Christian", "Rozee, Connor",
+    "Durdin, Corey", "Visentini, Dante", "Byrne-Jones, Darcy", "Ratugolea, Esava", "Mackinlay, Ewan",
+    "Ramm, Harrison", "Soldo, Ivan", "Lukosius, Jack", "Watkins, Jack", "Whitlock, Jack",
+    "Mead, Jackson", "Moss, Jacob", "Wehr, Jacob", "Burgoyne, Jase", "Horne-Francis, Jason",
+    "Berry, Joe", "Richards, Joe", "Sweet, Jordon", "Lai, Josh", "Sinn, Josh",
+    "Farrell, Kane", "Jones, Lachie", "Evans, Logan", "Liddy, Mani", "Bergman, Miles",
+    "Georgiades, Mitch", "Lord, Ollie", "Wines, Ollie", "Powell-Pepper, Sam", "Marshall, Todd",
+    "Anastasopoulos, Tom", "Cochrane, Tom", "Brodie, Will", "Lorenz, Will", "Drew, Willem",
+    "Walsh, Xavier", "Butters, Zak"
+  ],
+  "Richmond": [
+    "Miller, Ben", "Gray, Campbell", "Prestia, Dion", "Armstrong, Harry", "Ralphsmith, Hugo",
+    "Ross, Jack", "Hopper, Jacob", "Trezise, James", "Alger, Jasper", "Short, Jayden",
+    "Faull, Jonty", "Gibcus, Josh", "Smillie, Josh", "Clarke, Judson", "Smith, Kaleb",
+    "McAuliffe, Kane", "Fawcett, Liam", "Trainor, Luke", "Rioli, Maurice", "Lefau, Mykelti",
+    "Broad, Nathan", "Vlastuin, Nick", "Balta, Noah", "Roberts-Thomson, Noah", "Hayes-Brown, Oliver",
+    "Retschko, Patrick", "Mansell, Rhyan", "Banks, Sam", "Cumming, Sam", "Grlj, Sam",
+    "Lalor, Sam", "Ryan, Samson", "Campbell, Seth", "Green, Steely", "Hotton, Taj",
+    "Taranto, Tim", "Nankervis, Toby", "Brown, Tom", "Lynch, Tom", "Sims, Tom",
+    "Sonsie, Tyler", "Peucker, Zane"
+  ],
+  "St Kilda": [
+    "Dodson, Alex", "Tauru, Alix", "Hastie, Angus", "Caminiti, Anthony", "Hill, Bradley",
+    "Wilkie, Callum", "Banfield, Charlie", "Sharman, Cooper", "Butler, Dan", "Wilson, Darcy",
+    "Howard, Dougal", "Armstrong, Eamonn", "Boxshall, Hugh", "Garcia, Hugo", "Clark, Hunter",
+    "Keeler, Isaac", "Carroll, Jack", "Higgins, Jack", "Macrae, Jack", "Silvagni, Jack",
+    "Sinclair, Jack", "Barrat, James", "McDonald, Kobe", "Fincher, Kye", "Collard, Lance",
+    "Henry, Liam", "O'Connell, Liam", "Ryan, Liam", "Stocker, Liam", "Windhager, Marcus",
+    "Wood, Mason", "Phillipou, Mattaes", "Hall, Max", "King, Max", "Owens, Mitch",
+    "Wanganeen-Milera, Nasiah", "Dow, Paddy", "Said, Patrick", "Marshall, Rowan", "Byrnes, Ryan",
+    "Flanders, Sam", "Travaglia, Tobie", "De Koning, Tom"
+  ],
+  "Sydney": [
+    "Sheldrick, Angus", "Cootee, Billy", "Campbell, Braeden", "Grundy, Brodie", "Cleary, Caiden",
+    "Mills, Callum", "Warner, Chad", "Curnow, Charlie", "Warner, Corey", "Rampe, Dane",
+    "Gulden, Errol", "Cunningham, Harry", "Kyle, Harry", "McLean, Hayden", "Heeney, Isaac",
+    "Serong, Jai", "Lloyd, Jake", "Jordon, James", "Rowbottom, James", "Dattoli, Jesse",
+    "Phillipou, Jevan", "Amartey, Joel", "Hamling, Joel", "McInerney, Justin", "Melican, Lewis",
+    "Hetherton, Liam", "McDonald, Logan", "Rosas, Malcolm", "Roberts, Matt", "King, Max",
+    "Bowman, Ned", "Blakey, Nick", "Chamberlain, Noah", "Snell, Patrick", "Ladhams, Peter",
+    "Andrew, Riak", "Bice, Riley", "Wicks, Sam", "Adams, Taylor", "Hanily, Tom",
+    "McCartin, Tom", "Papley, Tom", "Edwards, William", "Green, William"
+  ],
+  "West Coast": [
+    "Reid, Archer", "Williams, Bailey J.", "Allan, Bo", "Hough, Brady", "Starcevich, Brandon",
+    "Hall, Clay", "Duff-Tytler, Cooper", "Robertson, Deven", "Hewett, Elijah", "Yeo, Elliot",
+    "Macrae, Finlay", "Rodriguez, Fred", "Davis, Hamish", "Reid, Harley", "Barnett, Harry",
+    "Edwards, Harry", "Schoenberg, Harry", "Johnston, Harvey", "Graham, Jack", "Hutchinson, Jack",
+    "Williams, Jack", "Newton, Jacob", "Waterman, Jake", "Cripps, Jamie", "Shanahan, Jobe",
+    "Lindsay, Josh", "Baker, Liam", "Duggan, Liam", "Grego, Lucca", "Champion, Malakai",
+    "Flynn, Matt", "Owies, Matthew", "Long, Noah", "Ginbey, Reuben", "Bazzo, Rhett",
+    "Maric, Ryan", "Allen, Sam", "Brock, Sandy", "Kelly, Tim", "Cole, Tom",
+    "Gross, Tom", "McCarthy, Tom", "Williams, Tylah", "Young, Tylar", "Brockman, Tyler",
+    "Dewar, Tyrell", "Duursma, Willem"
+  ],
+  "Western Bulldogs": [
+    "Naughton, Aaron", "Treloar, Adam", "Jones, Arthur", "Dale, Bailey", "Williams, Bailey",
+    "Khamis, Buku", "Weightman, Cody", "Budarick, Connor", "Hynes, Cooper", "Richards, Ed",
+    "Gallagher, Harvey", "Harmes, James", "O'Donnell, James", "Busslinger, Jedd", "Freijah, Joel",
+    "Croft, Jordan", "Dolan, Josh", "Jaques, Lachie", "Bramble, Lachlan", "Carmichael, Lachlan",
+    "McNeil, Lachlan", "Smith, Lachlan", "Vandermeer, Laitham", "Emmett, Louis", "Cleary, Luke",
+    "Kennedy, Luke", "Bontempelli, Marcus", "Kennedy, Matthew", "Sellwood, Michael", "Coffield, Nick",
+    "Baker, Oskar", "West, Rhylee", "Garcia, Riley", "Lobb, Rory", "Gardner, Ryan",
+    "Sanders, Ryley", "Darcy, Sam", "Davidson, Sam", "English, Tim", "Liberatore, Tom",
+    "Darcy, Will", "Walker, Zac"
+  ]
+}

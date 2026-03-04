@@ -39,12 +39,31 @@
     "diff_team_margin_avg_5",
     "diff_team_scoring_avg_5",
     "diff_rest_days",
-    "diff_team_form_trend"
+    "diff_team_form_trend",
+    "market_handicap",
+    "market_total_score",
+    "market_confidence",
+    "odds_movement_home",
+    "odds_movement_line",
+    "betfair_home_implied_prob",
+    "market_betfair_divergence",
+    "venue_home_win_rate"
   ],
   "eval_metrics": {
-    "accuracy": 0.6296296296296297,
-    "auc": 0.6902884865286322,
-    "n_val_games": 216
+    "accuracy": 0.625,
+    "auc": 0.7043229662999221,
+    "residual_accuracy": 0.6481481481481481,
+    "residual_auc": 0.7041497011175605,
+    "hybrid_brier": 0.24274406394964976,
+    "residual_brier": 0.2189487466073896,
+    "elo_accuracy": 0.6018518518518519,
+    "market_accuracy": 0.6203703703703703,
+    "market_auc": 0.6938837390626353,
+    "market_brier": 0.21804837429489798,
+    "hybrid_enabled": true,
+    "market_coverage": 1.0,
+    "n_val_games": 216,
+    "n_features": 48
   },
   "elo_ratings": {
     "Carlton": 1439.0,
@@ -66,5 +85,12 @@
     "Hawthorn": 1767.7,
     "Geelong": 1791.9
   },
-  "has_margin_regressor": false
+  "has_margin_regressor": false,
+  "hybrid": {
+    "enabled": true,
+    "alpha": 1.0,
+    "beta": 1.0,
+    "bias": 0.0,
+    "market_eps": 1e-06
+  }
 }

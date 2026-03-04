@@ -27,10 +27,22 @@ from scipy.stats import poisson as poisson_dist
 from sklearn.metrics import roc_auc_score
 
 import config
-from clean import build_player_games, load_player_stats
+from clean import build_player_games
 from features import build_features
-from model import AFLScoringModel, AFLDisposalModel, AFLGameWinnerModel
+from model import AFLScoringModel, AFLDisposalModel, AFLMarksModel, AFLGameWinnerModel, EloSystem
 from store import LearningStore
+
+
+def _load_rosters(year):
+    """Load team rosters JSON for a given year. Returns dict or None."""
+    import json
+    roster_path = config.FIXTURES_DIR / f"rosters_{year}.json"
+    if not roster_path.exists():
+        return None
+    with open(roster_path) as f:
+        rosters = json.load(f)
+    print(f"  Loaded rosters: {sum(len(v) for v in rosters.values())} players, {len(rosters)} teams")
+    return rosters
 
 
 def _new_run_id(prefix=None):
@@ -52,6 +64,60 @@ def cmd_scrape(args):
     print(f"Scraping seasons {start}-{end}...")
     scrape_seasons(start, end, str(config.DATA_DIR))
     print("Scraping complete.")
+
+
+def cmd_scrape_profiles(args):
+    """Scrape player profile pages for physical attributes and career splits."""
+    from scraper import scrape_player_profiles
+
+    # Load recent player list from player_details
+    pd_dir = config.DATA_DIR / "player_details"
+    files = sorted(pd_dir.glob("player_details_*.csv"))
+    if not files:
+        print("No player_details files found. Run --scrape first.")
+        return
+
+    import pandas as _pd
+    from clean import normalize_player_name
+
+    # Get unique players from recent seasons
+    recent_files = files[-3:]  # last 3 seasons
+    dfs = [_pd.read_csv(f, low_memory=False) for f in recent_files]
+    details = _pd.concat(dfs, ignore_index=True)
+    # Exclude coach rows
+    details = details[details["jumper"].astype(str).str.strip() != "C"]
+    details["player"] = details["player"].apply(normalize_player_name)
+    players = sorted(details["player"].unique())
+
+    print(f"Found {len(players)} unique players from recent seasons")
+    print(f"Output directory: {config.PLAYER_PROFILES_DIR}")
+
+    result = scrape_player_profiles(players, str(config.PLAYER_PROFILES_DIR))
+    print(f"\nProfile scraping complete:")
+    print(f"  Profiles: {result['profiles']}")
+    print(f"  Vs opponent records: {result['vs_opponent']}")
+    print(f"  Vs venue records: {result['vs_venue']}")
+    if result['failed']:
+        print(f"  Failed: {len(result['failed'])} players")
+
+
+def cmd_scrape_footywire(args):
+    """Scrape FootyWire advanced stats (ED, DE%, CCL, SCL, TO, MG, TOG%)."""
+    from scrape_footywire import scrape_all_seasons
+
+    start = getattr(args, "start", None) or config.HISTORICAL_START_YEAR
+    end = getattr(args, "end", None) or config.CURRENT_SEASON_YEAR
+
+    print(f"Scraping FootyWire advanced stats for {start}-{end}...")
+    result = scrape_all_seasons(start, end, str(config.FOOTYWIRE_DIR))
+
+    if result is not None:
+        print(f"\nFootyWire scraping complete: {len(result)} total player-match rows")
+        # Build combined parquet
+        from clean import build_footywire_parquet
+        build_footywire_parquet()
+    else:
+        print("No data collected")
 
 
 def cmd_clean(args):
@@ -108,14 +174,25 @@ def cmd_predict(args, model=None, feature_df=None):
     except (FileNotFoundError, Exception):
         print("  (Disposal model not available — skipping disposal thresholds)")
 
+    # Load marks model (optional)
+    marks_model = None
+    try:
+        marks_model = AFLMarksModel()
+        marks_model.load()
+    except (FileNotFoundError, Exception):
+        print("  (Marks model not available — skipping marks thresholds)")
+
     # Load fixture file for the upcoming round
     fixture_path = config.FIXTURES_DIR / f"round_{round_num}_{year}.csv"
+
+    rosters = _load_rosters(year)
 
     if fixture_path.exists():
         fixtures = pd.read_csv(fixture_path)
         print(f"Loaded fixtures from {fixture_path}")
         predictions = _predict_from_fixtures(
-            model, fixtures, year, round_num, disp_model=disp_model
+            model, fixtures, year, round_num, disp_model=disp_model,
+            marks_model=marks_model, rosters=rosters
         )
     else:
         # If no fixture file, predict from the most recent data we have
@@ -152,6 +229,16 @@ def cmd_predict(args, model=None, feature_df=None):
             except Exception as e:
                 print(f"  Warning: Disposal predictions failed: {e}")
 
+        # Merge marks predictions if available
+        if marks_model is not None:
+            try:
+                marks_preds = marks_model.predict_distributions(
+                    round_df, store=None, feature_cols=marks_model.feature_cols
+                )
+                predictions = _merge_predictions(predictions, marks_preds)
+            except Exception as e:
+                print(f"  Warning: Marks predictions failed: {e}")
+
     # Derive P(2+) and P(3+) goals from PMF columns
     if "p_goals_0" in predictions.columns and "p_goals_1" in predictions.columns:
         predictions["p_2plus_goals"] = (
@@ -163,6 +250,37 @@ def cmd_predict(args, model=None, feature_df=None):
                 - predictions["p_goals_1"]
                 - predictions["p_goals_2"]
             ).clip(0, 1)
+
+    # Apply isotonic calibration to disposal probabilities (if available)
+    use_isotonic = getattr(config, "CALIBRATION_METHOD", "bucket") == "isotonic"
+    if use_isotonic:
+        from model import CalibratedPredictor
+        _store = LearningStore()
+        isotonic_cal = _store.load_isotonic_calibrator()
+        if isotonic_cal is not None:
+            for tgt_name, p_col in [
+                ("10plus_disp", "p_10plus_disp"),
+                ("15plus_disp", "p_15plus_disp"),
+                ("20plus_disp", "p_20plus_disp"),
+                ("25plus_disp", "p_25plus_disp"),
+                ("30plus_disp", "p_30plus_disp"),
+            ]:
+                if p_col in predictions.columns and isotonic_cal.has_calibrator(tgt_name):
+                    predictions[p_col] = np.clip(
+                        isotonic_cal.transform(tgt_name, predictions[p_col].values), 0, 1
+                    )
+            print("  Applied isotonic calibration to disposal probabilities")
+
+            # Marks isotonic calibration
+            for t in config.MARKS_THRESHOLDS:
+                tgt_name = f"{t}plus_mk"
+                p_col = f"p_{t}plus_mk"
+                if p_col in predictions.columns and isotonic_cal.has_calibrator(tgt_name):
+                    predictions[p_col] = np.clip(
+                        isotonic_cal.transform(tgt_name, predictions[p_col].values), 0, 1
+                    )
+            if any(f"p_{t}plus_mk" in predictions.columns for t in config.MARKS_THRESHOLDS):
+                print("  Applied isotonic calibration to marks probabilities")
 
     # Save predictions
     config.ensure_dirs()
@@ -214,33 +332,60 @@ def cmd_predict(args, model=None, feature_df=None):
     return predictions
 
 
-def _predict_from_fixtures(model, fixtures, year, round_num, disp_model=None):
+def _predict_from_fixtures(model, fixtures, year, round_num, disp_model=None, marks_model=None, rosters=None):
     """Build features for upcoming fixtures and generate predictions.
 
     Fixture CSV columns: team, opponent, venue, date, is_home
     Optionally: players (comma-separated player names per team)
+
+    Player resolution tiers:
+      1. CSV 'players' column (per-round team sheet overrides)
+      1.5. Roster JSON (full squad from rosters_{year}.json)
+      2. Last historical match lineup (fallback)
     """
-    # Load latest player data to get most recent stats
-    try:
-        stats = load_player_stats()
-    except FileNotFoundError:
-        print("No player stats found. Run --scrape first.")
+    # Use cleaned player games so build_features has required columns
+    pg_path = config.BASE_STORE_DIR / "player_games.parquet"
+    if not pg_path.exists():
+        print("No player_games.parquet found. Run --clean first.")
         return pd.DataFrame()
+    stats = pd.read_parquet(pg_path)
+    if stats.empty:
+        print("player_games.parquet is empty. Run --clean first.")
+        return pd.DataFrame()
+
+    date_col = "date" if "date" in stats.columns else None
+    if date_col is None:
+        print("player_games.parquet missing required 'date' column.")
+        return pd.DataFrame()
+    stats[date_col] = pd.to_datetime(stats[date_col], errors="coerce")
+    stats = stats.sort_values(date_col)
+
+    # Exclude DNP rows from lineup/history lookups.
+    if "did_not_play" in stats.columns:
+        stats_real = stats[~stats["did_not_play"].fillna(False).astype(bool)].copy()
+    else:
+        stats_real = stats
 
     all_predictions = []
 
-    for _, fixture in fixtures.iterrows():
+    for i, fixture in fixtures.iterrows():
         team = fixture["team"]
         opponent = fixture["opponent"]
         venue = fixture["venue"]
+        fixture_date = pd.to_datetime(fixture.get("date"), errors="coerce")
+        fixture_match_id = fixture.get("match_id")
+        try:
+            synthetic_match_id = int(fixture_match_id) if pd.notna(fixture_match_id) else -(int(i) + 1)
+        except Exception:
+            synthetic_match_id = -(int(i) + 1)
 
-        # Get lineup: use provided players or infer from recent matches
+        # Get lineup: Tier 1 → CSV players, Tier 1.5 → roster JSON, Tier 2 → last match
         if "players" in fixture and pd.notna(fixture.get("players")):
             players = [p.strip() for p in str(fixture["players"]).split(",")]
+        elif rosters and team in rosters:
+            players = rosters[team]
         else:
-            # Use most recent team sheet
-            date_col = "date" if "date" in stats.columns else "date_iso"
-            recent = stats[stats["team"] == team].sort_values(date_col)
+            recent = stats_real[stats_real["team"] == team].sort_values(date_col)
             last_match = recent["match_id"].iloc[-1] if len(recent) > 0 else None
             if last_match:
                 players = recent[recent["match_id"] == last_match]["player"].tolist()
@@ -249,16 +394,26 @@ def _predict_from_fixtures(model, fixtures, year, round_num, disp_model=None):
 
         # For each player, build their feature row from history
         for player in players:
-            player_history = stats[
-                (stats["player"] == player) & (stats["team"] == team)
+            # Try current team first
+            player_history = stats_real[
+                (stats_real["player"] == player) & (stats_real["team"] == team)
             ].sort_values(date_col)
 
             if len(player_history) < 1:
-                continue
+                # Transferred player — use history from previous team(s)
+                player_history = stats_real[
+                    stats_real["player"] == player
+                ].sort_values(date_col)
+                if len(player_history) < 1:
+                    continue  # True rookie, no AFL history
 
             # Use the last row's features as a template, then override
             # venue/opponent specific features
             last_row = player_history.iloc[-1:].copy()
+            last_row["match_id"] = synthetic_match_id
+            if pd.notna(fixture_date):
+                last_row["date"] = fixture_date
+            last_row["team"] = team       # Correct team for transfers
             last_row["venue"] = venue
             last_row["opponent"] = opponent
             last_row["round_number"] = round_num
@@ -267,10 +422,20 @@ def _predict_from_fixtures(model, fixtures, year, round_num, disp_model=None):
 
             all_predictions.append(last_row)
 
+    if rosters:
+        if "is_home" in fixtures.columns:
+            n_fixture_teams = fixtures[fixtures["is_home"] == 1]["team"].nunique()
+        else:
+            n_fixture_teams = fixtures["team"].nunique()
+        print(f"  Roster: {len(all_predictions)} players with history "
+              f"(from {n_fixture_teams} matches)")
+
     if not all_predictions:
         return pd.DataFrame()
 
     pred_df = pd.concat(all_predictions, ignore_index=True)
+    if "date" in pred_df.columns:
+        pred_df["date"] = pd.to_datetime(pred_df["date"], errors="coerce")
 
     # Build features for these rows
     pred_df = build_features(pred_df, save=False)
@@ -289,6 +454,16 @@ def _predict_from_fixtures(model, fixtures, year, round_num, disp_model=None):
             predictions = _merge_predictions(predictions, disp_preds)
         except Exception as e:
             print(f"  Warning: Disposal predictions failed: {e}")
+
+    # Merge marks predictions if available
+    if marks_model is not None:
+        try:
+            marks_preds = marks_model.predict_distributions(
+                pred_df, store=None, feature_cols=marks_model.feature_cols
+            )
+            predictions = _merge_predictions(predictions, marks_preds)
+        except Exception as e:
+            print(f"  Warning: Marks predictions failed: {e}")
 
     return predictions
 
@@ -714,6 +889,69 @@ def cmd_backtest(args):
         imp_path = config.BACKTEST_DIR / f"backtest_{year}_importances.csv"
         imp_df.to_csv(imp_path, index=False)
         print(f"  Feature importances saved to {imp_path}")
+
+    # Save experiment results as JSON (for A/B comparison)
+    experiment_name = getattr(args, "save_experiment", None)
+    if experiment_name and all_actual_goals:
+        actual = np.concatenate(all_actual_goals)
+        threshold_results = {}
+        for name, preds, y in [
+            ("1plus_goals", np.concatenate(all_p_1plus), (actual >= 1).astype(int)),
+            ("2plus_goals", np.concatenate(all_p_2plus), (actual >= 2).astype(int)),
+            ("3plus_goals", np.concatenate(all_p_3plus), (actual >= 3).astype(int)),
+        ]:
+            metrics = _compute_threshold_metrics(preds, y)
+            if metrics:
+                # Add hit_rate at 50% and 70% confidence thresholds
+                p_arr = np.asarray(preds)
+                y_arr = np.asarray(y)
+                for pct, threshold in [("p50", 0.5), ("p70", 0.7)]:
+                    confident = p_arr >= threshold
+                    n_conf = int(confident.sum())
+                    if n_conf > 0:
+                        hit_rate = round(float(y_arr[confident].mean()), 4)
+                    else:
+                        hit_rate = None
+                    metrics[f"hit_rate_{pct}"] = hit_rate
+                    metrics[f"n_confident_{pct}"] = n_conf
+                threshold_results[name] = metrics
+
+        # Compute ECE from 1plus_goals calibration curve
+        cal_ece = None
+        if "1plus_goals" in threshold_results:
+            cal_curve = threshold_results["1plus_goals"].get("calibration_curve", [])
+            if cal_curve:
+                total_n = sum(b["count"] for b in cal_curve)
+                if total_n > 0:
+                    cal_ece = round(sum(
+                        abs(b["predicted_mean"] - b["observed_mean"]) * b["count"]
+                        for b in cal_curve
+                    ) / total_n, 4)
+
+        experiment_data = {
+            "label": experiment_name,
+            "season": year,
+            "run_id": run_id,
+            "n_predictions": int(len(actual)),
+            "n_rounds": len(results),
+            "thresholds": threshold_results,
+            "scorer_auc": {
+                "overall": round(float(overall_auc), 4) if not np.isnan(overall_auc) else None,
+            },
+            "mae": {
+                "goals": round(float(overall_mae), 4),
+                "baseline_goals": round(float(overall_baseline), 4),
+                "improvement_pct": round(float(overall_improv), 1),
+            },
+            "calibration_ece": cal_ece,
+        }
+
+        experiments_dir = config.EXPERIMENTS_DIR
+        experiments_dir.mkdir(parents=True, exist_ok=True)
+        exp_path = experiments_dir / f"{experiment_name}.json"
+        with open(exp_path, "w") as f:
+            json.dump(experiment_data, f, indent=2)
+        print(f"\n  Experiment saved to {exp_path}")
 
 
 def cmd_diagnose(args):
@@ -1174,6 +1412,8 @@ def _build_outcomes(test_df, tm_round=None):
     })
     if "DI" in test_df.columns:
         result["actual_disposals"] = test_df["DI"].values
+    if "MK" in test_df.columns:
+        result["actual_marks"] = test_df["MK"].values
     return result
 
 
@@ -1203,6 +1443,10 @@ def _build_diagnostics(predictions, outcomes, test_df=None):
     if "predicted_disposals" in merged.columns and "actual_disposals" in merged.columns:
         di_error = merged["predicted_disposals"].values - merged["actual_disposals"].values
         diag["disposal_error"] = np.round(di_error, 4)
+
+    if "predicted_marks" in merged.columns and "actual_marks" in merged.columns:
+        mk_error = merged["predicted_marks"].values - merged["actual_marks"].values
+        diag["marks_error"] = np.round(mk_error, 4)
 
     # Miss classification
     if test_df is not None and "predicted_goals" in merged.columns:
@@ -1289,7 +1533,7 @@ def _update_sequential_calibration(store, preds, test_df):
 
 
 def _predict_games_for_round(winner_model, tm_train, tm_round,
-                             player_predictions_df=None):
+                             player_predictions_df=None, store=None):
     """Build game features and predict for a specific round's matches."""
     # Combine training data with round data for feature computation
     combined = pd.concat([tm_train, tm_round], ignore_index=True)
@@ -1298,7 +1542,8 @@ def _predict_games_for_round(winner_model, tm_train, tm_round,
 
     try:
         result = winner_model.predict_with_margin(
-            combined, player_predictions_df=player_predictions_df
+            combined, player_predictions_df=player_predictions_df,
+            store=store,
         )
         # Filter to only the round's matches
         round_match_ids = tm_round["match_id"].unique()
@@ -1372,6 +1617,15 @@ def cmd_sequential(args, disposal_distribution=None):
     round_results = []
 
     from analysis import generate_round_analysis
+    from model import CalibratedPredictor
+
+    # Isotonic calibration state
+    use_isotonic = getattr(config, "CALIBRATION_METHOD", "bucket") == "isotonic"
+    isotonic_min = getattr(config, "ISOTONIC_MIN_SAMPLES", 100)
+    isotonic_interval = getattr(config, "ISOTONIC_REFIT_INTERVAL", 5)
+    isotonic_calibrator = store.load_isotonic_calibrator() or CalibratedPredictor()
+    # Accumulate predictions/actuals for isotonic fitting
+    _iso_accum = {}  # target_name → {"preds": [], "actuals": []}
 
     for rnd in rounds:
         rnd_int = int(rnd)
@@ -1398,6 +1652,11 @@ def cmd_sequential(args, disposal_distribution=None):
         )
         disposal_model.train_backtest(train_df, feature_cols)
 
+        marks_model = AFLMarksModel(
+            distribution=config.MARKS_DISTRIBUTION
+        )
+        marks_model.train_backtest(train_df, feature_cols)
+
         # Build player-level predictions on training data for game winner features
         from model import _prepare_features
         player_preds_for_gw = pd.DataFrame()
@@ -1411,9 +1670,11 @@ def cmd_sequential(args, disposal_distribution=None):
                 _pp_raw, _pp_scaled, "goals"
             )
             _pp_di = disposal_model._predict_raw(_pp_raw, _pp_scaled)
+            _pp_mk = marks_model._predict_raw(_pp_raw, _pp_scaled)
             player_preds_for_gw = train_df[["match_id", "team"]].copy()
             player_preds_for_gw["predicted_goals"] = _pp_gl
             player_preds_for_gw["predicted_disposals"] = _pp_di
+            player_preds_for_gw["predicted_marks"] = _pp_mk
         except Exception:
             pass  # Fall back to no player predictions
 
@@ -1447,9 +1708,11 @@ def cmd_sequential(args, disposal_distribution=None):
                             _tp_raw, _tp_scaled, "goals"
                         )
                         _tp_di = disposal_model._predict_raw(_tp_raw, _tp_scaled)
+                        _tp_mk = marks_model._predict_raw(_tp_raw, _tp_scaled)
                         _test_pp = test_df[["match_id", "team"]].copy()
                         _test_pp["predicted_goals"] = _tp_gl
                         _test_pp["predicted_disposals"] = _tp_di
+                        _test_pp["predicted_marks"] = _tp_mk
                     except Exception:
                         pass
                     # Combine train + test player preds for predict_with_margin
@@ -1458,6 +1721,7 @@ def cmd_sequential(args, disposal_distribution=None):
                     game_preds = _predict_games_for_round(
                         winner_model, tm_train, tm_round,
                         player_predictions_df=all_pp if not all_pp.empty else None,
+                        store=store,
                     )
                 except Exception as e:
                     print(f"  Warning: Game winner model failed for R{rnd_int}: {e}")
@@ -1465,9 +1729,12 @@ def cmd_sequential(args, disposal_distribution=None):
         # 3. PREDICT (distributions)
         scoring_preds = scoring_model.predict_distributions(test_df, store, feature_cols)
         disposal_preds = disposal_model.predict_distributions(test_df, store, feature_cols)
+        marks_preds = marks_model.predict_distributions(test_df, store, feature_cols)
 
-        # 4. SAVE
+        # 4. SAVE (apply isotonic calibration before saving)
         merged_preds = _merge_predictions(scoring_preds, disposal_preds)
+        merged_preds = _merge_predictions(merged_preds, marks_preds)
+
         outcomes = _build_outcomes(test_df)
         diagnostics = _build_diagnostics(merged_preds, outcomes, test_df=test_df)
 
@@ -1481,6 +1748,72 @@ def cmd_sequential(args, disposal_distribution=None):
         # 5. LEARN
         _update_sequential_calibration(store, merged_preds, test_df)
         store.compute_calibration_adjustments()
+
+        # 5b. Isotonic calibration: accumulate data and refit periodically
+        if use_isotonic:
+            actual_goals = test_df["GL"].values
+            actual_disp = test_df["DI"].values if "DI" in test_df.columns else None
+
+            # Accumulate goal thresholds
+            if "p_scorer" in merged_preds.columns:
+                _iso_accum.setdefault("1plus_goals", {"preds": [], "actuals": []})
+                _iso_accum["1plus_goals"]["preds"].extend(merged_preds["p_scorer"].values.tolist())
+                _iso_accum["1plus_goals"]["actuals"].extend((actual_goals >= 1).astype(int).tolist())
+
+            if "lambda_goals" in merged_preds.columns:
+                from scipy.stats import poisson as _poi
+                lam = merged_preds["lambda_goals"].values
+                for threshold, name in [(2, "2plus_goals"), (3, "3plus_goals")]:
+                    p_exceed = np.array([1 - _poi.cdf(threshold - 1, max(mu, 0.01)) for mu in lam])
+                    _iso_accum.setdefault(name, {"preds": [], "actuals": []})
+                    _iso_accum[name]["preds"].extend(p_exceed.tolist())
+                    _iso_accum[name]["actuals"].extend((actual_goals >= threshold).astype(int).tolist())
+
+            # Accumulate disposal thresholds
+            if actual_disp is not None:
+                for t in config.DISPOSAL_THRESHOLDS:
+                    p_col = f"p_{t}plus_disp"
+                    if p_col in merged_preds.columns:
+                        name = f"{t}plus_disp"
+                        _iso_accum.setdefault(name, {"preds": [], "actuals": []})
+                        _iso_accum[name]["preds"].extend(merged_preds[p_col].values.astype(float).tolist())
+                        _iso_accum[name]["actuals"].extend((actual_disp >= t).astype(int).tolist())
+
+            # Accumulate marks thresholds
+            actual_marks = test_df["MK"].values if "MK" in test_df.columns else None
+            if actual_marks is not None:
+                for t in config.MARKS_THRESHOLDS:
+                    p_col = f"p_{t}plus_mk"
+                    if p_col in merged_preds.columns:
+                        name = f"{t}plus_mk"
+                        _iso_accum.setdefault(name, {"preds": [], "actuals": []})
+                        _iso_accum[name]["preds"].extend(merged_preds[p_col].values.astype(float).tolist())
+                        _iso_accum[name]["actuals"].extend((actual_marks >= t).astype(int).tolist())
+
+            # Accumulate game winner calibration data
+            if not game_preds.empty and "home_win_prob" in game_preds.columns and has_team_data:
+                home_round = tm_round[tm_round["is_home"]].copy()
+                if not home_round.empty:
+                    home_actuals_map = home_round.set_index("match_id")["margin"].to_dict()
+                    for _, gp_row in game_preds.iterrows():
+                        mid = gp_row["match_id"]
+                        if mid in home_actuals_map:
+                            actual_win = 1 if home_actuals_map[mid] > 0 else 0
+                            _iso_accum.setdefault("game_winner", {"preds": [], "actuals": []})
+                            _iso_accum["game_winner"]["preds"].append(float(gp_row["home_win_prob"]))
+                            _iso_accum["game_winner"]["actuals"].append(actual_win)
+
+            # Refit isotonic calibrators periodically
+            rounds_done = len(round_results) + 1
+            if rounds_done % isotonic_interval == 0:
+                for tgt, data in _iso_accum.items():
+                    if len(data["preds"]) >= isotonic_min:
+                        isotonic_calibrator.fit(
+                            tgt,
+                            np.array(data["preds"]),
+                            np.array(data["actuals"]),
+                        )
+                store.save_isotonic_calibrator(isotonic_calibrator)
 
         # 6. ANALYZE
         game_actuals = tm_round if has_team_data else pd.DataFrame()
@@ -1578,6 +1911,23 @@ def cmd_train_disposals(args, feature_df=None):
     return model
 
 
+def cmd_train_marks(args, feature_df=None):
+    """Train the marks prediction model."""
+    if feature_df is None:
+        feat_path = config.FEATURES_DIR / "feature_matrix.parquet"
+        if not feat_path.exists():
+            print("No feature matrix found. Run --features first.")
+            return None
+        feature_df = pd.read_parquet(feat_path)
+
+    print(f"Training marks model ({config.MARKS_DISTRIBUTION} distribution)...")
+    model = AFLMarksModel(distribution=config.MARKS_DISTRIBUTION)
+    metrics = model.train(feature_df)
+    model.save()
+    print(f"\nMarks training complete. MAE: {metrics['marks_mae']:.4f}")
+    return model
+
+
 def cmd_train_winner(args):
     """Train the game winner prediction model."""
     team_match_path = config.BASE_STORE_DIR / "team_matches.parquet"
@@ -1592,6 +1942,514 @@ def cmd_train_winner(args):
     metrics = model.train(team_match_df)
     model.save()
     return model
+
+
+def cmd_backtest_winner(args):
+    """Walk-forward backtest for the game winner model.
+
+    For each round in --year, train on all prior data, predict that round,
+    and accumulate hybrid/residual/market metrics.
+    """
+    year = args.year
+    if not year:
+        print("Error: --backtest-winner requires --year YYYY")
+        return
+
+    tm_path = config.BASE_STORE_DIR / "team_matches.parquet"
+    if not tm_path.exists():
+        print("No team_matches.parquet found. Run --clean first.")
+        return
+
+    team_match_df = pd.read_parquet(tm_path)
+    team_match_df["date"] = pd.to_datetime(team_match_df["date"])
+
+    odds_map = {}
+    odds_col = "market_home_implied_prob"
+    odds_path = config.BASE_STORE_DIR / "odds.parquet"
+    if odds_path.exists():
+        try:
+            odds_df = pd.read_parquet(odds_path)
+            if odds_col in odds_df.columns and "match_id" in odds_df.columns:
+                odds_map = (
+                    odds_df[["match_id", odds_col]]
+                    .dropna(subset=[odds_col])
+                    .drop_duplicates(subset=["match_id"], keep="last")
+                    .set_index("match_id")[odds_col]
+                    .to_dict()
+                )
+                print(f"  Loaded market odds for {len(odds_map)} matches")
+            else:
+                print("  Warning: odds.parquet missing market_home_implied_prob column")
+        except Exception as e:
+            print(f"  Warning: failed loading odds.parquet: {e}")
+
+    season_df = team_match_df[team_match_df["year"] == year]
+    if season_df.empty:
+        print(f"No data for season {year}.")
+        return
+
+    rounds = sorted(season_df["round_number"].dropna().unique())
+    print(f"\nGame Winner Walk-Forward Backtest for {year}")
+    print(f"  Rounds to test: {len(rounds)}")
+    print()
+
+    def _safe_auc(y_true, y_prob):
+        y = np.asarray(y_true, dtype=int)
+        p = np.asarray(y_prob, dtype=float)
+        if len(y) == 0 or len(np.unique(y)) < 2:
+            return float("nan")
+        try:
+            return float(roc_auc_score(y, p))
+        except ValueError:
+            return float("nan")
+
+    def _safe_brier(y_true, y_prob):
+        y = np.asarray(y_true, dtype=float)
+        p = np.asarray(y_prob, dtype=float)
+        if len(y) == 0:
+            return float("nan")
+        return float(np.mean((p - y) ** 2))
+
+    results = []
+    all_actuals = []
+    hybrid_probs = []
+    residual_probs = []
+    market_probs = []
+    market_actuals = []
+    total_games = 0
+    hybrid_correct = 0
+    residual_correct = 0
+    market_correct = 0
+    market_total = 0
+
+    for rnd in rounds:
+        rnd_int = int(rnd)
+
+        # Train on all data before this round
+        train_mask = (
+            (team_match_df["year"] < year)
+            | ((team_match_df["year"] == year) & (team_match_df["round_number"] < rnd))
+        )
+        tm_train = team_match_df[train_mask].copy()
+        tm_round = team_match_df[
+            (team_match_df["year"] == year) & (team_match_df["round_number"] == rnd)
+        ].copy()
+
+        if len(tm_train) < 50 or tm_round.empty:
+            continue
+
+        model = AFLGameWinnerModel()
+        model.train_backtest(tm_train)
+
+        # Predict this round
+        game_preds = _predict_games_for_round(model, tm_train, tm_round)
+        if game_preds.empty:
+            continue
+
+        # Get actuals: home team margin > 0 means home win
+        home_round = tm_round[tm_round["is_home"]].copy()
+        actuals = home_round.set_index("match_id")["margin"].to_dict()
+
+        round_total = 0
+        round_hybrid_correct = 0
+        round_residual_correct = 0
+        round_market_correct = 0
+        round_market_total = 0
+        round_actuals = []
+        round_hybrid_probs = []
+        round_residual_probs = []
+        round_market_probs = []
+        round_market_actuals = []
+
+        for _, row in game_preds.iterrows():
+            mid = row["match_id"]
+            if mid not in actuals:
+                continue
+
+            actual_win = 1 if actuals[mid] > 0 else 0
+            hybrid_p = float(row.get("hybrid_prob_home", row["home_win_prob"]))
+            residual_p = float(row.get("residual_prob_home", row["home_win_prob"]))
+            hybrid_win = 1 if hybrid_p > 0.5 else 0
+            residual_win = 1 if residual_p > 0.5 else 0
+
+            round_total += 1
+            total_games += 1
+            round_hybrid_correct += int(hybrid_win == actual_win)
+            round_residual_correct += int(residual_win == actual_win)
+            hybrid_correct += int(hybrid_win == actual_win)
+            residual_correct += int(residual_win == actual_win)
+
+            all_actuals.append(actual_win)
+            hybrid_probs.append(hybrid_p)
+            residual_probs.append(residual_p)
+            round_actuals.append(actual_win)
+            round_hybrid_probs.append(hybrid_p)
+            round_residual_probs.append(residual_p)
+
+            mkt_available = bool(row.get("market_prior_available", 0))
+            mkt_p = row.get("market_prior_prob_home", np.nan)
+            if (not mkt_available or not pd.notna(mkt_p)) and (mid in odds_map):
+                mkt_p = odds_map.get(mid)
+                mkt_available = mkt_p is not None and pd.notna(mkt_p)
+            if mkt_available and pd.notna(mkt_p):
+                mkt_p = float(mkt_p)
+                mkt_win = 1 if mkt_p > 0.5 else 0
+                market_correct += int(mkt_win == actual_win)
+                market_total += 1
+                round_market_correct += int(mkt_win == actual_win)
+                round_market_total += 1
+                market_probs.append(mkt_p)
+                market_actuals.append(actual_win)
+                round_market_probs.append(mkt_p)
+                round_market_actuals.append(actual_win)
+
+        if round_total > 0:
+            round_hybrid_acc = round_hybrid_correct / round_total
+            round_residual_acc = round_residual_correct / round_total
+            round_market_acc = (
+                round_market_correct / round_market_total
+                if round_market_total > 0 else np.nan
+            )
+            round_actuals_arr = np.array(round_actuals, dtype=float)
+            round_hybrid_brier = float(np.mean((np.array(round_hybrid_probs) - round_actuals_arr) ** 2))
+            round_residual_brier = float(np.mean((np.array(round_residual_probs) - round_actuals_arr) ** 2))
+            round_market_brier = (
+                float(np.mean((np.array(round_market_probs) - np.array(round_market_actuals, dtype=float)) ** 2))
+                if round_market_total > 0 else np.nan
+            )
+            results.append({
+                "round": rnd_int,
+                "n_games": round_total,
+                "hybrid_accuracy": round_hybrid_acc,
+                "residual_accuracy": round_residual_acc,
+                "market_accuracy": round_market_acc,
+                "hybrid_brier": round_hybrid_brier,
+                "residual_brier": round_residual_brier,
+                "market_brier": round_market_brier,
+                "market_n": round_market_total,
+            })
+            mkt_str = (
+                f"  market_acc={round_market_acc:.3f} ({round_market_total}/{round_total})"
+                if round_market_total > 0 else "  market_acc=N/A"
+            )
+            print(
+                f"  Round {rnd_int:3d}  n={round_total:2d}  "
+                f"hybrid_acc={round_hybrid_acc:.3f}  residual_acc={round_residual_acc:.3f}{mkt_str}"
+            )
+
+    if not results:
+        print("No rounds had enough data for backtesting.")
+        return
+
+    # Summary
+    results_df = pd.DataFrame(results)
+    macro_hybrid_acc = float(results_df["hybrid_accuracy"].mean())
+    macro_residual_acc = float(results_df["residual_accuracy"].mean())
+    macro_market_acc = (
+        float(results_df["market_accuracy"].dropna().mean())
+        if results_df["market_accuracy"].notna().any() else float("nan")
+    )
+    overall_hybrid_acc = float(hybrid_correct / total_games) if total_games > 0 else float("nan")
+    overall_residual_acc = float(residual_correct / total_games) if total_games > 0 else float("nan")
+    market_acc = float(market_correct / market_total) if market_total > 0 else float("nan")
+    market_coverage = float(market_total / total_games) if total_games > 0 else 0.0
+
+    hybrid_auc = _safe_auc(all_actuals, hybrid_probs)
+    residual_auc = _safe_auc(all_actuals, residual_probs)
+    market_auc = _safe_auc(market_actuals, market_probs)
+
+    hybrid_brier = _safe_brier(all_actuals, hybrid_probs)
+    residual_brier = _safe_brier(all_actuals, residual_probs)
+    market_brier = _safe_brier(market_actuals, market_probs)
+
+    delta_acc_vs_residual = (
+        overall_hybrid_acc - overall_residual_acc
+        if not (np.isnan(overall_hybrid_acc) or np.isnan(overall_residual_acc))
+        else float("nan")
+    )
+    delta_auc_vs_residual = (
+        hybrid_auc - residual_auc
+        if not (np.isnan(hybrid_auc) or np.isnan(residual_auc))
+        else float("nan")
+    )
+    delta_brier_vs_residual = (
+        hybrid_brier - residual_brier
+        if not (np.isnan(hybrid_brier) or np.isnan(residual_brier))
+        else float("nan")
+    )
+    delta_acc_vs_market = (
+        overall_hybrid_acc - market_acc
+        if not (np.isnan(overall_hybrid_acc) or np.isnan(market_acc))
+        else float("nan")
+    )
+    delta_auc_vs_market = (
+        hybrid_auc - market_auc
+        if not (np.isnan(hybrid_auc) or np.isnan(market_auc))
+        else float("nan")
+    )
+    delta_brier_vs_market = (
+        hybrid_brier - market_brier
+        if not (np.isnan(hybrid_brier) or np.isnan(market_brier))
+        else float("nan")
+    )
+
+    print(f"\n{'='*60}")
+    print(f"GAME WINNER BACKTEST SUMMARY — {year}")
+    print(f"{'='*60}")
+    print(f"  Rounds tested:       {len(results)}")
+    print(f"  Total games:         {total_games}")
+    print(f"  Hybrid weighted acc: {overall_hybrid_acc:.3f}")
+    print(f"  Legacy weighted acc: {overall_residual_acc:.3f}")
+    if not np.isnan(market_acc):
+        print(
+            f"  Market weighted acc: {market_acc:.3f} "
+            f"({market_total}/{total_games}, {market_coverage*100:.1f}% coverage)"
+        )
+    print(f"  Hybrid macro acc:    {macro_hybrid_acc:.3f}")
+    print(f"  Legacy macro acc:    {macro_residual_acc:.3f}")
+    if not np.isnan(macro_market_acc):
+        print(f"  Market macro acc:    {macro_market_acc:.3f}")
+    if not np.isnan(hybrid_auc):
+        print(f"  Hybrid AUC:          {hybrid_auc:.4f}")
+    if not np.isnan(residual_auc):
+        print(f"  Legacy AUC:          {residual_auc:.4f}")
+    if not np.isnan(market_auc):
+        print(f"  Market AUC:          {market_auc:.4f}")
+    print(f"  Hybrid Brier:        {hybrid_brier:.4f}")
+    print(f"  Legacy Brier:        {residual_brier:.4f}")
+    if not np.isnan(market_brier):
+        print(f"  Market Brier:        {market_brier:.4f}")
+    print("\n  Hybrid deltas (better: +acc/+AUC, -Brier):")
+    print(
+        f"    vs Legacy:  acc={delta_acc_vs_residual:+.3f}  "
+        f"auc={delta_auc_vs_residual:+.4f}  brier={delta_brier_vs_residual:+.4f}"
+    )
+    if not np.isnan(delta_acc_vs_market):
+        print(
+            f"    vs Market:  acc={delta_acc_vs_market:+.3f}  "
+            f"auc={delta_auc_vs_market:+.4f}  brier={delta_brier_vs_market:+.4f}"
+        )
+
+    min_cov = float(getattr(config, "WINNER_MIN_MARKET_COVERAGE", 0.30))
+    if market_coverage < min_cov:
+        print(
+            f"\n  Warning: market coverage {market_coverage*100:.1f}% "
+            f"is below configured minimum {min_cov*100:.1f}%"
+        )
+
+    # Save results
+    config.ensure_dirs()
+    out_path = config.BACKTEST_DIR / f"backtest_winner_{year}.csv"
+    results_df.to_csv(out_path, index=False)
+    print(f"\n  Results saved to {out_path}")
+
+
+def cmd_tune(args):
+    """Hyperparameter tuning using Optuna with walk-forward cross-validation.
+
+    Supports --tune-target {scoring, disposals, winner}.
+    Saves best params to data/tuning/best_params_{target}.json for review.
+    Does NOT auto-apply — user reviews and updates config.py manually.
+    """
+    import json
+
+    try:
+        import optuna
+    except ImportError:
+        print("Error: optuna not installed. Run: pip install optuna")
+        return
+
+    target = getattr(args, "tune_target", "scoring")
+    n_trials = getattr(config, "TUNE_N_TRIALS", 50)
+    n_folds = getattr(config, "TUNE_WALK_FORWARD_FOLDS", 3)
+
+    feat_path = config.FEATURES_DIR / "feature_matrix.parquet"
+    feat_cols_path = config.FEATURES_DIR / "feature_columns.json"
+    if not feat_path.exists() or not feat_cols_path.exists():
+        print("No feature matrix found. Run --features first.")
+        return
+
+    feature_df = pd.read_parquet(feat_path)
+    with open(feat_cols_path) as f:
+        feature_cols = json.load(f)
+
+    years = sorted(feature_df["year"].unique())
+    if len(years) < n_folds + 2:
+        print(f"Not enough years for {n_folds}-fold walk-forward CV. Have {len(years)} years.")
+        return
+
+    # Walk-forward folds: train on years[:split], validate on years[split]
+    fold_splits = []
+    for i in range(n_folds):
+        val_year = years[-(n_folds - i)]
+        fold_splits.append(val_year)
+
+    print(f"\nHyperparameter tuning for '{target}'")
+    print(f"  Trials: {n_trials}")
+    print(f"  Walk-forward validation years: {fold_splits}")
+    print()
+
+    optuna.logging.set_verbosity(optuna.logging.WARNING)
+
+    if target == "scoring":
+        def objective(trial):
+            gbt_params = {
+                "max_iter": trial.suggest_int("max_iter", *config.TUNE_GBT_RANGES["n_estimators"]),
+                "max_depth": trial.suggest_int("max_depth", *config.TUNE_GBT_RANGES["max_depth"]),
+                "learning_rate": trial.suggest_float("learning_rate", *config.TUNE_GBT_RANGES["learning_rate"], log=True),
+                "min_samples_leaf": trial.suggest_int("min_samples_leaf", *config.TUNE_GBT_RANGES["min_samples_leaf"]),
+                "random_state": config.RANDOM_SEED,
+            }
+            poisson_alpha = trial.suggest_float("poisson_alpha", *config.TUNE_POISSON_ALPHA_RANGE, log=True)
+            w_poi = trial.suggest_float("w_poisson", *config.TUNE_ENSEMBLE_POISSON_WEIGHT_RANGE)
+
+            maes = []
+            for val_year in fold_splits:
+                train_df = feature_df[feature_df["year"] < val_year].copy()
+                val_df = feature_df[feature_df["year"] == val_year].copy()
+                if val_df.empty or len(train_df) < 100:
+                    continue
+
+                model = AFLScoringModel(
+                    gbt_params=gbt_params,
+                    poisson_params={"alpha": poisson_alpha, "max_iter": 1000},
+                    ensemble_weights={"poisson": w_poi, "gbt": 1 - w_poi},
+                )
+                model.train_backtest(train_df, feature_cols)
+                from model import _prepare_features
+                X_raw, X_clean, X_scaled = _prepare_features(
+                    val_df, feature_cols, scaler=model.scaler
+                )
+                pred_goals, _, _ = model._ensemble_predict(X_raw, X_scaled, "goals", df=val_df)
+                mae = float(np.mean(np.abs(val_df["GL"].values - pred_goals)))
+                maes.append(mae)
+
+            return np.mean(maes) if maes else float("inf")
+
+    elif target == "disposals":
+        def objective(trial):
+            gbt_params = {
+                "max_iter": trial.suggest_int("max_iter", *config.TUNE_GBT_RANGES["n_estimators"]),
+                "max_depth": trial.suggest_int("max_depth", *config.TUNE_GBT_RANGES["max_depth"]),
+                "learning_rate": trial.suggest_float("learning_rate", *config.TUNE_GBT_RANGES["learning_rate"], log=True),
+                "min_samples_leaf": trial.suggest_int("min_samples_leaf", *config.TUNE_GBT_RANGES["min_samples_leaf"]),
+                "random_state": config.RANDOM_SEED,
+            }
+            poisson_alpha = trial.suggest_float("poisson_alpha", *config.TUNE_POISSON_ALPHA_RANGE, log=True)
+
+            maes = []
+            for val_year in fold_splits:
+                train_df = feature_df[feature_df["year"] < val_year].copy()
+                val_df = feature_df[feature_df["year"] == val_year].copy()
+                if val_df.empty or len(train_df) < 100:
+                    continue
+
+                model = AFLDisposalModel(
+                    distribution=config.DISPOSAL_DISTRIBUTION,
+                    gbt_params=gbt_params,
+                    poisson_params={"alpha": poisson_alpha, "max_iter": 1000},
+                )
+                model.train_backtest(train_df, feature_cols)
+                from model import _prepare_features
+                X_raw, X_clean, X_scaled = _prepare_features(
+                    val_df, feature_cols, scaler=model.scaler
+                )
+                pred_disp = model._predict_raw(X_clean, X_scaled, df=val_df)
+                mae = float(np.mean(np.abs(val_df["DI"].values - pred_disp)))
+                maes.append(mae)
+
+            return np.mean(maes) if maes else float("inf")
+
+    elif target == "winner":
+        tm_path = config.BASE_STORE_DIR / "team_matches.parquet"
+        if not tm_path.exists():
+            print("No team_matches.parquet found. Run --clean first.")
+            return
+        team_match_df = pd.read_parquet(tm_path)
+        team_match_df["date"] = pd.to_datetime(team_match_df["date"])
+
+        def objective(trial):
+            k_factor = trial.suggest_float("k_factor", *config.TUNE_ELO_RANGES["k_factor"])
+            home_adv = trial.suggest_float("home_advantage", *config.TUNE_ELO_RANGES["home_advantage"])
+            regression = trial.suggest_float("season_regression", *config.TUNE_ELO_RANGES["season_regression"])
+            gw_params = {
+                "max_iter": trial.suggest_int("max_iter", 50, 300),
+                "max_depth": trial.suggest_int("max_depth", 2, 5),
+                "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.15, log=True),
+                "min_samples_leaf": trial.suggest_int("min_samples_leaf", 5, 40),
+                "random_state": config.RANDOM_SEED,
+            }
+
+            aucs = []
+            for val_year in fold_splits:
+                tm_train = team_match_df[team_match_df["year"] < val_year].copy()
+                tm_val = team_match_df[team_match_df["year"] == val_year].copy()
+                if tm_val.empty or len(tm_train) < 100:
+                    continue
+
+                model = AFLGameWinnerModel(
+                    gbt_params=gw_params,
+                    elo_params={
+                        "k_factor": k_factor,
+                        "home_advantage": home_adv,
+                        "season_regression": regression,
+                    },
+                )
+                model.train_backtest(tm_train)
+                # Evaluate on validation
+                elo_df = model.elo_system.compute_all(
+                    pd.concat([tm_train, tm_val], ignore_index=True).sort_values("date")
+                )
+                game_df, feats = model.build_game_features(
+                    pd.concat([tm_train, tm_val], ignore_index=True).sort_values("date"),
+                    elo_df,
+                )
+                val_games = game_df[game_df["year"] == val_year]
+                if val_games.empty:
+                    continue
+                X_val = val_games[feats].fillna(0)
+                y_val = val_games["home_win"].values
+                pred_prob = model.classifier.predict_proba(X_val)[:, 1]
+                try:
+                    auc = roc_auc_score(y_val, pred_prob)
+                    aucs.append(auc)
+                except ValueError:
+                    pass
+
+            return -np.mean(aucs) if aucs else 0.0  # negate for minimize
+
+    else:
+        print(f"Unknown tune target: {target}. Use scoring, disposals, or winner.")
+        return
+
+    study = optuna.create_study(direction="minimize")
+    study.optimize(objective, n_trials=n_trials, show_progress_bar=True)
+
+    best = study.best_trial
+    print(f"\n{'='*60}")
+    print(f"TUNING RESULTS — {target}")
+    print(f"{'='*60}")
+    print(f"  Best trial: #{best.number}")
+    print(f"  Best value: {best.value:.6f}")
+    print(f"  Best params:")
+    for k, v in best.params.items():
+        print(f"    {k}: {v}")
+
+    # Save results
+    config.ensure_dirs()
+    out_path = config.TUNING_DIR / f"best_params_{target}.json"
+    result = {
+        "target": target,
+        "best_value": best.value,
+        "best_params": best.params,
+        "n_trials": n_trials,
+        "n_folds": n_folds,
+        "fold_years": fold_splits,
+    }
+    with open(out_path, "w") as f:
+        json.dump(result, f, indent=2, default=str)
+    print(f"\n  Results saved to {out_path}")
+    print(f"  Review and update config.py manually to apply.")
 
 
 def cmd_sequential_report(args):
@@ -2073,6 +2931,9 @@ Examples:
     parser.add_argument("--train-disposals", action="store_true",
                         dest="train_disposals",
                         help="Train disposal prediction model")
+    parser.add_argument("--train-marks", action="store_true",
+                        dest="train_marks",
+                        help="Train marks prediction model")
     parser.add_argument("--train-winner", action="store_true",
                         dest="train_winner",
                         help="Train game winner prediction model")
@@ -2082,8 +2943,16 @@ Examples:
                         help="Evaluate model on validation set")
     parser.add_argument("--backtest", action="store_true",
                         help="Walk-forward backtest on a season (requires --year)")
+    parser.add_argument("--backtest-winner", action="store_true",
+                        dest="backtest_winner",
+                        help="Walk-forward backtest for game winner model (requires --year)")
     parser.add_argument("--diagnose", action="store_true",
                         help="Diagnostic report on backtest results (requires --year)")
+    parser.add_argument("--tune", action="store_true",
+                        help="Hyperparameter tuning using Optuna with walk-forward CV")
+    parser.add_argument("--tune-target", type=str, dest="tune_target",
+                        default="scoring", choices=["scoring", "disposals", "winner"],
+                        help="Target model for tuning (default: scoring)")
     parser.add_argument("--sequential", action="store_true",
                         help="Sequential learning: round-by-round with calibration feedback (requires --year)")
     parser.add_argument("--sequential-report", action="store_true",
@@ -2096,10 +2965,24 @@ Examples:
     parser.add_argument("--reset-calibration", action="store_true",
                         help="Reset calibration state for the active run before sequential processing")
 
+    parser.add_argument("--scrape-profiles", action="store_true",
+                        dest="scrape_profiles",
+                        help="Scrape player profile pages (height/weight/DOB + career splits)")
+    parser.add_argument("--scrape-footywire", action="store_true",
+                        dest="scrape_footywire",
+                        help="Scrape FootyWire advanced stats (ED, DE%%, CCL, SCL, TO, MG, TOG%%)")
+    parser.add_argument("--save-experiment", type=str, dest="save_experiment",
+                        help="Save backtest results as named experiment JSON (e.g. 'baseline_pre')")
+
     parser.add_argument("--start", type=int, help="Start year for scraping")
     parser.add_argument("--end", type=int, help="End year for scraping")
     parser.add_argument("--round", type=int, help="Round number for prediction")
     parser.add_argument("--year", type=int, help="Season year (default: current)")
+    parser.add_argument("--player", type=str,
+                        help="Player search term (e.g., \"Cripps\", \"Patrick Cripps\")")
+    parser.add_argument("--player-detail", action="store_true",
+                        dest="player_detail",
+                        help="Show extended profile with all stats")
     parser.add_argument("--model", type=str, default="scoring",
                         choices=list(config.MODEL_TARGETS.keys()),
                         help="Model target (default: scoring)")
@@ -2109,10 +2992,12 @@ Examples:
 
     # No flags → show help
     if not any([args.scrape, args.update, args.clean, args.features,
-                args.train, args.train_disposals, args.train_winner,
+                args.train, args.train_disposals, args.train_marks, args.train_winner,
                 args.predict, args.evaluate, args.backtest,
+                args.backtest_winner, args.tune,
                 args.diagnose, args.sequential, args.sequential_report,
-                args.year_range]):
+                args.year_range, args.player, args.scrape_profiles,
+                args.scrape_footywire]):
         parser.print_help()
         return
 
@@ -2120,6 +3005,12 @@ Examples:
 
     if args.scrape:
         cmd_scrape(args)
+
+    if args.scrape_profiles:
+        cmd_scrape_profiles(args)
+
+    if args.scrape_footywire:
+        cmd_scrape_footywire(args)
 
     if args.update:
         cmd_update(args)
@@ -2137,6 +3028,9 @@ Examples:
     if args.train_disposals:
         cmd_train_disposals(args)
 
+    if args.train_marks:
+        cmd_train_marks(args)
+
     if args.train_winner:
         cmd_train_winner(args)
 
@@ -2152,6 +3046,12 @@ Examples:
     if args.backtest:
         cmd_backtest(args)
 
+    if args.backtest_winner:
+        cmd_backtest_winner(args)
+
+    if args.tune:
+        cmd_tune(args)
+
     if args.diagnose:
         cmd_diagnose(args)
 
@@ -2160,6 +3060,10 @@ Examples:
 
     if args.sequential_report:
         cmd_sequential_report(args)
+
+    if args.player:
+        from player import cmd_player
+        cmd_player(args)
 
     if args.year_range:
         cmd_sequential_year_range(args)

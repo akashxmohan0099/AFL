@@ -1,0 +1,15 @@
+team,opponent,venue,date,is_home
+Fremantle,Geelong,Optus Stadium,2026-06-18,1
+Geelong,Fremantle,Optus Stadium,2026-06-18,0
+Gold Coast,Hawthorn,People First Stadium,2026-06-19,1
+Hawthorn,Gold Coast,People First Stadium,2026-06-19,0
+Adelaide,Melbourne,Adelaide Oval,2026-06-20,1
+Melbourne,Adelaide,Adelaide Oval,2026-06-20,0
+Greater Western Sydney,Carlton,ENGIE Stadium,2026-06-20,1
+Carlton,Greater Western Sydney,ENGIE Stadium,2026-06-20,0
+Collingwood,Port Adelaide,MCG,2026-06-20,1
+Port Adelaide,Collingwood,MCG,2026-06-20,0
+Richmond,North Melbourne,MCG,2026-06-21,1
+North Melbourne,Richmond,MCG,2026-06-21,0
+St Kilda,Western Bulldogs,Marvel Stadium,2026-06-21,1
+Western Bulldogs,St Kilda,Marvel Stadium,2026-06-21,0

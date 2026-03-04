@@ -60,6 +60,10 @@ SCORING_SCHEMA = [
     "score_type", "score",
 ]
 
+UMPIRE_SCHEMA = [
+    "match_id", "year", "umpire_name", "umpire_career_games", "umpire_url",
+]
+
 
 def parse_afl_date(date_str):
     """Parse AFL Tables date string to ISO datetime.
@@ -232,7 +236,7 @@ def scrape_match_player_stats(match_url, year):
     
     html = fetch_page(match_url)
     if not html:
-        return {"player_stats": [], "player_details": [], "scoring": [], "match_info": {}}
+        return {"player_stats": [], "player_details": [], "scoring": [], "umpires": [], "match_info": {}}
     
     soup = BeautifulSoup(html, "lxml")
     
@@ -291,7 +295,7 @@ def scrape_match_player_stats(match_url, year):
         tables = pd.read_html(StringIO(html))
     except Exception as e:
         logger.error(f"Failed to parse tables from {match_url}: {e}")
-        return {"player_stats": [], "player_details": [], "scoring": [], "match_info": match_info}
+        return {"player_stats": [], "player_details": [], "scoring": [], "umpires": [], "match_info": match_info}
     
     player_stats = []
     player_details = []
@@ -484,11 +488,34 @@ def scrape_match_player_stats(match_url, year):
                      if e.get("player") == "Rushed" and e.get("team") == team)
         match_info[f"{side}_rushed_behinds"] = rushed
 
-    logger.info(f"Extracted {len(player_stats)} player stat records, {len(player_details)} player details, {len(scoring_events)} scoring events")
+    # ---- Extract umpire assignments (from links on this page) ----
+    umpire_records = []
+    for link in soup.find_all("a", href=True):
+        href = link.get("href", "")
+        if "umpires/" in href and href.endswith(".html"):
+            name = link.get_text(strip=True)
+            if not name or name in {"Umpires", ""}:
+                continue
+            career_games = 0
+            next_text = link.next_sibling
+            if next_text:
+                m = re.search(r'\((\d+)\)', str(next_text))
+                if m:
+                    career_games = int(m.group(1))
+            umpire_records.append({
+                "match_id": match_info.get("match_id"),
+                "year": year,
+                "umpire_name": name,
+                "umpire_career_games": career_games,
+                "umpire_url": href,
+            })
+
+    logger.info(f"Extracted {len(player_stats)} player stat records, {len(player_details)} player details, {len(scoring_events)} scoring events, {len(umpire_records)} umpires")
     return {
         "player_stats": enforce_schema(player_stats, PLAYER_STATS_SCHEMA),
         "player_details": enforce_schema(player_details, PLAYER_DETAILS_SCHEMA),
         "scoring": enforce_schema(scoring_events, SCORING_SCHEMA),
+        "umpires": enforce_schema(umpire_records, UMPIRE_SCHEMA),
         "match_info": match_info,
     }
 
@@ -506,6 +533,7 @@ def scrape_seasons(start_year, end_year, output_dir):
     os.makedirs(os.path.join(output_dir, "player_stats"), exist_ok=True)
     os.makedirs(os.path.join(output_dir, "player_details"), exist_ok=True)
     os.makedirs(os.path.join(output_dir, "scoring"), exist_ok=True)
+    os.makedirs(os.path.join(output_dir, "umpires"), exist_ok=True)
     
     all_matches_summary = []
     
@@ -535,6 +563,7 @@ def scrape_seasons(start_year, end_year, output_dir):
         season_player_stats = []
         season_player_details = []
         season_scoring = []
+        season_umpires = []
         season_match_details = []
 
         for i, match_url in enumerate(match_links):
@@ -544,6 +573,7 @@ def scrape_seasons(start_year, end_year, output_dir):
             player_stats = result["player_stats"]
             player_details = result["player_details"]
             scoring = result["scoring"]
+            umpires = result["umpires"]
             match_info = result["match_info"]
 
             if player_stats:
@@ -552,6 +582,8 @@ def scrape_seasons(start_year, end_year, output_dir):
                 season_player_details.extend(player_details)
             if scoring:
                 season_scoring.extend(scoring)
+            if umpires:
+                season_umpires.extend(umpires)
             if match_info:
                 season_match_details.append(match_info)
             
@@ -581,6 +613,14 @@ def scrape_seasons(start_year, end_year, output_dir):
             scoring_df = pd.DataFrame(season_scoring)
             scoring_df.to_csv(scoring_file, index=False)
             logger.info(f"Saved {len(scoring_df)} scoring events to {scoring_file}")
+
+        if season_umpires:
+            umpire_dir = os.path.join(output_dir, "umpires")
+            os.makedirs(umpire_dir, exist_ok=True)
+            umpire_file = os.path.join(umpire_dir, f"umpires_{year}.csv")
+            umpire_df = pd.DataFrame(season_umpires)
+            umpire_df.to_csv(umpire_file, index=False)
+            logger.info(f"Saved {len(umpire_df)} umpire records to {umpire_file}")
 
         all_matches_summary.append({
             "year": year,
@@ -652,6 +692,194 @@ def combine_season_files(output_dir):
             all_scoring = pd.concat(scoring_dfs, ignore_index=True)
             all_scoring.to_csv(os.path.join(output_dir, "all_scoring.csv"), index=False)
             logger.info(f"Combined {len(all_scoring)} total scoring events")
+
+    # Combine umpire files
+    umpire_dir = os.path.join(output_dir, "umpires")
+    if os.path.exists(umpire_dir):
+        umpire_files = sorted([f for f in os.listdir(umpire_dir) if f.endswith(".csv")])
+        if umpire_files:
+            umpire_dfs = [pd.read_csv(os.path.join(umpire_dir, f)) for f in umpire_files]
+            all_umpires = pd.concat(umpire_dfs, ignore_index=True)
+            all_umpires.to_csv(os.path.join(output_dir, "all_umpires.csv"), index=False)
+            logger.info(f"Combined {len(all_umpires)} total umpire records")
+
+
+# ---------------------------------------------------------------------------
+# 4. Player profile scraper (height/weight/DOB + career splits)
+# ---------------------------------------------------------------------------
+
+PLAYER_PROFILE_URL = f"{BASE_URL}/stats/players/{{initial}}/{{filename}}.html"
+
+
+def _player_name_to_url_parts(player_name):
+    """Convert 'Last, First' to (first_initial, 'First_Last') for URL construction.
+    Also handles middle names: 'De Koning, Sam' → ('D', 'Sam_De_Koning').
+
+    Returns (initial, filename) or (None, None) on failure.
+    """
+    if not player_name or not isinstance(player_name, str):
+        return None, None
+    name = player_name.strip()
+    if "," in name:
+        parts = name.split(",", 1)
+        last = parts[0].strip()
+        first = parts[1].strip()
+    else:
+        tokens = name.split()
+        if len(tokens) < 2:
+            return None, None
+        first = tokens[0]
+        last = " ".join(tokens[1:])
+    if not first or not last:
+        return None, None
+    initial = last[0].upper()
+    filename = f"{first}_{last}".replace(" ", "_")
+    return initial, filename
+
+
+def scrape_player_profiles(player_names, output_dir):
+    """Scrape player profile pages from AFLTables.
+
+    For each player, fetches their profile page and extracts:
+      1. Physical attributes: height, weight, DOB
+      2. Stats by Opponent table (career splits)
+      3. Stats by Venue table (career splits)
+
+    Args:
+        player_names: list of player names in 'Last, First' format
+        output_dir: directory to write CSV output files
+
+    Saves:
+        profiles.csv — height_cm, weight_kg, dob per player
+        player_vs_opponent.csv — career stat totals per (player, opponent)
+        player_vs_venue.csv — career stat totals per (player, venue)
+    """
+    os.makedirs(output_dir, exist_ok=True)
+
+    profiles = []
+    vs_opponent_rows = []
+    vs_venue_rows = []
+    failed = []
+
+    for i, name in enumerate(player_names):
+        initial, filename = _player_name_to_url_parts(name)
+        if not initial or not filename:
+            logger.warning(f"Could not parse player name: {name}")
+            failed.append(name)
+            continue
+
+        url = PLAYER_PROFILE_URL.format(initial=initial, filename=filename)
+        logger.info(f"Profile {i+1}/{len(player_names)}: {name} → {url}")
+
+        html = fetch_page(url)
+        if not html:
+            # Try alternate URL patterns (some players have a number suffix)
+            for suffix in ["0", "1", "2"]:
+                alt_url = PLAYER_PROFILE_URL.format(
+                    initial=initial, filename=f"{filename}{suffix}"
+                )
+                html = fetch_page(alt_url)
+                if html:
+                    url = alt_url
+                    break
+            if not html:
+                failed.append(name)
+                continue
+
+        soup = BeautifulSoup(html, "lxml")
+        page_text = soup.get_text()
+
+        # ---- Extract physical attributes ----
+        height = None
+        weight = None
+        dob = None
+
+        h_match = re.search(r'Height:\s*(\d+)\s*cm', page_text)
+        if h_match:
+            height = int(h_match.group(1))
+
+        w_match = re.search(r'Weight:\s*(\d+)\s*kg', page_text)
+        if w_match:
+            weight = int(w_match.group(1))
+
+        dob_match = re.search(r'Born:\s*(\d+-\w+-\d+)', page_text)
+        if dob_match:
+            dob = dob_match.group(1)
+
+        profiles.append({
+            "player": name,
+            "height_cm": height,
+            "weight_kg": weight,
+            "dob": dob,
+            "profile_url": url,
+        })
+
+        # ---- Extract tables using pandas ----
+        try:
+            tables = pd.read_html(StringIO(html))
+        except Exception:
+            tables = []
+
+        for table in tables:
+            if hasattr(table.columns, 'levels'):
+                table.columns = table.columns.get_level_values(-1)
+            cols = [str(c).strip() for c in table.columns.tolist()]
+
+            # Stats by Opponent table: has 'Opponent' or 'Opposition' column
+            if any(c in ("Opponent", "Opposition") for c in cols):
+                opp_col = "Opponent" if "Opponent" in cols else "Opposition"
+                for _, row in table.iterrows():
+                    opp_name = str(row.get(opp_col, "")).strip()
+                    if not opp_name or opp_name in ("", "nan", "Total", "Totals"):
+                        continue
+                    record = {"player": name, "opponent": opp_name}
+                    for c in cols:
+                        if c != opp_col:
+                            val = row.get(c, None)
+                            if pd.notna(val):
+                                record[c] = val
+                    vs_opponent_rows.append(record)
+
+            # Stats by Venue table: has 'Venue' or 'Ground' column
+            elif any(c in ("Venue", "Ground") for c in cols):
+                venue_col = "Venue" if "Venue" in cols else "Ground"
+                for _, row in table.iterrows():
+                    venue_name = str(row.get(venue_col, "")).strip()
+                    if not venue_name or venue_name in ("", "nan", "Total", "Totals"):
+                        continue
+                    record = {"player": name, "venue": venue_name}
+                    for c in cols:
+                        if c != venue_col:
+                            val = row.get(c, None)
+                            if pd.notna(val):
+                                record[c] = val
+                    vs_venue_rows.append(record)
+
+    # Save results
+    if profiles:
+        profiles_df = pd.DataFrame(profiles)
+        profiles_df.to_csv(os.path.join(output_dir, "profiles.csv"), index=False)
+        logger.info(f"Saved {len(profiles_df)} player profiles")
+
+    if vs_opponent_rows:
+        opp_df = pd.DataFrame(vs_opponent_rows)
+        opp_df.to_csv(os.path.join(output_dir, "player_vs_opponent.csv"), index=False)
+        logger.info(f"Saved {len(opp_df)} player-vs-opponent records")
+
+    if vs_venue_rows:
+        venue_df = pd.DataFrame(vs_venue_rows)
+        venue_df.to_csv(os.path.join(output_dir, "player_vs_venue.csv"), index=False)
+        logger.info(f"Saved {len(venue_df)} player-vs-venue records")
+
+    if failed:
+        logger.warning(f"Failed to scrape {len(failed)} player profiles: {failed[:10]}")
+
+    return {
+        "profiles": len(profiles),
+        "vs_opponent": len(vs_opponent_rows),
+        "vs_venue": len(vs_venue_rows),
+        "failed": failed,
+    }
 
 
 # ---------------------------------------------------------------------------

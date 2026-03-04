@@ -4,8 +4,10 @@ AFL Prediction Pipeline — Model Training, Evaluation & Prediction
 Dual Poisson/GBT ensemble for goals and behinds prediction.
 
 Architecture:
-  - Goals model:  40% PoissonRegressor + 60% GradientBoostingRegressor
+  - Goals model:  80% PoissonRegressor + 20% HistGradientBoostingRegressor
   - Behinds model: same architecture (behinds are more stochastic)
+  - Disposal model: separate Poisson/GBT ensemble with own tuned params
+  - Game winner model: Elo + HistGBT with hybrid market prior
 
 Training:
   - Time-based split: train 2015-2023, validate 2024
@@ -30,6 +32,7 @@ from sklearn.ensemble import (
     GradientBoostingClassifier, GradientBoostingRegressor,
     HistGradientBoostingClassifier, HistGradientBoostingRegressor,
 )
+from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import PoissonRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, roc_auc_score
 from sklearn.preprocessing import StandardScaler
@@ -37,6 +40,59 @@ from sklearn.preprocessing import StandardScaler
 import config
 
 warnings.filterwarnings("ignore")
+
+
+# ---------------------------------------------------------------------------
+# Isotonic Calibration
+# ---------------------------------------------------------------------------
+
+class CalibratedPredictor:
+    """Post-hoc probability calibration using isotonic regression.
+
+    Fits separate IsotonicRegression models per threshold target
+    (e.g., "1plus_goals", "25plus_disp"). Given (predicted_prob, actual_binary)
+    pairs, learns a monotone mapping from raw probabilities to calibrated ones.
+    """
+
+    def __init__(self):
+        self._calibrators = {}  # target_name → IsotonicRegression
+
+    def fit(self, target_name, preds, actuals):
+        """Fit isotonic calibrator for a specific threshold target.
+
+        Args:
+            target_name: e.g. "1plus_goals", "25plus_disp"
+            preds: array of predicted probabilities
+            actuals: array of binary outcomes (0/1)
+        """
+        preds = np.asarray(preds, dtype=float)
+        actuals = np.asarray(actuals, dtype=float)
+        valid = ~np.isnan(preds) & ~np.isnan(actuals)
+        if valid.sum() < getattr(config, "ISOTONIC_MIN_SAMPLES", 100):
+            return  # not enough data to fit
+
+        ir = IsotonicRegression(y_min=0.0, y_max=1.0, out_of_bounds="clip")
+        ir.fit(preds[valid], actuals[valid])
+        self._calibrators[target_name] = ir
+
+    def transform(self, target_name, preds):
+        """Apply isotonic calibration to predicted probabilities.
+
+        Returns calibrated probabilities, or original if no calibrator fitted.
+        """
+        if target_name not in self._calibrators:
+            return preds
+        preds = np.asarray(preds, dtype=float)
+        return self._calibrators[target_name].predict(preds)
+
+    def has_calibrator(self, target_name):
+        """Check if a calibrator exists for the given target."""
+        return target_name in self._calibrators
+
+    @property
+    def targets(self):
+        """List of fitted target names."""
+        return list(self._calibrators.keys())
 
 
 def _prepare_features(df, feature_cols, scaler=None, fit_scaler=False):
@@ -58,16 +114,29 @@ def _prepare_features(df, feature_cols, scaler=None, fit_scaler=False):
     return X_raw, X_clean, X_scaled
 
 
-def _avg_predict(models, X_raw):
-    """Average predictions from multiple HistGBT models (all handle NaN natively)."""
-    preds = [m.predict(X_raw) for m in models]
-    return np.mean(preds, axis=0)
+def _model_supports_nan(model):
+    """Return True when estimator supports NaN inputs natively."""
+    try:
+        tags = model._get_tags()
+        if "allow_nan" in tags:
+            return bool(tags["allow_nan"])
+    except Exception:
+        pass
+    name = model.__class__.__name__
+    return "HistGradientBoosting" in name
 
 
-def _avg_predict_proba(models, X_raw):
-    """Average P(class=1) from multiple HistGBT classifiers."""
-    probas = [m.predict_proba(X_raw)[:, 1] for m in models]
-    return np.mean(probas, axis=0)
+def _predict_with_compatible_input(model, X_raw, X_clean):
+    """Predict using raw or cleaned matrix based on model NaN support."""
+    X = X_raw if _model_supports_nan(model) else X_clean
+    return model.predict(X)
+
+
+def _predict_proba_with_compatible_input(model, X_raw, X_clean):
+    """Predict probabilities using raw or cleaned matrix based on NaN support."""
+    X = X_raw if _model_supports_nan(model) else X_clean
+    return model.predict_proba(X)[:, 1]
+
 
 
 class AFLScoringModel:
@@ -82,7 +151,7 @@ class AFLScoringModel:
     lets Stage 1 learn who scores and Stage 2 learn how many.
     """
 
-    def __init__(self):
+    def __init__(self, gbt_params=None, poisson_params=None, ensemble_weights=None):
         self.scorer_clf = None  # Stage 1: binary classifier
         self.goals_poisson = None
         self.goals_gbt = None
@@ -92,10 +161,10 @@ class AFLScoringModel:
         self.feature_cols = []
         self.eval_metrics = {}
         self.training_info = {}
-        # Multi-model ensemble lists (populated when MULTI_MODEL_ENSEMBLE=True)
-        self._scorer_clfs = []    # [HistGBT_clf, GBT_clf, ET_clf]
-        self._goals_gbts = []     # [HistGBT_reg, GBT_reg, ET_reg]
-        self._behinds_gbts = []   # [HistGBT_reg, GBT_reg, ET_reg]
+        # Instance-level params (override config defaults)
+        self.gbt_params = gbt_params or config.HIST_GBT_PARAMS_BACKTEST
+        self.poisson_params = poisson_params or config.POISSON_PARAMS
+        self.ensemble_weights = ensemble_weights or config.ENSEMBLE_WEIGHTS
 
     @staticmethod
     def _mixture_quantile(p_scorer, lambda_if_scorer, quantile, max_k=15):
@@ -271,13 +340,9 @@ class AFLScoringModel:
 
         Used by the backtest loop to quickly fit on a training subset.
         Uses HistGradientBoosting for 10-50x faster training than standard GBT.
-
-        When config.MULTI_MODEL_ENSEMBLE is True, trains 3 tree algorithms per
-        component (HistGBT, standard GBT, ExtraTrees) and averages predictions.
-        The Poisson component is unchanged.
         """
         self.feature_cols = feature_cols
-        hist_params = config.HIST_GBT_PARAMS_BACKTEST
+        hist_params = self.gbt_params
 
         y_goals = df["GL"].values
         y_behinds = df["BH"].values
@@ -296,115 +361,81 @@ class AFLScoringModel:
         y_goals_scorers = y_goals[scorer_mask]
         weights_scorers = weights[scorer_mask] if weights is not None else None
 
-        use_ensemble = getattr(config, "MULTI_MODEL_ENSEMBLE", False)
-
-        # --- Poisson components (always single-model, unchanged) ---
+        # --- Poisson components ---
         self.goals_poisson = PoissonRegressor(
-            alpha=config.POISSON_PARAMS["alpha"],
-            max_iter=config.POISSON_PARAMS["max_iter"],
+            alpha=self.poisson_params["alpha"],
+            max_iter=self.poisson_params["max_iter"],
         )
         self.goals_poisson.fit(X_scaled_scorers, y_goals_scorers, sample_weight=weights_scorers)
 
         self.behinds_poisson = PoissonRegressor(
-            alpha=config.POISSON_PARAMS["alpha"],
-            max_iter=config.POISSON_PARAMS["max_iter"],
+            alpha=self.poisson_params["alpha"],
+            max_iter=self.poisson_params["max_iter"],
         )
         self.behinds_poisson.fit(X_scaled, y_behinds, sample_weight=weights)
 
-        if use_ensemble:
-            deep_params = getattr(config, "HIST_GBT_DEEP_PARAMS_BACKTEST", hist_params)
-            wide_params = getattr(config, "HIST_GBT_WIDE_PARAMS_BACKTEST", hist_params)
+        # --- Single-model GBT path ---
+        self.scorer_clf = HistGradientBoostingClassifier(**hist_params)
+        self.scorer_clf.fit(X_raw, y_is_scorer, sample_weight=weights)
 
-            # --- Stage 1: scorer classifiers (3 HistGBT variants) ---
-            clf_base = HistGradientBoostingClassifier(**hist_params)
-            clf_base.fit(X_raw, y_is_scorer, sample_weight=weights)
+        self.goals_gbt = HistGradientBoostingRegressor(**hist_params)
+        self.goals_gbt.fit(X_raw_scorers, y_goals_scorers, sample_weight=weights_scorers)
 
-            clf_deep = HistGradientBoostingClassifier(**deep_params)
-            clf_deep.fit(X_raw, y_is_scorer, sample_weight=weights)
+        self.behinds_gbt = HistGradientBoostingRegressor(**hist_params)
+        self.behinds_gbt.fit(X_raw, y_behinds, sample_weight=weights)
 
-            clf_wide = HistGradientBoostingClassifier(**wide_params)
-            clf_wide.fit(X_raw, y_is_scorer, sample_weight=weights)
-
-            self._scorer_clfs = [clf_base, clf_deep, clf_wide]
-            self.scorer_clf = clf_base
-
-            # --- Stage 2: goals regressors (3 HistGBT variants, scorers only) ---
-            gl_base = HistGradientBoostingRegressor(**hist_params)
-            gl_base.fit(X_raw_scorers, y_goals_scorers, sample_weight=weights_scorers)
-
-            gl_deep = HistGradientBoostingRegressor(**deep_params)
-            gl_deep.fit(X_raw_scorers, y_goals_scorers, sample_weight=weights_scorers)
-
-            gl_wide = HistGradientBoostingRegressor(**wide_params)
-            gl_wide.fit(X_raw_scorers, y_goals_scorers, sample_weight=weights_scorers)
-
-            self._goals_gbts = [gl_base, gl_deep, gl_wide]
-            self.goals_gbt = gl_base
-
-            # --- Behinds regressors (3 HistGBT variants, all data) ---
-            bh_base = HistGradientBoostingRegressor(**hist_params)
-            bh_base.fit(X_raw, y_behinds, sample_weight=weights)
-
-            bh_deep = HistGradientBoostingRegressor(**deep_params)
-            bh_deep.fit(X_raw, y_behinds, sample_weight=weights)
-
-            bh_wide = HistGradientBoostingRegressor(**wide_params)
-            bh_wide.fit(X_raw, y_behinds, sample_weight=weights)
-
-            self._behinds_gbts = [bh_base, bh_deep, bh_wide]
-            self.behinds_gbt = bh_base
-
-        else:
-            # Original single-model path
-            self._scorer_clfs = []
-            self._goals_gbts = []
-            self._behinds_gbts = []
-
-            self.scorer_clf = HistGradientBoostingClassifier(**hist_params)
-            self.scorer_clf.fit(X_raw, y_is_scorer, sample_weight=weights)
-
-            self.goals_gbt = HistGradientBoostingRegressor(**hist_params)
-            self.goals_gbt.fit(X_raw_scorers, y_goals_scorers, sample_weight=weights_scorers)
-
-            self.behinds_gbt = HistGradientBoostingRegressor(**hist_params)
-            self.behinds_gbt.fit(X_raw, y_behinds, sample_weight=weights)
-
-    def _ensemble_predict(self, X_raw, X_scaled, target="goals"):
+    def _ensemble_predict(self, X_raw, X_scaled, target="goals", df=None, X_clean=None):
         """Generate ensemble prediction (two-stage for goals, standard for behinds).
 
         For goals:
-          Stage 1: P(scorer) from binary classifier(s)
+          Stage 1: P(scorer) from binary classifier
           Stage 2: E[goals | scorer] from Poisson + GBT ensemble (trained on scorers only)
           Final = P(scorer) * E[goals | scorer]
 
-        When multi-model ensemble is active, averages predictions across all
-        tree models in _scorer_clfs / _goals_gbts / _behinds_gbts. Poisson is unchanged.
+        When df is provided and contains market_expected_team_goals, the Poisson
+        component is blended with a market-implied baseline per player.
 
         Returns:
           For goals: (predictions, scorer_prob, raw_pred) tuple
             raw_pred = E[goals | scorer] (lambda before multiplying by P(scorer))
           For behinds: (predictions, None, None) tuple
         """
-        w_poi = config.ENSEMBLE_WEIGHTS["poisson"]
-        w_gbt = config.ENSEMBLE_WEIGHTS["gbt"]
+        w_poi = self.ensemble_weights["poisson"]
+        w_gbt = self.ensemble_weights["gbt"]
+        blend = getattr(config, "MARKET_POISSON_BLEND", 0.0)
+
+        if X_clean is None:
+            X_clean = X_raw.fillna(0) if hasattr(X_raw, "fillna") else X_raw
 
         if target == "goals":
             pred_poi = self.goals_poisson.predict(X_scaled)
 
-            if self._goals_gbts:
-                pred_gbt = _avg_predict(self._goals_gbts, X_raw)
-            else:
-                pred_gbt = self.goals_gbt.predict(X_raw)
+            # Market blend for Poisson component
+            if blend > 0 and df is not None and "market_expected_team_goals" in df.columns:
+                mkt_goals = df["market_expected_team_goals"].values.astype(float)
+                # Estimate per-player goal share from career avg (capped at 40%)
+                if "career_goal_avg_pre" in df.columns:
+                    career_avg = df["career_goal_avg_pre"].fillna(0).values
+                    # Average ~10 goals per team per game, so share = career_avg / 10
+                    share = np.clip(career_avg / 10.0, 0.0, 0.4)
+                else:
+                    share = np.full(len(df), 0.1)  # default 10% share
+                market_baseline = mkt_goals * share
+                has_market = ~np.isnan(mkt_goals) & (mkt_goals > 0)
+                pred_poi = np.where(
+                    has_market,
+                    (1 - blend) * pred_poi + blend * market_baseline,
+                    pred_poi,
+                )
+
+            pred_gbt = _predict_with_compatible_input(self.goals_gbt, X_raw, X_clean)
             raw_pred = np.clip(w_poi * pred_poi + w_gbt * pred_gbt, 0, None)
 
             # Two-stage: pred = P(scorer) * E[goals | scorer]
             if self.scorer_clf is not None:
-                if self._scorer_clfs:
-                    scorer_prob = _avg_predict_proba(self._scorer_clfs, X_raw)
-                else:
-                    scorer_prob = self.scorer_clf.predict_proba(
-                        X_raw
-                    )[:, 1]
+                scorer_prob = _predict_proba_with_compatible_input(
+                    self.scorer_clf, X_raw, X_clean
+                )
                 pred = scorer_prob * raw_pred
                 pred = np.clip(pred, 0, None)
             else:
@@ -414,10 +445,7 @@ class AFLScoringModel:
         else:
             pred_poi = self.behinds_poisson.predict(X_scaled)
 
-            if self._behinds_gbts:
-                pred_gbt = _avg_predict(self._behinds_gbts, X_raw)
-            else:
-                pred_gbt = self.behinds_gbt.predict(X_raw)
+            pred_gbt = _predict_with_compatible_input(self.behinds_gbt, X_raw, X_clean)
             pred = np.clip(w_poi * pred_poi + w_gbt * pred_gbt, 0, None)
             return pred, None, None
 
@@ -466,12 +494,13 @@ class AFLScoringModel:
     # Prediction
     # ------------------------------------------------------------------
 
-    def predict(self, df, feature_cols=None):
+    def predict(self, df, feature_cols=None, store=None):
         """Generate predictions for a DataFrame of upcoming matches.
 
         Args:
             df: DataFrame with the same feature columns as training data.
                 Must include 'player', 'team', 'opponent', 'venue', 'round'.
+            store: LearningStore instance for isotonic calibration (optional).
 
         Returns:
             DataFrame with prediction columns added.
@@ -479,8 +508,12 @@ class AFLScoringModel:
         feature_cols = feature_cols or self.feature_cols
         X_raw, X_clean, X_scaled = _prepare_features(df, feature_cols, scaler=self.scaler)
 
-        pred_goals, scorer_prob, lambda_if_scorer = self._ensemble_predict(X_raw, X_scaled, "goals")
-        pred_behinds, _, _ = self._ensemble_predict(X_raw, X_scaled, "behinds")
+        pred_goals, scorer_prob, lambda_if_scorer = self._ensemble_predict(
+            X_raw, X_scaled, "goals", df=df, X_clean=X_clean
+        )
+        pred_behinds, _, _ = self._ensemble_predict(
+            X_raw, X_scaled, "behinds", X_clean=X_clean
+        )
 
         # Pick round column — new schema uses round_number, legacy used round
         round_col = "round_number" if "round_number" in df.columns else "round"
@@ -491,6 +524,12 @@ class AFLScoringModel:
         result["predicted_goals"] = np.round(pred_goals, 2)
         result["predicted_behinds"] = np.round(pred_behinds, 2)
         result["predicted_score"] = np.round(pred_goals * 6 + pred_behinds, 2)
+
+        # Apply isotonic calibration to p_scorer if available
+        if store is not None and getattr(config, "CALIBRATION_METHOD", "bucket") == "isotonic":
+            calibrator = store.load_isotonic_calibrator() if hasattr(store, "load_isotonic_calibrator") else None
+            if calibrator is not None and calibrator.has_calibrator("1plus_goals"):
+                result["p_scorer"] = np.round(calibrator.transform("1plus_goals", result["p_scorer"].values), 4)
 
         # Confidence intervals from zero-inflated Poisson mixture (80%)
         result["conf_lower_gl"] = [
@@ -542,8 +581,12 @@ class AFLScoringModel:
         feature_cols = feature_cols or self.feature_cols
         X_raw, X_clean, X_scaled = _prepare_features(df, feature_cols, scaler=self.scaler)
 
-        pred_goals, scorer_prob, lambda_if_scorer = self._ensemble_predict(X_raw, X_scaled, "goals")
-        pred_behinds, _, _ = self._ensemble_predict(X_raw, X_scaled, "behinds")
+        pred_goals, scorer_prob, lambda_if_scorer = self._ensemble_predict(
+            X_raw, X_scaled, "goals", df=df, X_clean=X_clean
+        )
+        pred_behinds, _, _ = self._ensemble_predict(
+            X_raw, X_scaled, "behinds", X_clean=X_clean
+        )
 
         max_k = config.GOAL_DISTRIBUTION_MAX_K
 
@@ -620,6 +663,22 @@ class AFLScoringModel:
         for k in range(4):
             result[f"p_behinds_{k}"] = np.round(behind_pmfs[:, k], 4)
         result["p_behinds_4plus"] = np.round(behind_pmfs[:, 4], 4)
+
+        # Goal threshold probabilities: P(1+), P(2+), P(3+)
+        result["p_1plus_goals"] = np.round(1.0 - goal_pmfs[:, 0], 4)
+        result["p_2plus_goals"] = np.round(1.0 - goal_pmfs[:, 0] - goal_pmfs[:, 1], 4)
+        result["p_3plus_goals"] = np.round(
+            1.0 - goal_pmfs[:, 0] - goal_pmfs[:, 1] - goal_pmfs[:, 2], 4
+        )
+
+        # Apply isotonic calibration to goal thresholds if available
+        if store is not None and getattr(config, "CALIBRATION_METHOD", "bucket") == "isotonic":
+            calibrator = store.load_isotonic_calibrator() if hasattr(store, "load_isotonic_calibrator") else None
+            if calibrator is not None:
+                for threshold, name in [(1, "1plus_goals"), (2, "2plus_goals"), (3, "3plus_goals")]:
+                    col = f"p_{name}"
+                    if calibrator.has_calibrator(name) and col in result.columns:
+                        result[col] = np.round(calibrator.transform(name, result[col].values), 4)
 
         # Confidence intervals
         result["conf_lower_gl"] = conf_lower_gl.astype(int)
@@ -743,8 +802,12 @@ class AFLScoringModel:
         feature_cols = feature_cols or self.feature_cols
         X_raw, X_clean, X_scaled = _prepare_features(df, feature_cols, scaler=self.scaler)
 
-        pred_goals, scorer_prob, _ = self._ensemble_predict(X_raw, X_scaled, "goals")
-        pred_behinds, _, _ = self._ensemble_predict(X_raw, X_scaled, "behinds")
+        pred_goals, scorer_prob, _ = self._ensemble_predict(
+            X_raw, X_scaled, "goals", X_clean=X_clean
+        )
+        pred_behinds, _, _ = self._ensemble_predict(
+            X_raw, X_scaled, "behinds", X_clean=X_clean
+        )
 
         actual_goals = df["GL"].values
         actual_behinds = df["BH"].values
@@ -805,11 +868,11 @@ class EloSystem:
     Ratings regress toward mean at season start.
     """
 
-    def __init__(self, k_factor=30, home_advantage=30, season_regression=0.5,
+    def __init__(self, k_factor=None, home_advantage=None, season_regression=None,
                  initial_rating=1500):
-        self.k_factor = k_factor
-        self.home_advantage = home_advantage
-        self.season_regression = season_regression
+        self.k_factor = k_factor if k_factor is not None else getattr(config, "ELO_K_FACTOR", 30)
+        self.home_advantage = home_advantage if home_advantage is not None else getattr(config, "ELO_HOME_ADVANTAGE", 30)
+        self.season_regression = season_regression if season_regression is not None else getattr(config, "ELO_SEASON_REGRESSION", 0.5)
         self.initial_rating = initial_rating
         self.ratings = {}  # team → rating
         self._last_year = None
@@ -939,12 +1002,74 @@ class AFLGameWinnerModel:
     Uses HistGradientBoostingClassifier for speed.
     """
 
-    def __init__(self):
+    def __init__(self, gbt_params=None, elo_params=None):
         self.classifier = None
         self.margin_regressor = None
-        self.elo_system = EloSystem()
+        self.elo_system = EloSystem(**(elo_params or {}))
         self.feature_cols = []
         self.eval_metrics = {}
+        self.hybrid_enabled = bool(getattr(config, "WINNER_HYBRID_ENABLED", True))
+        self.hybrid_alpha = float(getattr(config, "WINNER_HYBRID_ALPHA", 1.0))
+        self.hybrid_beta = float(getattr(config, "WINNER_HYBRID_BETA", 1.0))
+        self.hybrid_bias = float(getattr(config, "WINNER_HYBRID_BIAS", 0.0))
+        self.market_eps = float(getattr(config, "WINNER_MARKET_EPS", 1e-6))
+        # Instance-level params (override config defaults)
+        self.gbt_params = gbt_params or getattr(config, "GAME_WINNER_PARAMS_BACKTEST", config.HIST_GBT_PARAMS_BACKTEST)
+
+    def _refresh_hybrid_params(self):
+        """Refresh hybrid parameters from config to support runtime toggles."""
+        self.hybrid_enabled = bool(getattr(config, "WINNER_HYBRID_ENABLED", True))
+        self.hybrid_alpha = float(getattr(config, "WINNER_HYBRID_ALPHA", 1.0))
+        self.hybrid_beta = float(getattr(config, "WINNER_HYBRID_BETA", 1.0))
+        self.hybrid_bias = float(getattr(config, "WINNER_HYBRID_BIAS", 0.0))
+        self.market_eps = float(getattr(config, "WINNER_MARKET_EPS", 1e-6))
+
+    def _market_prior_components(self, game_df):
+        """Return market prior probabilities and availability mask."""
+        prior = np.full(len(game_df), 0.5, dtype=float)
+        available = np.zeros(len(game_df), dtype=bool)
+        if "market_home_implied_prob" in game_df.columns:
+            raw = pd.to_numeric(game_df["market_home_implied_prob"], errors="coerce").values
+            valid = np.isfinite(raw) & (raw >= 0.0) & (raw <= 1.0)
+            prior[valid] = raw[valid]
+            available = valid
+        return prior, available
+
+    def _prob_to_logit(self, probs):
+        """Convert probabilities to logits with clipping for numeric safety."""
+        eps = max(float(self.market_eps), 1e-12)
+        p = np.clip(np.asarray(probs, dtype=float), eps, 1.0 - eps)
+        return np.log(p / (1.0 - p))
+
+    @staticmethod
+    def _logit_to_prob(logits):
+        """Convert logits to probabilities."""
+        z = np.clip(np.asarray(logits, dtype=float), -35.0, 35.0)
+        return 1.0 / (1.0 + np.exp(-z))
+
+    def _combine_hybrid_prob(self, residual_prob, market_prior_prob):
+        """Blend market prior and residual model in logit space."""
+        if not self.hybrid_enabled:
+            return np.asarray(residual_prob, dtype=float)
+        market_logit = self._prob_to_logit(market_prior_prob)
+        residual_logit = self._prob_to_logit(residual_prob)
+        combined = (
+            self.hybrid_alpha * market_logit
+            + self.hybrid_beta * residual_logit
+            + self.hybrid_bias
+        )
+        return self._logit_to_prob(combined)
+
+    def _predict_prob_components(self, game_df):
+        """Predict residual and hybrid probabilities for game winner."""
+        if self.classifier is None:
+            raise ValueError("Game winner classifier is not trained.")
+        self._refresh_hybrid_params()
+        X = game_df[self.feature_cols].fillna(0)
+        residual_prob = self.classifier.predict_proba(X)[:, 1]
+        market_prior_prob, market_available = self._market_prior_components(game_df)
+        hybrid_prob = self._combine_hybrid_prob(residual_prob, market_prior_prob)
+        return hybrid_prob, residual_prob, market_prior_prob, market_available
 
     def build_game_features(self, team_match_df, elo_df=None,
                             player_predictions_df=None):
@@ -1069,6 +1194,7 @@ class AFLGameWinnerModel:
                 "market_home_implied_prob", "market_away_implied_prob",
                 "market_handicap", "market_total_score",
                 "market_confidence", "odds_movement_home", "odds_movement_line",
+                "betfair_home_implied_prob",
             ]
             odds_df = odds_df[[c for c in odds_cols if c in odds_df.columns]]
             game_df = game_df.merge(odds_df, on="match_id", how="left")
@@ -1147,8 +1273,23 @@ class AFLGameWinnerModel:
             "market_home_implied_prob", "market_away_implied_prob",
             "market_handicap", "market_total_score",
             "market_confidence", "odds_movement_home", "odds_movement_line",
+            "betfair_home_implied_prob",
         ]
         available_odds = [c for c in odds_feature_names if c in game_df.columns]
+        # In hybrid mode, use market implied probabilities as prior (not residual inputs).
+        if bool(getattr(config, "WINNER_HYBRID_ENABLED", True)):
+            available_odds = [
+                c for c in available_odds
+                if c not in {"market_home_implied_prob", "market_away_implied_prob"}
+            ]
+
+        # Betfair-bookmaker divergence: sharp money signal
+        if "betfair_home_implied_prob" in game_df.columns and "market_home_implied_prob" in game_df.columns:
+            game_df["market_betfair_divergence"] = (
+                game_df["betfair_home_implied_prob"] - game_df["market_home_implied_prob"]
+            )
+            available_odds = available_odds + ["market_betfair_divergence"]
+
         model_features = model_features + available_odds
 
         # Add game-level features (not duplicated per team)
@@ -1183,36 +1324,83 @@ class AFLGameWinnerModel:
 
         print(f"  Training: {len(train)} games, Validation: {len(val)} games")
 
-        self.classifier = HistGradientBoostingClassifier(
-            max_iter=200,
-            max_depth=4,
-            learning_rate=0.05,
-            min_samples_leaf=10,
-            random_state=config.RANDOM_SEED,
-        )
+        gw_params = getattr(config, "GAME_WINNER_PARAMS", {
+            "max_iter": 200, "max_depth": 4, "learning_rate": 0.05,
+            "min_samples_leaf": 10, "random_state": config.RANDOM_SEED,
+        })
+        self.classifier = HistGradientBoostingClassifier(**gw_params)
         self.classifier.fit(X_train, y_train)
+        self._refresh_hybrid_params()
 
-        # Evaluate
-        pred_prob = self.classifier.predict_proba(X_val)[:, 1]
-        pred_class = self.classifier.predict(X_val)
-        accuracy = np.mean(pred_class == y_val)
+        # Evaluate (residual + hybrid paths)
+        residual_prob = self.classifier.predict_proba(X_val)[:, 1]
+        market_prior_prob, market_available = self._market_prior_components(val)
+        hybrid_prob = self._combine_hybrid_prob(residual_prob, market_prior_prob)
+
+        residual_class = (residual_prob > 0.5).astype(int)
+        hybrid_class = (hybrid_prob > 0.5).astype(int)
+        residual_acc = float(np.mean(residual_class == y_val))
+        accuracy = float(np.mean(hybrid_class == y_val))
 
         try:
-            auc = roc_auc_score(y_val, pred_prob)
+            residual_auc = float(roc_auc_score(y_val, residual_prob))
+        except ValueError:
+            residual_auc = float("nan")
+        try:
+            auc = float(roc_auc_score(y_val, hybrid_prob))
         except ValueError:
             auc = float("nan")
+        residual_brier = float(np.mean((residual_prob - y_val) ** 2))
+        hybrid_brier = float(np.mean((hybrid_prob - y_val) ** 2))
 
         # Elo baseline accuracy
-        elo_pred = (val["home_expected_win_prob"].fillna(0.5) > 0.5).astype(int) \
-            if "home_expected_win_prob" in val.columns else np.ones_like(y_val)
+        elo_col = "home_expected_win_prob"
+        if elo_col in val.columns:
+            elo_pred = (val[elo_col].fillna(0.5) > 0.5).astype(int)
+            elo_acc = np.mean(elo_pred == y_val)
+        else:
+            elo_acc = float("nan")
+
+        # Market baseline comparison (if odds features present)
+        market_acc = float("nan")
+        market_auc = float("nan")
+        if market_available.sum() > 10:
+            mkt_prob = market_prior_prob
+            mkt_pred = (mkt_prob > 0.5).astype(int)
+            market_acc = float(np.mean(mkt_pred[market_available] == y_val[market_available]))
+            try:
+                market_auc = float(roc_auc_score(y_val[market_available], mkt_prob[market_available]))
+            except ValueError:
+                pass
+            market_brier = float(np.mean((mkt_prob[market_available] - y_val[market_available]) ** 2))
+        else:
+            market_brier = float("nan")
 
         self.eval_metrics = {
             "accuracy": accuracy,
             "auc": auc if not np.isnan(auc) else None,
+            "residual_accuracy": residual_acc,
+            "residual_auc": residual_auc if not np.isnan(residual_auc) else None,
+            "hybrid_brier": hybrid_brier,
+            "residual_brier": residual_brier,
+            "elo_accuracy": elo_acc if not np.isnan(elo_acc) else None,
+            "market_accuracy": market_acc if not np.isnan(market_acc) else None,
+            "market_auc": market_auc if not np.isnan(market_auc) else None,
+            "market_brier": market_brier if not np.isnan(market_brier) else None,
+            "hybrid_enabled": bool(self.hybrid_enabled),
+            "market_coverage": float(market_available.mean()),
             "n_val_games": len(val),
+            "n_features": len(model_features),
         }
 
-        print(f"  Game Winner Accuracy: {accuracy:.3f}  AUC: {auc:.4f}")
+        print(f"  Game Winner (hybrid) acc: {accuracy:.3f}  AUC: {auc:.4f}  Brier: {hybrid_brier:.4f}")
+        print(f"  Residual-only acc:         {residual_acc:.3f}  AUC: {residual_auc:.4f}  Brier: {residual_brier:.4f}")
+        if not np.isnan(elo_acc):
+            print(f"  Elo baseline acc:     {elo_acc:.3f}")
+        if not np.isnan(market_acc):
+            print(f"  Market baseline acc:  {market_acc:.3f}  AUC: {market_auc:.4f}  Brier: {market_brier:.4f}")
+            edge = accuracy - market_acc
+            print(f"  Model edge vs market: {edge:+.3f}")
 
         # Top features
         if hasattr(self.classifier, "feature_importances_"):
@@ -1225,7 +1413,7 @@ class AFLGameWinnerModel:
         return self.eval_metrics
 
     def predict(self, team_match_df, upcoming_matches=None,
-                player_predictions_df=None):
+                player_predictions_df=None, store=None):
         """Predict game winners.
 
         If upcoming_matches provided, uses that. Otherwise predicts on
@@ -1242,14 +1430,25 @@ class AFLGameWinnerModel:
         else:
             pred_df = game_df
 
-        X = pred_df[self.feature_cols].fillna(0)
-        pred_prob = self.classifier.predict_proba(X)[:, 1]
+        hybrid_prob, residual_prob, market_prior_prob, market_available = (
+            self._predict_prob_components(pred_df)
+        )
+
+        # Apply isotonic calibration to hybrid prob if available
+        if store is not None and getattr(config, "CALIBRATION_METHOD", "bucket") == "isotonic":
+            calibrator = store.load_isotonic_calibrator() if hasattr(store, "load_isotonic_calibrator") else None
+            if calibrator is not None and calibrator.has_calibrator("game_winner"):
+                hybrid_prob = calibrator.transform("game_winner", hybrid_prob)
 
         result = pred_df[["match_id", "team", "opponent", "venue"]].copy()
-        result["home_win_prob"] = np.round(pred_prob, 4)
-        result["away_win_prob"] = np.round(1 - pred_prob, 4)
+        result["market_prior_prob_home"] = np.round(market_prior_prob, 4)
+        result["residual_prob_home"] = np.round(residual_prob, 4)
+        result["hybrid_prob_home"] = np.round(hybrid_prob, 4)
+        result["market_prior_available"] = market_available.astype(int)
+        result["home_win_prob"] = np.round(hybrid_prob, 4)
+        result["away_win_prob"] = np.round(1 - hybrid_prob, 4)
         result["predicted_winner"] = np.where(
-            pred_prob > 0.5, result["team"], result["opponent"]
+            hybrid_prob > 0.5, result["team"], result["opponent"]
         )
 
         return result
@@ -1271,17 +1470,17 @@ class AFLGameWinnerModel:
         y_win = game_df["home_win"].values
         y_margin = game_df["margin"].values
 
-        hist_params = config.HIST_GBT_PARAMS_BACKTEST
-
-        self.classifier = HistGradientBoostingClassifier(**hist_params)
+        self.classifier = HistGradientBoostingClassifier(**self.gbt_params)
         self.classifier.fit(X, y_win)
+        self._refresh_hybrid_params()
 
-        self.margin_regressor = HistGradientBoostingRegressor(**hist_params)
+        self.margin_regressor = HistGradientBoostingRegressor(**self.gbt_params)
         self.margin_regressor.fit(X, y_margin)
 
         return self.elo_system
 
-    def predict_with_margin(self, team_match_df, player_predictions_df=None):
+    def predict_with_margin(self, team_match_df, player_predictions_df=None,
+                            store=None):
         """Predict game winners with margin estimates.
 
         Returns DataFrame with: match_id, home_team, away_team, venue,
@@ -1301,8 +1500,16 @@ class AFLGameWinnerModel:
         if missing:
             raise ValueError(f"Missing {len(missing)} game winner feature columns: {missing[:10]}")
 
+        hybrid_prob, residual_prob, market_prior_prob, market_available = (
+            self._predict_prob_components(game_df)
+        )
+
+        # Apply isotonic calibration to hybrid prob if available
+        if store is not None and getattr(config, "CALIBRATION_METHOD", "bucket") == "isotonic":
+            calibrator = store.load_isotonic_calibrator() if hasattr(store, "load_isotonic_calibrator") else None
+            if calibrator is not None and calibrator.has_calibrator("game_winner"):
+                hybrid_prob = calibrator.transform("game_winner", hybrid_prob)
         X = game_df[self.feature_cols].fillna(0)
-        pred_prob = self.classifier.predict_proba(X)[:, 1]
 
         # Margin prediction
         if self.margin_regressor is not None:
@@ -1315,11 +1522,15 @@ class AFLGameWinnerModel:
             "home_team": game_df["team"].values,
             "away_team": game_df["opponent"].values,
             "venue": game_df["venue"].values,
-            "home_win_prob": np.round(pred_prob, 4),
-            "away_win_prob": np.round(1 - pred_prob, 4),
+            "market_prior_prob_home": np.round(market_prior_prob, 4),
+            "residual_prob_home": np.round(residual_prob, 4),
+            "hybrid_prob_home": np.round(hybrid_prob, 4),
+            "market_prior_available": market_available.astype(int),
+            "home_win_prob": np.round(hybrid_prob, 4),
+            "away_win_prob": np.round(1 - hybrid_prob, 4),
             "predicted_margin": np.round(pred_margin, 1),
             "predicted_winner": np.where(
-                pred_prob > 0.5,
+                hybrid_prob > 0.5,
                 game_df["team"].values,
                 game_df["opponent"].values,
             ),
@@ -1347,6 +1558,13 @@ class AFLGameWinnerModel:
             "eval_metrics": self.eval_metrics,
             "elo_ratings": {k: round(v, 1) for k, v in self.elo_system.ratings.items()},
             "has_margin_regressor": self.margin_regressor is not None,
+            "hybrid": {
+                "enabled": bool(self.hybrid_enabled),
+                "alpha": float(self.hybrid_alpha),
+                "beta": float(self.hybrid_beta),
+                "bias": float(self.hybrid_bias),
+                "market_eps": float(self.market_eps),
+            },
         }
         with open(models_dir / "game_winner_metadata.json", "w") as f:
             json.dump(metadata, f, indent=2, default=str)
@@ -1391,7 +1609,8 @@ class AFLDisposalModel:
     so we use a single-stage regression (no scorer classifier needed).
     """
 
-    def __init__(self, distribution="poisson"):
+    def __init__(self, distribution="poisson", gbt_params=None, poisson_params=None,
+                 ensemble_weights=None):
         self.distribution = distribution  # 'poisson', 'gaussian', 'negbin'
         self.disp_poisson = None
         self.disp_gbt = None
@@ -1402,8 +1621,10 @@ class AFLDisposalModel:
         # Distribution-specific parameters (estimated from training residuals)
         self._residual_std = None   # for Gaussian: global residual std
         self._negbin_r = None       # for NegBin: dispersion parameter r
-        # Multi-model ensemble list (populated when MULTI_MODEL_ENSEMBLE=True)
-        self._disp_gbts = []        # [HistGBT_reg, GBT_reg, ET_reg]
+        # Instance-level params (override config defaults)
+        self.gbt_params = gbt_params or getattr(config, "DISPOSAL_GBT_PARAMS_BACKTEST", config.HIST_GBT_PARAMS_BACKTEST)
+        self.poisson_params = poisson_params or getattr(config, "DISPOSAL_POISSON_PARAMS", config.POISSON_PARAMS)
+        self.ensemble_weights = ensemble_weights or config.ENSEMBLE_WEIGHTS
 
     def train(self, df, feature_cols=None):
         """Train disposal prediction models."""
@@ -1488,14 +1709,9 @@ class AFLDisposalModel:
         return self.eval_metrics
 
     def train_backtest(self, df, feature_cols):
-        """Fast training for backtest loop.
-
-        When config.MULTI_MODEL_ENSEMBLE is True, trains 3 tree regressors
-        (HistGBT, standard GBT, ExtraTrees) and averages predictions.
-        The Poisson component is unchanged.
-        """
+        """Fast training for backtest loop."""
         self.feature_cols = feature_cols
-        hist_params = config.HIST_GBT_PARAMS_BACKTEST
+        hist_params = self.gbt_params
 
         y = df["DI"].values
         weights = df["sample_weight"].values if "sample_weight" in df.columns else None
@@ -1505,34 +1721,16 @@ class AFLDisposalModel:
             df, feature_cols, scaler=self.scaler, fit_scaler=True
         )
 
-        # Poisson component (always single-model, unchanged)
+        # Poisson component
         self.disp_poisson = PoissonRegressor(
-            alpha=config.POISSON_PARAMS["alpha"],
-            max_iter=config.POISSON_PARAMS["max_iter"],
+            alpha=self.poisson_params["alpha"],
+            max_iter=self.poisson_params["max_iter"],
         )
         self.disp_poisson.fit(X_scaled, y, sample_weight=weights)
 
-        use_ensemble = getattr(config, "MULTI_MODEL_ENSEMBLE", False)
-
-        if use_ensemble:
-            deep_params = getattr(config, "HIST_GBT_DEEP_PARAMS_BACKTEST", hist_params)
-            wide_params = getattr(config, "HIST_GBT_WIDE_PARAMS_BACKTEST", hist_params)
-
-            di_base = HistGradientBoostingRegressor(**hist_params)
-            di_base.fit(X_raw, y, sample_weight=weights)
-
-            di_deep = HistGradientBoostingRegressor(**deep_params)
-            di_deep.fit(X_raw, y, sample_weight=weights)
-
-            di_wide = HistGradientBoostingRegressor(**wide_params)
-            di_wide.fit(X_raw, y, sample_weight=weights)
-
-            self._disp_gbts = [di_base, di_deep, di_wide]
-            self.disp_gbt = di_base
-        else:
-            self._disp_gbts = []
-            self.disp_gbt = HistGradientBoostingRegressor(**hist_params)
-            self.disp_gbt.fit(X_raw, y, sample_weight=weights)
+        # Single-model GBT
+        self.disp_gbt = HistGradientBoostingRegressor(**hist_params)
+        self.disp_gbt.fit(X_raw, y, sample_weight=weights)
 
         # Estimate distribution-specific parameters
         if self.distribution != "poisson":
@@ -1660,28 +1858,48 @@ class AFLDisposalModel:
         else:
             raise ValueError(f"Unknown distribution: {self.distribution}")
 
-    def _predict_raw(self, X_raw, X_scaled):
+    def _predict_raw(self, X_raw, X_scaled, df=None):
         """Raw ensemble prediction for disposals.
 
-        When multi-model ensemble is active, averages predictions across
-        all tree models in _disp_gbts. Poisson component is unchanged.
+        When df is provided with market_total_score, Poisson component is
+        blended with a market-pace proxy for disposal volume.
         """
-        w_poi = config.ENSEMBLE_WEIGHTS["poisson"]
-        w_gbt = config.ENSEMBLE_WEIGHTS["gbt"]
+        w_poi = self.ensemble_weights["poisson"]
+        w_gbt = self.ensemble_weights["gbt"]
+        blend = getattr(config, "MARKET_POISSON_BLEND", 0.0)
+
         pred_poi = self.disp_poisson.predict(X_scaled)
 
-        if self._disp_gbts:
-            pred_gbt = _avg_predict(self._disp_gbts, X_raw)
-        else:
-            pred_gbt = self.disp_gbt.predict(X_raw)
+        # Market blend: use total_score as game-pace proxy
+        if blend > 0 and df is not None and "market_total_score" in df.columns:
+            total_score = df["market_total_score"].values.astype(float)
+            # Average game total is ~170 points; disposals scale ~linearly with pace
+            avg_total = 170.0
+            pace_factor = total_score / avg_total
+            has_market = ~np.isnan(total_score) & (total_score > 0)
+            # Scale Poisson prediction by pace factor
+            market_adj_poi = pred_poi * pace_factor
+            pred_poi = np.where(
+                has_market,
+                (1 - blend) * pred_poi + blend * market_adj_poi,
+                pred_poi,
+            )
+
+        pred_gbt = self.disp_gbt.predict(X_raw)
         return np.clip(w_poi * pred_poi + w_gbt * pred_gbt, 0, None)
 
-    def predict(self, df, feature_cols=None):
-        """Generate disposal predictions with probability thresholds."""
+    def predict(self, df, feature_cols=None, store=None):
+        """Generate disposal predictions with probability thresholds.
+
+        Args:
+            df: DataFrame with features.
+            feature_cols: list of feature column names.
+            store: LearningStore instance for isotonic calibration (optional).
+        """
         feature_cols = feature_cols or self.feature_cols
         X_raw, X_clean, X_scaled = _prepare_features(df, feature_cols, scaler=self.scaler)
 
-        pred_disp = self._predict_raw(X_clean, X_scaled)
+        pred_disp = self._predict_raw(X_clean, X_scaled, df=df)
 
         round_col = "round_number" if "round_number" in df.columns else "round"
         result = df[["player", "team", "opponent", "venue", round_col]].copy()
@@ -1696,6 +1914,16 @@ class AFLDisposalModel:
             result[f"p_{t}plus_disp"] = np.round(
                 [self._threshold_prob(mu, t) for mu in pred_disp], 4
             )
+
+        # Apply isotonic calibration if available
+        if store is not None and getattr(config, "CALIBRATION_METHOD", "bucket") == "isotonic":
+            calibrator = store.load_isotonic_calibrator() if hasattr(store, "load_isotonic_calibrator") else None
+            if calibrator is not None:
+                for t in thresholds:
+                    tgt = f"{t}plus_disp"
+                    col = f"p_{t}plus_disp"
+                    if calibrator.has_calibrator(tgt) and col in result.columns:
+                        result[col] = np.round(calibrator.transform(tgt, result[col].values), 4)
 
         # Confidence intervals (80%)
         ci = [self._confidence_interval(mu) for mu in pred_disp]
@@ -1716,7 +1944,7 @@ class AFLDisposalModel:
         """
         feature_cols = feature_cols or self.feature_cols
         X_raw, X_clean, X_scaled = _prepare_features(df, feature_cols, scaler=self.scaler)
-        pred_disp = self._predict_raw(X_clean, X_scaled)
+        pred_disp = self._predict_raw(X_clean, X_scaled, df=df)
 
         round_col = "round_number" if "round_number" in df.columns else "round"
         result = pd.DataFrame({
@@ -1740,9 +1968,20 @@ class AFLDisposalModel:
         # Expanded thresholds using configured distribution
         thresholds = config.DISPOSAL_THRESHOLDS
         for t in thresholds:
-            result[f"p_{t}plus_disp"] = np.round(
-                [self._threshold_prob(mu, t) for mu in lambda_disp], 4
-            )
+            raw_probs = np.array([self._threshold_prob(mu, t) for mu in lambda_disp])
+            result[f"p_{t}plus_disp"] = np.round(raw_probs, 4)
+
+        # Apply isotonic calibration if available (replaces heuristic 30+ adjustments)
+        if store is not None and getattr(config, "CALIBRATION_METHOD", "bucket") == "isotonic":
+            calibrator = store.load_isotonic_calibrator() if hasattr(store, "load_isotonic_calibrator") else None
+            if calibrator is not None:
+                for t in thresholds:
+                    tgt = f"{t}plus_disp"
+                    col = f"p_{t}plus_disp"
+                    if calibrator.has_calibrator(tgt):
+                        result[col] = np.round(
+                            calibrator.transform(tgt, result[col].values), 4
+                        )
 
         # Confidence intervals (80%)
         ci = [self._confidence_interval(mu) for mu in lambda_disp]
@@ -1799,6 +2038,369 @@ class AFLDisposalModel:
         self._negbin_r = metadata.get("negbin_r")
 
         print(f"Disposal models loaded from {models_dir}")
+
+
+class AFLMarksModel:
+    """Model for predicting player marks per match.
+
+    Architecture:
+      - Poisson + GBT ensemble for E[marks]
+      - Probability thresholds from configurable distribution CDF
+
+    Supported distributions for threshold probabilities:
+      - 'poisson':  P(X>=k) = 1 - Poisson.CDF(k-1, lambda)
+      - 'gaussian': P(X>=k) = 1 - Norm.CDF(k-0.5, mu, sigma)  [continuity corrected]
+      - 'negbin':   P(X>=k) = 1 - NegBin.CDF(k-1, r, p)
+
+    Marks have lower volume and variance than disposals (mean ~4, std ~2.6).
+    """
+
+    def __init__(self, distribution="poisson", gbt_params=None, poisson_params=None,
+                 ensemble_weights=None):
+        self.distribution = distribution
+        self.marks_poisson = None
+        self.marks_gbt = None
+        self.scaler = None
+        self.feature_cols = []
+        self.eval_metrics = {}
+        self.training_info = {}
+        self._residual_std = None
+        self._negbin_r = None
+        self.gbt_params = gbt_params or getattr(config, "MARKS_GBT_PARAMS_BACKTEST", config.HIST_GBT_PARAMS_BACKTEST)
+        self.poisson_params = poisson_params or getattr(config, "MARKS_POISSON_PARAMS", config.POISSON_PARAMS)
+        self.ensemble_weights = ensemble_weights or config.ENSEMBLE_WEIGHTS
+
+    def train(self, df, feature_cols=None):
+        """Train marks prediction models."""
+        if feature_cols is None:
+            feat_path = config.FEATURES_DIR / "feature_columns.json"
+            if feat_path.exists():
+                with open(feat_path) as f:
+                    feature_cols = json.load(f)
+            else:
+                raise ValueError("No feature_cols provided and no feature_columns.json found")
+
+        self.feature_cols = feature_cols
+
+        train_df = df[df["year"] < config.VALIDATION_YEAR].copy()
+        val_df = df[df["year"] == config.VALIDATION_YEAR].copy()
+
+        if val_df.empty and len(train_df) > 0:
+            split_idx = int(len(df) * 0.8)
+            train_df = df.iloc[:split_idx].copy()
+            val_df = df.iloc[split_idx:].copy()
+
+        print(f"Training marks model: {len(train_df)} train, {len(val_df)} val rows")
+
+        y_train = train_df["MK"].values
+        y_val = val_df["MK"].values
+        weights_train = train_df["sample_weight"].values if "sample_weight" in train_df.columns else None
+
+        self.scaler = StandardScaler()
+        X_train_raw, X_train_clean, X_train_scaled = _prepare_features(
+            train_df, feature_cols, scaler=self.scaler, fit_scaler=True
+        )
+        X_val_raw, X_val_clean, X_val_scaled = _prepare_features(
+            val_df, feature_cols, scaler=self.scaler
+        )
+
+        print("  Training Poisson regressor for marks...")
+        self.marks_poisson = PoissonRegressor(
+            alpha=config.POISSON_PARAMS["alpha"],
+            max_iter=config.POISSON_PARAMS["max_iter"],
+        )
+        self.marks_poisson.fit(X_train_scaled, y_train, sample_weight=weights_train)
+
+        print("  Training GBT regressor for marks...")
+        self.marks_gbt = GradientBoostingRegressor(**config.GBT_PARAMS)
+        self.marks_gbt.fit(X_train_clean, y_train, sample_weight=weights_train)
+
+        if self.distribution != "poisson":
+            self._estimate_distribution_params(X_train_clean, X_train_scaled, y_train)
+
+        pred = self._predict_raw(X_val_clean, X_val_scaled)
+        mae = mean_absolute_error(y_val, pred)
+        rmse = np.sqrt(mean_squared_error(y_val, pred))
+        baseline = y_train.mean()
+        baseline_mae = mean_absolute_error(y_val, np.full_like(y_val, baseline, dtype=float))
+
+        self.eval_metrics = {
+            "marks_mae": mae,
+            "marks_rmse": rmse,
+            "marks_baseline_mae": baseline_mae,
+        }
+        self.training_info = {
+            "train_rows": len(train_df),
+            "val_rows": len(val_df),
+            "n_features": len(feature_cols),
+        }
+
+        print(f"  Marks MAE: {mae:.4f}  RMSE: {rmse:.4f}  Baseline: {baseline_mae:.4f}")
+
+        if hasattr(self.marks_gbt, "feature_importances_"):
+            importances = self.marks_gbt.feature_importances_
+            top_idx = np.argsort(importances)[::-1][:10]
+            print("  Top 10 marks features:")
+            for i in top_idx:
+                print(f"    {feature_cols[i]:40s} {importances[i]:.4f}")
+
+        return self.eval_metrics
+
+    def train_backtest(self, df, feature_cols):
+        """Fast training for backtest loop."""
+        self.feature_cols = feature_cols
+        hist_params = self.gbt_params
+
+        y = df["MK"].values
+        weights = df["sample_weight"].values if "sample_weight" in df.columns else None
+
+        self.scaler = StandardScaler()
+        X_raw, X_clean, X_scaled = _prepare_features(
+            df, feature_cols, scaler=self.scaler, fit_scaler=True
+        )
+
+        self.marks_poisson = PoissonRegressor(
+            alpha=self.poisson_params["alpha"],
+            max_iter=self.poisson_params["max_iter"],
+        )
+        self.marks_poisson.fit(X_scaled, y, sample_weight=weights)
+
+        self.marks_gbt = HistGradientBoostingRegressor(**hist_params)
+        self.marks_gbt.fit(X_raw, y, sample_weight=weights)
+
+        if self.distribution != "poisson":
+            self._estimate_distribution_params(X_clean, X_scaled, y)
+
+    def _estimate_distribution_params(self, X_raw, X_scaled, y_actual):
+        """Estimate distribution-specific parameters from training residuals."""
+        pred = self._predict_raw(X_raw, X_scaled)
+        residuals = y_actual - pred
+
+        if self.distribution == "gaussian":
+            self._residual_std = float(np.std(residuals))
+            from scipy.optimize import curve_fit
+            pred_clipped = np.clip(pred, 0.5, None)
+            bins = np.percentile(pred_clipped, np.arange(0, 101, 10))
+            bins = np.unique(bins)
+            bin_idx = np.digitize(pred_clipped, bins)
+            bin_stds = []
+            bin_means = []
+            for b in range(1, len(bins)):
+                mask = bin_idx == b
+                if mask.sum() > 30:
+                    bin_stds.append(np.std(residuals[mask]))
+                    bin_means.append(np.mean(pred_clipped[mask]))
+            if len(bin_stds) >= 3:
+                bin_means = np.array(bin_means)
+                bin_stds = np.array(bin_stds)
+                try:
+                    def std_model(x, a, b):
+                        return a + b * np.sqrt(x)
+                    popt, _ = curve_fit(std_model, bin_means, bin_stds, p0=[1.0, 0.3])
+                    self._std_params = (float(popt[0]), float(popt[1]))
+                except Exception:
+                    self._std_params = None
+            else:
+                self._std_params = None
+
+        elif self.distribution == "negbin":
+            pred_clipped = np.clip(pred, 0.5, None)
+            overall_var = np.var(y_actual)
+            overall_mean = np.mean(y_actual)
+            if overall_var > overall_mean:
+                self._negbin_r = float(overall_mean ** 2 / (overall_var - overall_mean))
+                print(f"  NegBin r = {self._negbin_r:.2f} (var={overall_var:.2f}, mean={overall_mean:.2f})")
+            else:
+                self._negbin_r = 100.0
+                print(f"  NegBin: var ({overall_var:.2f}) <= mean ({overall_mean:.2f}), using r=100 (≈Poisson)")
+
+    def _get_std_for_mu(self, mu):
+        """Get estimated std for a given predicted mean (Gaussian distribution)."""
+        if hasattr(self, '_std_params') and self._std_params is not None:
+            a, b = self._std_params
+            return max(a + b * np.sqrt(max(mu, 0.1)), 0.5)
+        return max(self._residual_std, 0.5)
+
+    def _threshold_prob(self, mu, threshold):
+        """Compute P(X >= threshold) using the configured distribution."""
+        mu = max(mu, 0.01)
+        if self.distribution == "poisson":
+            return 1 - poisson.cdf(threshold - 1, mu)
+        elif self.distribution == "gaussian":
+            from scipy.stats import norm
+            sigma = self._get_std_for_mu(mu)
+            x = threshold - 0.5  # continuity correction
+            return float(np.clip(1.0 - norm.cdf(x, loc=mu, scale=sigma), 0.0, 1.0))
+        elif self.distribution == "negbin":
+            from scipy.stats import nbinom
+            r = self._negbin_r if self._negbin_r is not None else 100.0
+            p_success = r / (r + mu)
+            return 1 - nbinom.cdf(threshold - 1, r, p_success)
+        else:
+            raise ValueError(f"Unknown distribution: {self.distribution}")
+
+    def _confidence_interval(self, mu, lo_q=0.10, hi_q=0.90):
+        """Compute confidence interval quantiles using configured distribution."""
+        mu = max(mu, 0.01)
+        if self.distribution == "poisson":
+            return int(poisson.ppf(lo_q, mu)), int(poisson.ppf(hi_q, mu))
+        elif self.distribution == "gaussian":
+            from scipy.stats import norm
+            sigma = self._get_std_for_mu(mu)
+            return max(0, int(norm.ppf(lo_q, mu, sigma))), int(norm.ppf(hi_q, mu, sigma))
+        elif self.distribution == "negbin":
+            from scipy.stats import nbinom
+            r = self._negbin_r if self._negbin_r is not None else 100.0
+            p_success = r / (r + mu)
+            return int(nbinom.ppf(lo_q, r, p_success)), int(nbinom.ppf(hi_q, r, p_success))
+        else:
+            raise ValueError(f"Unknown distribution: {self.distribution}")
+
+    def _predict_raw(self, X_raw, X_scaled, df=None):
+        """Raw ensemble prediction for marks."""
+        w_poi = self.ensemble_weights["poisson"]
+        w_gbt = self.ensemble_weights["gbt"]
+
+        pred_poi = self.marks_poisson.predict(X_scaled)
+        pred_gbt = self.marks_gbt.predict(X_raw)
+        return np.clip(w_poi * pred_poi + w_gbt * pred_gbt, 0, None)
+
+    def predict(self, df, feature_cols=None, store=None):
+        """Generate marks predictions with probability thresholds."""
+        feature_cols = feature_cols or self.feature_cols
+        X_raw, X_clean, X_scaled = _prepare_features(df, feature_cols, scaler=self.scaler)
+
+        pred_marks = self._predict_raw(X_clean, X_scaled, df=df)
+
+        round_col = "round_number" if "round_number" in df.columns else "round"
+        result = df[["player", "team", "opponent", "venue", round_col]].copy()
+        if round_col != "round":
+            result = result.rename(columns={round_col: "round"})
+
+        result["predicted_marks"] = np.round(pred_marks, 2)
+
+        thresholds = config.MODEL_TARGETS["marks"]["thresholds"]
+        for t in thresholds:
+            result[f"p_{t}plus_mk"] = np.round(
+                [self._threshold_prob(mu, t) for mu in pred_marks], 4
+            )
+
+        if store is not None and getattr(config, "CALIBRATION_METHOD", "bucket") == "isotonic":
+            calibrator = store.load_isotonic_calibrator() if hasattr(store, "load_isotonic_calibrator") else None
+            if calibrator is not None:
+                for t in thresholds:
+                    tgt = f"{t}plus_mk"
+                    col = f"p_{t}plus_mk"
+                    if calibrator.has_calibrator(tgt) and col in result.columns:
+                        result[col] = np.round(calibrator.transform(tgt, result[col].values), 4)
+
+        ci = [self._confidence_interval(mu) for mu in pred_marks]
+        result["conf_lower_mk"] = [c[0] for c in ci]
+        result["conf_upper_mk"] = [c[1] for c in ci]
+
+        if "player_role" in df.columns:
+            result["player_role"] = df["player_role"].values
+
+        result = result.sort_values("predicted_marks", ascending=False).reset_index(drop=True)
+        return result
+
+    def predict_distributions(self, df, store=None, feature_cols=None):
+        """Generate marks predictions with expanded thresholds and calibration.
+
+        Returns per-player marks predictions with calibrated lambda,
+        probability thresholds for 3+/5+/7+, and confidence intervals.
+        """
+        feature_cols = feature_cols or self.feature_cols
+        X_raw, X_clean, X_scaled = _prepare_features(df, feature_cols, scaler=self.scaler)
+        pred_marks = self._predict_raw(X_clean, X_scaled, df=df)
+
+        result = pd.DataFrame({
+            "player": df["player"].values,
+            "team": df["team"].values,
+            "match_id": df["match_id"].values,
+        })
+
+        lambda_marks = np.zeros(len(df))
+        for i in range(len(df)):
+            raw_lam = max(pred_marks[i], 0.001)
+            if store is not None:
+                lambda_marks[i] = store.get_lambda_calibration("marks", raw_lam)
+            else:
+                lambda_marks[i] = raw_lam
+
+        result["predicted_marks"] = np.round(pred_marks, 2)
+        result["lambda_marks"] = np.round(lambda_marks, 4)
+
+        thresholds = config.MARKS_THRESHOLDS
+        for t in thresholds:
+            raw_probs = np.array([self._threshold_prob(mu, t) for mu in lambda_marks])
+            result[f"p_{t}plus_mk"] = np.round(raw_probs, 4)
+
+        if store is not None and getattr(config, "CALIBRATION_METHOD", "bucket") == "isotonic":
+            calibrator = store.load_isotonic_calibrator() if hasattr(store, "load_isotonic_calibrator") else None
+            if calibrator is not None:
+                for t in thresholds:
+                    tgt = f"{t}plus_mk"
+                    col = f"p_{t}plus_mk"
+                    if calibrator.has_calibrator(tgt):
+                        result[col] = np.round(
+                            calibrator.transform(tgt, result[col].values), 4
+                        )
+
+        ci = [self._confidence_interval(mu) for mu in lambda_marks]
+        result["conf_lower_mk"] = [c[0] for c in ci]
+        result["conf_upper_mk"] = [c[1] for c in ci]
+
+        return result
+
+    def save(self, models_dir=None):
+        """Save trained marks models."""
+        models_dir = Path(models_dir or config.MODELS_DIR)
+        models_dir.mkdir(parents=True, exist_ok=True)
+
+        with open(models_dir / "marks_poisson.pkl", "wb") as f:
+            pickle.dump(self.marks_poisson, f)
+        with open(models_dir / "marks_gbt.pkl", "wb") as f:
+            pickle.dump(self.marks_gbt, f)
+        with open(models_dir / "marks_scaler.pkl", "wb") as f:
+            pickle.dump(self.scaler, f)
+
+        metadata = {
+            "feature_cols": self.feature_cols,
+            "eval_metrics": self.eval_metrics,
+            "training_info": self.training_info,
+            "distribution": self.distribution,
+            "residual_std": self._residual_std,
+            "std_params": self._std_params if hasattr(self, '_std_params') else None,
+            "negbin_r": self._negbin_r,
+        }
+        with open(models_dir / "marks_model_metadata.json", "w") as f:
+            json.dump(metadata, f, indent=2, default=str)
+
+        print(f"Marks models saved to {models_dir}")
+
+    def load(self, models_dir=None):
+        """Load previously trained marks models."""
+        models_dir = Path(models_dir or config.MODELS_DIR)
+
+        with open(models_dir / "marks_poisson.pkl", "rb") as f:
+            self.marks_poisson = pickle.load(f)
+        with open(models_dir / "marks_gbt.pkl", "rb") as f:
+            self.marks_gbt = pickle.load(f)
+        with open(models_dir / "marks_scaler.pkl", "rb") as f:
+            self.scaler = pickle.load(f)
+
+        with open(models_dir / "marks_model_metadata.json") as f:
+            metadata = json.load(f)
+        self.feature_cols = metadata["feature_cols"]
+        self.eval_metrics = metadata.get("eval_metrics", {})
+        self.training_info = metadata.get("training_info", {})
+        self.distribution = metadata.get("distribution", "poisson")
+        self._residual_std = metadata.get("residual_std")
+        self._std_params = metadata.get("std_params")
+        self._negbin_r = metadata.get("negbin_r")
+
+        print(f"Marks models loaded from {models_dir}")
 
 
 # ---------------------------------------------------------------------------

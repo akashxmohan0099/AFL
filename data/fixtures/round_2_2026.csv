@@ -1,0 +1,15 @@
+team,opponent,venue,date,is_home
+Hawthorn,Sydney,MCG,2026-03-19,1
+Sydney,Hawthorn,MCG,2026-03-19,0
+Adelaide,Western Bulldogs,Adelaide Oval,2026-03-20,1
+Western Bulldogs,Adelaide,Adelaide Oval,2026-03-20,0
+Richmond,Gold Coast,MCG,2026-03-21,1
+Gold Coast,Richmond,MCG,2026-03-21,0
+Greater Western Sydney,St Kilda,ENGIE Stadium,2026-03-21,1
+St Kilda,Greater Western Sydney,ENGIE Stadium,2026-03-21,0
+Fremantle,Melbourne,Optus Stadium,2026-03-21,1
+Melbourne,Fremantle,Optus Stadium,2026-03-21,0
+Port Adelaide,Essendon,Adelaide Oval,2026-03-22,1
+Essendon,Port Adelaide,Adelaide Oval,2026-03-22,0
+West Coast,North Melbourne,Optus Stadium,2026-03-22,1
+North Melbourne,West Coast,Optus Stadium,2026-03-22,0

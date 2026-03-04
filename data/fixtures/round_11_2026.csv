@@ -1,0 +1,19 @@
+team,opponent,venue,date,is_home
+Hawthorn,Adelaide,UTAS Stadium,2026-05-21,1
+Adelaide,Hawthorn,UTAS Stadium,2026-05-21,0
+Richmond,Essendon,MCG,2026-05-22,1
+Essendon,Richmond,MCG,2026-05-22,0
+Fremantle,St Kilda,Optus Stadium,2026-05-22,1
+St Kilda,Fremantle,Optus Stadium,2026-05-22,0
+North Melbourne,Gold Coast,Marvel Stadium,2026-05-23,1
+Gold Coast,North Melbourne,Marvel Stadium,2026-05-23,0
+Geelong,Sydney,GMHBA Stadium,2026-05-23,1
+Sydney,Geelong,GMHBA Stadium,2026-05-23,0
+Collingwood,West Coast,MCG,2026-05-23,1
+West Coast,Collingwood,MCG,2026-05-23,0
+Port Adelaide,Carlton,Adelaide Oval,2026-05-23,1
+Carlton,Port Adelaide,Adelaide Oval,2026-05-23,0
+Greater Western Sydney,Brisbane Lions,ENGIE Stadium,2026-05-24,1
+Brisbane Lions,Greater Western Sydney,ENGIE Stadium,2026-05-24,0
+Western Bulldogs,Melbourne,Marvel Stadium,2026-05-24,1
+Melbourne,Western Bulldogs,Marvel Stadium,2026-05-24,0

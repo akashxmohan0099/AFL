@@ -460,6 +460,46 @@ class LearningStore:
         return True
 
     # ------------------------------------------------------------------
+    # Isotonic Calibration
+    # ------------------------------------------------------------------
+
+    def save_isotonic_calibrator(self, calibrator, run_id=None):
+        """Save a CalibratedPredictor to pickle in the calibration directory."""
+        import pickle
+        rid = self._resolve_write_run_id(run_id)
+        cal_dir = self.base_dir / "calibration" / f"run_{rid}"
+        cal_dir.mkdir(parents=True, exist_ok=True)
+        path = cal_dir / "isotonic_calibrator.pkl"
+        with open(path, "wb") as f:
+            pickle.dump(calibrator, f)
+        return path
+
+    def load_isotonic_calibrator(self, run_id=None):
+        """Load the latest CalibratedPredictor from the calibration directory.
+
+        Returns None if no calibrator exists.
+        """
+        import pickle
+
+        # Try active run first, then latest
+        rid = self._normalise_run_id(run_id) or self._active_run_id
+        if rid is not None:
+            path = self.base_dir / "calibration" / f"run_{rid}" / "isotonic_calibrator.pkl"
+            if path.exists():
+                with open(path, "rb") as f:
+                    return pickle.load(f)
+
+        # Try latest calibration run
+        latest_rid = self._latest_calibration_run()
+        if latest_rid is not None:
+            path = self.base_dir / "calibration" / f"run_{latest_rid}" / "isotonic_calibrator.pkl"
+            if path.exists():
+                with open(path, "rb") as f:
+                    return pickle.load(f)
+
+        return None
+
+    # ------------------------------------------------------------------
     # Archetypes
     # ------------------------------------------------------------------
 

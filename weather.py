@@ -96,9 +96,28 @@ def _aggregate_game_window(hourly, game_indices):
     dewpoint = _safe_vals("dew_point_2m")
     cloud = _safe_vals("cloud_cover")
     pressure = _safe_vals("surface_pressure")
+    wind_dir = _safe_vals("wind_direction_10m")
 
     if not temps:
         return None
+
+    # Circular mean and std for wind direction (handles 350/10 wraparound)
+    wind_dir_avg = None
+    wind_dir_variability = None
+    if wind_dir:
+        rads = np.deg2rad(wind_dir)
+        sin_mean = np.mean(np.sin(rads))
+        cos_mean = np.mean(np.cos(rads))
+        wind_dir_avg = round(float(np.rad2deg(np.arctan2(sin_mean, cos_mean)) % 360), 1)
+        # Circular std: R = mean resultant length, std = sqrt(-2 * ln(R))
+        R = np.sqrt(sin_mean**2 + cos_mean**2)
+        if R > 1e-6 and R <= 1:
+            wind_dir_variability = round(float(np.rad2deg(np.sqrt(-2 * np.log(R)))), 1)
+            wind_dir_variability = min(wind_dir_variability, 180.0)  # cap at 180°
+        elif R <= 1e-6:
+            wind_dir_variability = 180.0  # maximally variable (uniform distribution)
+        else:
+            wind_dir_variability = 0.0
 
     return {
         # Temperature
@@ -113,6 +132,8 @@ def _aggregate_game_window(hourly, game_indices):
         "wind_speed_avg": round(np.mean(wind), 1) if wind else None,
         "wind_speed_max": round(max(wind), 1) if wind else None,
         "wind_gusts_max": round(max(gusts), 1) if gusts else None,
+        "wind_direction_avg": wind_dir_avg,
+        "wind_direction_variability": wind_dir_variability,
         # Humidity & dew point
         "humidity_avg": round(np.mean(humidity), 1) if humidity else None,
         "dew_point_avg": round(np.mean(dewpoint), 1) if dewpoint else None,
@@ -146,8 +167,8 @@ def fetch_weather_for_match(lat, lon, date_str, match_id, start_hour=None, game_
     # Fetch expanded set of hourly variables
     hourly_vars = (
         "temperature_2m,apparent_temperature,precipitation,rain,"
-        "wind_speed_10m,wind_gusts_10m,relative_humidity_2m,"
-        "dew_point_2m,cloud_cover,surface_pressure"
+        "wind_speed_10m,wind_gusts_10m,wind_direction_10m,"
+        "relative_humidity_2m,dew_point_2m,cloud_cover,surface_pressure"
     )
     url = (
         f"{OPEN_METEO_URL}"
@@ -274,6 +295,7 @@ WEATHER_FLOAT_COLS = [
     "temperature_avg", "temperature_min", "temperature_max",
     "apparent_temperature_avg", "precipitation_total", "rain_total",
     "wind_speed_avg", "wind_speed_max", "wind_gusts_max",
+    "wind_direction_avg", "wind_direction_variability",
     "humidity_avg", "dew_point_avg", "cloud_cover_avg", "pressure_avg",
 ]
 
@@ -328,6 +350,13 @@ def derive_weather_features(weather_df):
         bins=[-np.inf, 12, 22, np.inf],
         labels=[0, 1, 2],
     ).astype(np.int8)
+
+    # --- Wind direction variability ---
+    # High variability = swirling wind = harder scoring conditions
+    if "wind_direction_variability" in df.columns:
+        df["wind_direction_variability"] = df["wind_direction_variability"].fillna(0).astype(np.float32)
+    else:
+        df["wind_direction_variability"] = np.float32(0.0)
 
     # --- Continuous derived features ---
 
@@ -386,6 +415,7 @@ def derive_weather_features(weather_df):
     roofed_zero_cols = [
         "is_wet", "is_heavy_rain", "wind_severity", "is_overcast",
         "weather_difficulty_score", "slippery_conditions", "feels_like_delta",
+        "wind_direction_variability",
     ]
     for col in roofed_zero_cols:
         df.loc[roofed_mask, col] = 0
