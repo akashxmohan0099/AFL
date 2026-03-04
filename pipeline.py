@@ -55,6 +55,76 @@ def _set_global_seed():
     np.random.seed(config.RANDOM_SEED)
 
 
+def _ensure_fixture_match_ids(fixtures: pd.DataFrame) -> pd.DataFrame:
+    """Ensure fixture rows have a stable per-match match_id.
+
+    Fixture CSVs typically contain *two* rows per match (home and away). Many
+    feature joins (opponent/team context) require both teams share the same
+    match_id, so we assign a deterministic synthetic id per unique match key
+    when match_id is missing.
+
+    Match key = (date, venue, sorted(team, opponent)).
+    """
+    fx = fixtures.copy()
+
+    # Normalize/ensure required columns exist.
+    for col in ["team", "opponent", "venue", "date"]:
+        if col not in fx.columns:
+            raise ValueError(f"Fixture CSV missing required column: {col}")
+
+    if "match_id" not in fx.columns:
+        fx["match_id"] = np.nan
+
+    fx["match_id"] = pd.to_numeric(fx["match_id"], errors="coerce")
+
+    date_key = pd.to_datetime(fx["date"], errors="coerce").dt.strftime("%Y-%m-%d").fillna("")
+    venue_key = fx["venue"].astype(str).str.strip().str.lower()
+    team = fx["team"].astype(str).str.strip()
+    opp = fx["opponent"].astype(str).str.strip()
+
+    # Symmetric team pairing so home/away rows map to the same match.
+    t1 = np.where(team <= opp, team, opp)
+    t2 = np.where(team <= opp, opp, team)
+
+    key_df = pd.DataFrame(
+        {"_date_key": date_key, "_venue_key": venue_key, "_t1": t1, "_t2": t2},
+        index=fx.index,
+    )
+
+    # If an explicit match_id exists for a key, propagate it to all rows in that key.
+    if fx["match_id"].notna().any():
+        tmp = pd.concat([fx[["match_id"]], key_df], axis=1)
+        nunique = tmp.groupby(["_date_key", "_venue_key", "_t1", "_t2"], observed=True)["match_id"].nunique(dropna=True)
+        bad = nunique[nunique > 1]
+        if not bad.empty:
+            print("  Warning: multiple match_id values found for the same fixture match key; using the first non-null.")
+
+        # Map: key -> first non-null match_id
+        first_non_null = (
+            tmp.groupby(["_date_key", "_venue_key", "_t1", "_t2"], observed=True)["match_id"]
+            .apply(lambda s: s.dropna().iloc[0] if s.dropna().size else np.nan)
+            .reset_index()
+        )
+        key_to_existing = first_non_null.set_index(["_date_key", "_venue_key", "_t1", "_t2"])["match_id"]
+
+        existing_filled = key_df.set_index(["_date_key", "_venue_key", "_t1", "_t2"]).index.map(key_to_existing)
+        fx["match_id"] = fx["match_id"].fillna(pd.Series(existing_filled, index=fx.index))
+
+    # Assign deterministic synthetic ids for any remaining missing match_ids.
+    missing_mask = fx["match_id"].isna()
+    if missing_mask.any():
+        uniq = key_df[missing_mask].drop_duplicates().sort_values(["_date_key", "_venue_key", "_t1", "_t2"]).reset_index(drop=True)
+        # Negative ids to avoid collisions with real match ids.
+        uniq["_synthetic_match_id"] = -(np.arange(len(uniq)) + 1)
+        key_to_synth = uniq.set_index(["_date_key", "_venue_key", "_t1", "_t2"])["_synthetic_match_id"]
+
+        synth_ids = key_df[missing_mask].set_index(["_date_key", "_venue_key", "_t1", "_t2"]).index.map(key_to_synth)
+        fx.loc[missing_mask, "match_id"] = pd.Series(synth_ids.values, index=fx.index[missing_mask])
+
+    fx["match_id"] = fx["match_id"].astype(int)
+    return fx
+
+
 def cmd_scrape(args):
     """Scrape historical data from AFL Tables."""
     from scraper import scrape_seasons
@@ -186,12 +256,22 @@ def cmd_predict(args, model=None, feature_df=None):
 
     rosters = _load_rosters(year)
 
+    # Calibration source: prefer sequential calibrator (most recent), fallback to learning store.
+    cal_store = None
+    if getattr(config, "CALIBRATION_METHOD", "bucket") == "isotonic":
+        try:
+            cal_store = LearningStore(base_dir=config.SEQUENTIAL_DIR)
+            if cal_store.load_isotonic_calibrator() is None:
+                cal_store = LearningStore()
+        except Exception:
+            cal_store = None
+
     if fixture_path.exists():
         fixtures = pd.read_csv(fixture_path)
         print(f"Loaded fixtures from {fixture_path}")
         predictions = _predict_from_fixtures(
             model, fixtures, year, round_num, disp_model=disp_model,
-            marks_model=marks_model, rosters=rosters
+            marks_model=marks_model, rosters=rosters, store=cal_store
         )
     else:
         # If no fixture file, predict from the most recent data we have
@@ -215,14 +295,14 @@ def cmd_predict(args, model=None, feature_df=None):
 
         print(f"Predicting Round {round_num}, {year} ({len(round_df)} player rows)...")
         predictions = model.predict_distributions(
-            round_df, store=None, feature_cols=model.feature_cols
+            round_df, store=cal_store, feature_cols=model.feature_cols
         )
 
         # Merge disposal predictions if available
         if disp_model is not None:
             try:
                 disp_preds = disp_model.predict_distributions(
-                    round_df, store=None, feature_cols=disp_model.feature_cols
+                    round_df, store=cal_store, feature_cols=disp_model.feature_cols
                 )
                 predictions = _merge_predictions(predictions, disp_preds)
             except Exception as e:
@@ -232,63 +312,43 @@ def cmd_predict(args, model=None, feature_df=None):
         if marks_model is not None:
             try:
                 marks_preds = marks_model.predict_distributions(
-                    round_df, store=None, feature_cols=marks_model.feature_cols
+                    round_df, store=cal_store, feature_cols=marks_model.feature_cols
                 )
                 predictions = _merge_predictions(predictions, marks_preds)
             except Exception as e:
                 print(f"  Warning: Marks predictions failed: {e}")
 
-    # Derive P(2+) and P(3+) goals from PMF columns
+    # Derive P(2+) and P(3+) goals from PMF columns (fallback only).
     if "p_goals_0" in predictions.columns and "p_goals_1" in predictions.columns:
-        predictions["p_2plus_goals"] = (
-            1 - predictions["p_goals_0"] - predictions["p_goals_1"]
-        ).clip(0, 1)
-        if "p_goals_2" in predictions.columns:
+        if "p_2plus_goals" not in predictions.columns:
+            predictions["p_2plus_goals"] = (
+                1 - predictions["p_goals_0"] - predictions["p_goals_1"]
+            ).clip(0, 1)
+        if "p_goals_2" in predictions.columns and "p_3plus_goals" not in predictions.columns:
             predictions["p_3plus_goals"] = (
                 1 - predictions["p_goals_0"]
                 - predictions["p_goals_1"]
                 - predictions["p_goals_2"]
             ).clip(0, 1)
 
-    # Apply isotonic calibration to disposal probabilities (if available)
-    use_isotonic = getattr(config, "CALIBRATION_METHOD", "bucket") == "isotonic"
-    if use_isotonic:
-        from model import CalibratedPredictor
-        _store = LearningStore()
-        isotonic_cal = _store.load_isotonic_calibrator()
-        if isotonic_cal is not None:
-            for tgt_name, p_col in [
-                ("10plus_disp", "p_10plus_disp"),
-                ("15plus_disp", "p_15plus_disp"),
-                ("20plus_disp", "p_20plus_disp"),
-                ("25plus_disp", "p_25plus_disp"),
-                ("30plus_disp", "p_30plus_disp"),
-            ]:
-                if p_col in predictions.columns and isotonic_cal.has_calibrator(tgt_name):
-                    predictions[p_col] = np.clip(
-                        isotonic_cal.transform(tgt_name, predictions[p_col].values), 0, 1
-                    )
-            print("  Applied isotonic calibration to disposal probabilities")
-
-            # Marks isotonic calibration
-            for t in config.MARKS_THRESHOLDS:
-                tgt_name = f"{t}plus_mk"
-                p_col = f"p_{t}plus_mk"
-                if p_col in predictions.columns and isotonic_cal.has_calibrator(tgt_name):
-                    predictions[p_col] = np.clip(
-                        isotonic_cal.transform(tgt_name, predictions[p_col].values), 0, 1
-                    )
-            if any(f"p_{t}plus_mk" in predictions.columns for t in config.MARKS_THRESHOLDS):
-                print("  Applied isotonic calibration to marks probabilities")
-
     # Save predictions
     config.ensure_dirs()
-    out_path = config.PREDICTIONS_DIR / f"round_{round_num}_predictions.csv"
+    out_dir = config.PREDICTIONS_DIR / str(year)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    out_path = out_dir / f"round_{round_num}_predictions.csv"
     predictions.to_csv(out_path, index=False)
     print(f"\nPredictions saved to {out_path}")
 
-    # Save threshold CSV
-    _save_threshold_csv(predictions, round_num, config.PREDICTIONS_DIR)
+    # Save threshold CSV (year-scoped)
+    _save_threshold_csv(predictions, round_num, out_dir)
+
+    # Backward-compatible: also write legacy top-level outputs for the current season.
+    if int(year) == int(config.CURRENT_SEASON_YEAR):
+        legacy_path = config.PREDICTIONS_DIR / f"round_{round_num}_predictions.csv"
+        predictions.to_csv(legacy_path, index=False)
+        print(f"  (Legacy) Predictions saved to {legacy_path}")
+        _save_threshold_csv(predictions, round_num, config.PREDICTIONS_DIR)
 
     # Save to LearningStore
     store = LearningStore(run_id=getattr(args, "run_id", None))
@@ -331,7 +391,7 @@ def cmd_predict(args, model=None, feature_df=None):
     return predictions
 
 
-def _predict_from_fixtures(model, fixtures, year, round_num, disp_model=None, marks_model=None, rosters=None):
+def _predict_from_fixtures(model, fixtures, year, round_num, disp_model=None, marks_model=None, rosters=None, store=None):
     """Build features for upcoming fixtures and generate predictions.
 
     Fixture CSV columns: team, opponent, venue, date, is_home
@@ -365,18 +425,20 @@ def _predict_from_fixtures(model, fixtures, year, round_num, disp_model=None, ma
     else:
         stats_real = stats
 
-    all_predictions = []
+    # Ensure home/away fixture rows share a stable match_id so opponent/team joins work.
+    fixtures = _ensure_fixture_match_ids(fixtures)
+    fixture_match_ids = set(fixtures["match_id"].astype(int).unique().tolist())
+
+    # Build synthetic "future match" rows (one per player per fixture team),
+    # then run build_features on history + synthetic rows so rolling features are non-empty.
+    synthetic_rows = []
 
     for i, fixture in fixtures.iterrows():
         team = fixture["team"]
         opponent = fixture["opponent"]
         venue = fixture["venue"]
         fixture_date = pd.to_datetime(fixture.get("date"), errors="coerce")
-        fixture_match_id = fixture.get("match_id")
-        try:
-            synthetic_match_id = int(fixture_match_id) if pd.notna(fixture_match_id) else -(int(i) + 1)
-        except Exception:
-            synthetic_match_id = -(int(i) + 1)
+        synthetic_match_id = int(fixture["match_id"])
 
         # Get lineup: Tier 1 → CSV players, Tier 1.5 → roster JSON, Tier 2 → last match
         if "players" in fixture and pd.notna(fixture.get("players")):
@@ -391,7 +453,7 @@ def _predict_from_fixtures(model, fixtures, year, round_num, disp_model=None, ma
             else:
                 continue
 
-        # For each player, build their feature row from history
+        # For each player, create a synthetic future row using their last match as a schema template.
         for player in players:
             # Try current team first
             player_history = stats_real[
@@ -406,49 +468,114 @@ def _predict_from_fixtures(model, fixtures, year, round_num, disp_model=None, ma
                 if len(player_history) < 1:
                     continue  # True rookie, no AFL history
 
-            # Use the last row's features as a template, then override
-            # venue/opponent specific features
+            # Use last match as template for required columns (player_id, jumper, etc).
             last_row = player_history.iloc[-1:].copy()
+            last_date = pd.to_datetime(last_row["date"].iloc[0], errors="coerce")
+
+            # Pre-game career counters should advance beyond the last played match.
+            # In player_games.parquet they represent "pre this match", so for a future
+            # match we approximate by adding the last match contribution.
+            try:
+                prev_games_pre = float(last_row["career_games_pre"].iloc[0])
+                prev_goals_pre = float(last_row["career_goals_pre"].iloc[0])
+                last_gl = float(last_row["GL"].iloc[0]) if "GL" in last_row.columns else 0.0
+                games_pre = prev_games_pre + 1.0
+                goals_pre = prev_goals_pre + (0.0 if np.isnan(last_gl) else last_gl)
+                last_row["career_games_pre"] = games_pre
+                last_row["career_goals_pre"] = goals_pre
+                last_row["career_goal_avg_pre"] = (goals_pre / games_pre) if games_pre > 0 else last_row["career_goal_avg_pre"]
+            except Exception:
+                pass
+
             last_row["match_id"] = synthetic_match_id
             if pd.notna(fixture_date):
                 last_row["date"] = fixture_date
-            last_row["team"] = team       # Correct team for transfers
+                # Approximate age at fixture date.
+                if "age_years" in last_row.columns and pd.notna(last_date):
+                    delta_days = (fixture_date - last_date).days
+                    if np.isfinite(delta_days):
+                        last_row["age_years"] = float(last_row["age_years"].iloc[0]) + (delta_days / 365.25)
+
+            last_row["team"] = team  # Correct team for transfers
             last_row["venue"] = venue
             last_row["opponent"] = opponent
-            last_row["round_number"] = round_num
-            last_row["year"] = year
-            last_row["is_home"] = fixture.get("is_home", 1)
+            last_row["round_number"] = int(round_num)
+            last_row["year"] = int(year)
+            last_row["is_home"] = int(fixture.get("is_home", 1))
 
-            all_predictions.append(last_row)
+            # Upcoming fixtures are not finals by default.
+            if "is_finals" in last_row.columns:
+                last_row["is_finals"] = 0
+            if "round_label" in last_row.columns:
+                last_row["round_label"] = f"R{int(round_num)}"
+
+            # Ensure rule-regime columns reflect the fixture year (history rows already correct).
+            if "season_era" in last_row.columns:
+                last_row["season_era"] = int(config.ERA_MAP.get(int(year), config.CURRENT_PREDICTION_ERA))
+            if "is_covid_season" in last_row.columns:
+                last_row["is_covid_season"] = int(int(year) == int(config.COVID_SEASON_YEAR))
+            if "quarter_length_ratio" in last_row.columns:
+                last_row["quarter_length_ratio"] = float(
+                    config.COVID_QUARTER_LENGTH_RATIO if int(year) == int(config.COVID_SEASON_YEAR) else 1.0
+                )
+
+            # This row represents a future match, so blank current-match stat columns
+            # to avoid contaminating any aggregations that do not use shift(1).
+            stat_cols = [
+                "KI", "MK", "HB", "DI", "GL", "BH", "HO", "TK", "RB", "IF", "CL", "CG",
+                "FF", "FA", "BR", "CP", "UP", "CM", "MI", "one_pct", "BO", "GA",
+                "pct_played",
+                "q1_goals", "q1_behinds", "q2_goals", "q2_behinds",
+                "q3_goals", "q3_behinds", "q4_goals", "q4_behinds",
+            ]
+            rate_cols = [f"{c}_rate" for c in [
+                "KI", "MK", "HB", "DI", "GL", "BH", "HO", "TK", "RB", "IF", "CL", "CG",
+                "FF", "FA", "BR", "CP", "UP", "CM", "MI", "one_pct", "BO", "GA",
+            ]]
+            for c in stat_cols + rate_cols:
+                if c in last_row.columns:
+                    last_row[c] = np.nan
+
+            # Fixture rows are assumed to play (not DNP).
+            if "did_not_play" in last_row.columns:
+                last_row["did_not_play"] = False
+
+            synthetic_rows.append(last_row)
 
     if rosters:
         if "is_home" in fixtures.columns:
             n_fixture_teams = fixtures[fixtures["is_home"] == 1]["team"].nunique()
         else:
             n_fixture_teams = fixtures["team"].nunique()
-        print(f"  Roster: {len(all_predictions)} players with history "
+        print(f"  Roster: {len(synthetic_rows)} players with history "
               f"(from {n_fixture_teams} matches)")
 
-    if not all_predictions:
+    if not synthetic_rows:
         return pd.DataFrame()
 
-    pred_df = pd.concat(all_predictions, ignore_index=True)
-    if "date" in pred_df.columns:
-        pred_df["date"] = pd.to_datetime(pred_df["date"], errors="coerce")
+    future_df = pd.concat(synthetic_rows, ignore_index=True)
+    if "date" in future_df.columns:
+        future_df["date"] = pd.to_datetime(future_df["date"], errors="coerce")
 
-    # Build features for these rows
-    pred_df = build_features(pred_df, save=False)
+    # Build features on (history + synthetic future rows), then keep only fixtures.
+    full_df = pd.concat([stats_real, future_df], ignore_index=True)
+    full_df = build_features(full_df, save=False)
+    pred_df = full_df[
+        (full_df["match_id"].isin(fixture_match_ids))
+        & (full_df["year"] == int(year))
+        & (full_df["round_number"] == int(round_num))
+    ].copy()
 
     # Predict with full distributions
     predictions = model.predict_distributions(
-        pred_df, store=None, feature_cols=model.feature_cols
+        pred_df, store=store, feature_cols=model.feature_cols
     )
 
     # Merge disposal predictions if available
     if disp_model is not None:
         try:
             disp_preds = disp_model.predict_distributions(
-                pred_df, store=None, feature_cols=disp_model.feature_cols
+                pred_df, store=store, feature_cols=disp_model.feature_cols
             )
             predictions = _merge_predictions(predictions, disp_preds)
         except Exception as e:
@@ -458,7 +585,7 @@ def _predict_from_fixtures(model, fixtures, year, round_num, disp_model=None, ma
     if marks_model is not None:
         try:
             marks_preds = marks_model.predict_distributions(
-                pred_df, store=None, feature_cols=marks_model.feature_cols
+                pred_df, store=store, feature_cols=marks_model.feature_cols
             )
             predictions = _merge_predictions(predictions, marks_preds)
         except Exception as e:
@@ -1400,6 +1527,66 @@ def _merge_predictions(scoring_preds, disposal_preds):
     return merged
 
 
+def _apply_isotonic_calibration_to_predictions(preds: pd.DataFrame, calibrator) -> pd.DataFrame:
+    """Apply isotonic calibrators to threshold probability columns.
+
+    Expects a CalibratedPredictor-compatible object with .transform(target, preds).
+    This is used in sequential mode so we can:
+      1) fit isotonic on raw model outputs, and
+      2) save/evaluate calibrated probabilities without "calibrating calibrated" values.
+    """
+    if preds is None or preds.empty or calibrator is None:
+        return preds
+
+    out = preds.copy()
+
+    def _cal(col, tgt):
+        if col not in out.columns:
+            return
+        try:
+            out[col] = np.round(np.clip(calibrator.transform(tgt, out[col].values.astype(float)), 0, 1), 4)
+        except Exception:
+            pass
+
+    # Goals
+    for tgt in ["1plus_goals", "2plus_goals", "3plus_goals"]:
+        _cal(f"p_{tgt}", tgt)
+
+    # Disposals
+    for t in getattr(config, "DISPOSAL_THRESHOLDS", []):
+        tgt = f"{t}plus_disp"
+        _cal(f"p_{t}plus_disp", tgt)
+
+    # Marks
+    for t in getattr(config, "MARKS_THRESHOLDS", []):
+        tgt = f"{t}plus_mk"
+        _cal(f"p_{t}plus_mk", tgt)
+
+    # Game winner (optional)
+    _cal("home_win_prob", "game_winner")
+
+    # Independent calibrations can break cross-threshold ordering; enforce monotonicity.
+    def _mono(cols):
+        present = [c for c in cols if c in out.columns]
+        if len(present) < 2:
+            return
+        arr = out[present].to_numpy(dtype=float)
+        arr = np.nan_to_num(arr, nan=0.0, posinf=1.0, neginf=0.0)
+        arr = np.clip(arr, 0.0, 1.0)
+        arr = np.minimum.accumulate(arr, axis=1)
+        out[present] = np.round(arr, 4)
+
+    _mono(["p_1plus_goals", "p_2plus_goals", "p_3plus_goals"])
+    _mono([f"p_{t}plus_disp" for t in getattr(config, "DISPOSAL_THRESHOLDS", [])])
+    _mono([f"p_{t}plus_mk" for t in getattr(config, "MARKS_THRESHOLDS", [])])
+
+    # Keep p_scorer aligned to the (possibly calibrated + monotonicity-enforced) 1+ probability.
+    if "p_1plus_goals" in out.columns:
+        out["p_scorer"] = out["p_1plus_goals"].values
+
+    return out
+
+
 def _build_outcomes(test_df, tm_round=None):
     """Extract actual goals, behinds, disposals from test feature DataFrame."""
     result = pd.DataFrame({
@@ -1468,15 +1655,20 @@ def _build_diagnostics(predictions, outcomes, test_df=None):
 
 def _update_sequential_calibration(store, preds, test_df):
     """Bucket predictions and update calibration state for goals and disposals."""
-    from scipy.stats import poisson as poisson_dist
-
     actual_goals = test_df["GL"].values
     buckets = np.arange(0.05, 1.0, 0.1).round(2)
     rows = []
 
     # 1+ goals calibration (from p_scorer)
-    if "p_scorer" in preds.columns:
-        scorer_prob = preds["p_scorer"].values
+    scorer_prob = None
+    if "p_1plus_goals_raw" in preds.columns:
+        scorer_prob = preds["p_1plus_goals_raw"].values.astype(float)
+    elif "p_scorer_raw" in preds.columns:
+        scorer_prob = preds["p_scorer_raw"].values.astype(float)
+    elif "p_scorer" in preds.columns:
+        scorer_prob = preds["p_scorer"].values.astype(float)
+
+    if scorer_prob is not None:
         for bucket in buckets:
             lo, hi = bucket - 0.05, bucket + 0.05
             mask = (scorer_prob >= lo) & (scorer_prob < hi)
@@ -1488,12 +1680,28 @@ def _update_sequential_calibration(store, preds, test_df):
                     "occurred": int((actual_goals[mask] >= 1).sum()),
                 })
 
-    # 2+ and 3+ goals calibration from lambda_goals
-    if "lambda_goals" in preds.columns:
-        lambdas = preds["lambda_goals"].values
-        for threshold, target_name in [(2, "2plus_goals"), (3, "3plus_goals")]:
-            p_exceed = np.array([1 - poisson_dist.cdf(threshold - 1, max(mu, 0.01))
-                                for mu in lambdas])
+    # 2+ and 3+ goals calibration from predicted threshold probabilities
+    for threshold, target_name in [(2, "2plus_goals"), (3, "3plus_goals")]:
+        p_col = f"p_{threshold}plus_goals_raw"
+        if p_col in preds.columns:
+            p_exceed = preds[p_col].values.astype(float)
+        else:
+            p_col = f"p_{threshold}plus_goals"
+            if p_col in preds.columns:
+                p_exceed = preds[p_col].values.astype(float)
+            elif "p_goals_0" in preds.columns and "p_goals_1" in preds.columns:
+                # Fallback: derive from PMF columns.
+                p0 = preds["p_goals_0"].values.astype(float)
+                p1 = preds["p_goals_1"].values.astype(float)
+                if threshold == 2:
+                    p_exceed = 1.0 - p0 - p1
+                else:
+                    p2 = preds["p_goals_2"].values.astype(float) if "p_goals_2" in preds.columns else 0.0
+                    p_exceed = 1.0 - p0 - p1 - p2
+                p_exceed = np.clip(p_exceed, 0.0, 1.0)
+            else:
+                continue
+
             for bucket in buckets:
                 lo, hi = bucket - 0.05, bucket + 0.05
                 mask = (p_exceed >= lo) & (p_exceed < hi)
@@ -1725,14 +1933,21 @@ def cmd_sequential(args, disposal_distribution=None):
                 except Exception as e:
                     print(f"  Warning: Game winner model failed for R{rnd_int}: {e}")
 
-        # 3. PREDICT (distributions)
-        scoring_preds = scoring_model.predict_distributions(test_df, store, feature_cols)
-        disposal_preds = disposal_model.predict_distributions(test_df, store, feature_cols)
-        marks_preds = marks_model.predict_distributions(test_df, store, feature_cols)
+        # 3. PREDICT
+        # In isotonic mode we predict *raw* probabilities and apply calibration externally,
+        # so isotonic fitting always sees uncalibrated model outputs.
+        pred_store = None if use_isotonic else store
+        scoring_raw = scoring_model.predict_distributions(test_df, store=pred_store, feature_cols=feature_cols)
+        disposal_raw = disposal_model.predict_distributions(test_df, store=pred_store, feature_cols=feature_cols)
+        marks_raw = marks_model.predict_distributions(test_df, store=pred_store, feature_cols=feature_cols)
 
-        # 4. SAVE (apply isotonic calibration before saving)
-        merged_preds = _merge_predictions(scoring_preds, disposal_preds)
-        merged_preds = _merge_predictions(merged_preds, marks_preds)
+        merged_raw = _merge_predictions(scoring_raw, disposal_raw)
+        merged_raw = _merge_predictions(merged_raw, marks_raw)
+
+        # 4. CALIBRATE + SAVE (save calibrated, but learn from raw)
+        merged_preds = merged_raw
+        if use_isotonic:
+            merged_preds = _apply_isotonic_calibration_to_predictions(merged_raw, isotonic_calibrator)
 
         outcomes = _build_outcomes(test_df)
         diagnostics = _build_diagnostics(merged_preds, outcomes, test_df=test_df)
@@ -1745,7 +1960,7 @@ def cmd_sequential(args, disposal_distribution=None):
             store.save_game_predictions(year, rnd_int, game_preds)
 
         # 5. LEARN
-        _update_sequential_calibration(store, merged_preds, test_df)
+        _update_sequential_calibration(store, merged_raw, test_df)
         store.compute_calibration_adjustments()
 
         # 5b. Isotonic calibration: accumulate data and refit periodically
@@ -1754,28 +1969,42 @@ def cmd_sequential(args, disposal_distribution=None):
             actual_disp = test_df["DI"].values if "DI" in test_df.columns else None
 
             # Accumulate goal thresholds
-            if "p_scorer" in merged_preds.columns:
+            p1_col = None
+            if "p_1plus_goals_raw" in merged_raw.columns:
+                p1_col = "p_1plus_goals_raw"
+            elif "p_scorer_raw" in merged_raw.columns:
+                p1_col = "p_scorer_raw"
+            elif "p_scorer" in merged_raw.columns:
+                p1_col = "p_scorer"
+
+            if p1_col is not None:
                 _iso_accum.setdefault("1plus_goals", {"preds": [], "actuals": []})
-                _iso_accum["1plus_goals"]["preds"].extend(merged_preds["p_scorer"].values.tolist())
+                _iso_accum["1plus_goals"]["preds"].extend(merged_raw[p1_col].values.astype(float).tolist())
                 _iso_accum["1plus_goals"]["actuals"].extend((actual_goals >= 1).astype(int).tolist())
 
-            if "lambda_goals" in merged_preds.columns:
-                from scipy.stats import poisson as _poi
-                lam = merged_preds["lambda_goals"].values
-                for threshold, name in [(2, "2plus_goals"), (3, "3plus_goals")]:
-                    p_exceed = np.array([1 - _poi.cdf(threshold - 1, max(mu, 0.01)) for mu in lam])
-                    _iso_accum.setdefault(name, {"preds": [], "actuals": []})
-                    _iso_accum[name]["preds"].extend(p_exceed.tolist())
-                    _iso_accum[name]["actuals"].extend((actual_goals >= threshold).astype(int).tolist())
+            # 2+/3+ goals: fit on raw predicted threshold probabilities when available.
+            for threshold, name in [(2, "2plus_goals"), (3, "3plus_goals")]:
+                raw_col = f"p_{threshold}plus_goals_raw"
+                if raw_col in merged_raw.columns:
+                    p_exceed = merged_raw[raw_col].values.astype(float)
+                else:
+                    p_col = f"p_{threshold}plus_goals"
+                    if p_col in merged_raw.columns:
+                        p_exceed = merged_raw[p_col].values.astype(float)
+                    else:
+                        continue
+                _iso_accum.setdefault(name, {"preds": [], "actuals": []})
+                _iso_accum[name]["preds"].extend(p_exceed.tolist())
+                _iso_accum[name]["actuals"].extend((actual_goals >= threshold).astype(int).tolist())
 
             # Accumulate disposal thresholds
             if actual_disp is not None:
                 for t in config.DISPOSAL_THRESHOLDS:
                     p_col = f"p_{t}plus_disp"
-                    if p_col in merged_preds.columns:
+                    if p_col in merged_raw.columns:
                         name = f"{t}plus_disp"
                         _iso_accum.setdefault(name, {"preds": [], "actuals": []})
-                        _iso_accum[name]["preds"].extend(merged_preds[p_col].values.astype(float).tolist())
+                        _iso_accum[name]["preds"].extend(merged_raw[p_col].values.astype(float).tolist())
                         _iso_accum[name]["actuals"].extend((actual_disp >= t).astype(int).tolist())
 
             # Accumulate marks thresholds
@@ -1783,10 +2012,10 @@ def cmd_sequential(args, disposal_distribution=None):
             if actual_marks is not None:
                 for t in config.MARKS_THRESHOLDS:
                     p_col = f"p_{t}plus_mk"
-                    if p_col in merged_preds.columns:
+                    if p_col in merged_raw.columns:
                         name = f"{t}plus_mk"
                         _iso_accum.setdefault(name, {"preds": [], "actuals": []})
-                        _iso_accum[name]["preds"].extend(merged_preds[p_col].values.astype(float).tolist())
+                        _iso_accum[name]["preds"].extend(merged_raw[p_col].values.astype(float).tolist())
                         _iso_accum[name]["actuals"].extend((actual_marks >= t).astype(int).tolist())
 
             # Accumulate game winner calibration data

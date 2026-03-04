@@ -2,6 +2,37 @@
 
 A machine-learning pipeline that predicts individual player scoring (goals, behinds), disposal counts, and marks for Australian Football League matches. It scrapes historical data from AFL Tables and FootyWire, integrates weather and betting odds, engineers 252 features, trains multi-stage ensemble models, and generates per-player probability distributions for upcoming rounds.
 
+## Quickstart
+
+Install core dependencies:
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+Optional dependencies (Optuna tuning, PDF generation, XLSX odds inputs):
+
+```bash
+python3 -m pip install -r requirements-extra.txt
+```
+
+Typical workflow:
+
+```bash
+python3 pipeline.py --scrape --start 2015 --end 2025   # optional (requires network)
+python3 pipeline.py --clean
+python3 pipeline.py --features
+python3 pipeline.py --train
+python3 pipeline.py --predict --round 1 --year 2026
+```
+
+Notes:
+
+- Fixture inputs live in `data/fixtures/round_{ROUND}_{YEAR}.csv`. Minimal columns: `team,opponent,venue,date,is_home`. Optional: `players` (comma-separated team sheet).
+- Rosters can be provided via `data/fixtures/rosters_{YEAR}.json` to predict full squads for upcoming rounds.
+- Odds directory is configurable via `AFL_ODDS_DIR` (defaults to `./AFL Betting odds`).
+- Run tests with `python3 -m unittest discover -s tests -p 'test_*.py'`.
+
 ## Architecture Overview
 
 ```
@@ -140,7 +171,7 @@ For each player in a given round:
 | Marks | `predicted_marks`, `p_2plus_mk` through `p_10plus_mk` |
 | Game Winner | `home_win_prob`, `predicted_winner` |
 
-Output: `data/predictions/round_N_predictions.csv` and `round_N_thresholds.csv`
+Output: `data/predictions/{YEAR}/round_N_predictions.csv` and `round_N_thresholds.csv` (current season also writes legacy top-level `round_N_*.csv`)
 
 ## Backtesting & Learning
 

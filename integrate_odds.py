@@ -19,7 +19,7 @@ import config
 
 warnings.filterwarnings("ignore")
 
-ODDS_DIR = Path("/Users/akash/Desktop/AFL/afl betting odds")
+ODDS_DIR = config.ODDS_DIR
 
 # ══════════════════════════════════════════════════════════════════════
 # Team name mapping — normalise all sources to matches.parquet names

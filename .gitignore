@@ -34,6 +34,8 @@ app/*.pdf
 # keep curated benchmark snapshots tracked.
 data/predictions/round_*_predictions.csv
 data/predictions/round_*_thresholds.csv
+data/predictions/*/round_*_predictions.csv
+data/predictions/*/round_*_thresholds.csv
 !data/predictions/round_1_predictions.csv
 !data/predictions/round_1_thresholds.csv
 !data/predictions/round_2_predictions.csv
