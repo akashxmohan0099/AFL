@@ -1,0 +1,905 @@
+{
+  "label": "6_comprehensive_v4.0",
+  "season": 2025,
+  "run_id": "sequential_2025_20260304T145429668267Z",
+  "n_predictions": 9931,
+  "n_rounds": 28,
+  "game_winner": {
+    "n_games": 216,
+    "accuracy": 0.7176,
+    "brier_score": 0.1888,
+    "margin_mae": 26.74,
+    "flat_bet_roi_pct": 42.0,
+    "flat_bet_n": 195
+  },
+  "thresholds": {
+    "1plus_goals": {
+      "n": 9931,
+      "base_rate": 0.3305,
+      "brier_score": 0.2086,
+      "bss": 0.0573,
+      "accuracy": 0.685,
+      "hit_rate_p60": 0.7161,
+      "n_confident_p60": 317,
+      "hit_rate_p70": 0.7723,
+      "n_confident_p70": 202,
+      "hit_rate_p80": 0.878,
+      "n_confident_p80": 82,
+      "calibration_ece": 0.0111,
+      "calibration_curve": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "predicted_mean": 0.0435,
+          "observed_mean": 0.04,
+          "count": 350
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "predicted_mean": 0.1542,
+          "observed_mean": 0.176,
+          "count": 250
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "predicted_mean": 0.2545,
+          "observed_mean": 0.241,
+          "count": 361
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "predicted_mean": 0.3367,
+          "observed_mean": 0.3286,
+          "count": 8348
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "predicted_mean": 0.4361,
+          "observed_mean": 0.5341,
+          "count": 176
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "predicted_mean": 0.5509,
+          "observed_mean": 0.5659,
+          "count": 129
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "predicted_mean": 0.6537,
+          "observed_mean": 0.6174,
+          "count": 115
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "predicted_mean": 0.7493,
+          "observed_mean": 0.7,
+          "count": 120
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "predicted_mean": 0.8431,
+          "observed_mean": 0.8333,
+          "count": 60
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "predicted_mean": 0.9484,
+          "observed_mean": 1.0,
+          "count": 22
+        }
+      ]
+    },
+    "2plus_goals": {
+      "n": 9931,
+      "base_rate": 0.125,
+      "brier_score": 0.1041,
+      "bss": 0.0483,
+      "accuracy": 0.8766,
+      "hit_rate_p60": 0.6857,
+      "n_confident_p60": 35,
+      "hit_rate_p70": 0.8182,
+      "n_confident_p70": 11,
+      "hit_rate_p80": 1.0,
+      "n_confident_p80": 3,
+      "calibration_ece": 0.0053,
+      "calibration_curve": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "predicted_mean": 0.0338,
+          "observed_mean": 0.0466,
+          "count": 1201
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "predicted_mean": 0.1273,
+          "observed_mean": 0.1253,
+          "count": 8369
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "predicted_mean": 0.2445,
+          "observed_mean": 0.3047,
+          "count": 128
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "predicted_mean": 0.3513,
+          "observed_mean": 0.2588,
+          "count": 85
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "predicted_mean": 0.446,
+          "observed_mean": 0.4,
+          "count": 70
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "predicted_mean": 0.5454,
+          "observed_mean": 0.5349,
+          "count": 43
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "predicted_mean": 0.6434,
+          "observed_mean": 0.625,
+          "count": 24
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "predicted_mean": 0.7517,
+          "observed_mean": 0.75,
+          "count": 8
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "predicted_mean": 0.8236,
+          "observed_mean": 1.0,
+          "count": 2
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "predicted_mean": 0.9321,
+          "observed_mean": 1.0,
+          "count": 1
+        }
+      ]
+    },
+    "3plus_goals": {
+      "n": 9931,
+      "base_rate": 0.0501,
+      "brier_score": 0.0456,
+      "bss": 0.0423,
+      "accuracy": 0.9502,
+      "hit_rate_p60": 1.0,
+      "n_confident_p60": 3,
+      "hit_rate_p70": 1.0,
+      "n_confident_p70": 1,
+      "hit_rate_p80": 1.0,
+      "n_confident_p80": 1,
+      "calibration_ece": 0.0037,
+      "calibration_curve": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "predicted_mean": 0.0426,
+          "observed_mean": 0.0444,
+          "count": 9701
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "predicted_mean": 0.1445,
+          "observed_mean": 0.2206,
+          "count": 136
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "predicted_mean": 0.2367,
+          "observed_mean": 0.3208,
+          "count": 53
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "predicted_mean": 0.3389,
+          "observed_mean": 0.4583,
+          "count": 24
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "predicted_mean": 0.4373,
+          "observed_mean": 0.4,
+          "count": 10
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "predicted_mean": 0.5452,
+          "observed_mean": 0.5,
+          "count": 4
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "predicted_mean": 0.62,
+          "observed_mean": 1.0,
+          "count": 2
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "predicted_mean": 0.867,
+          "observed_mean": 1.0,
+          "count": 1
+        }
+      ]
+    }
+  },
+  "disposal_thresholds": {
+    "10plus_disp": {
+      "n": 9931,
+      "base_rate": 0.7779,
+      "brier_score": 0.1648,
+      "bss": 0.0465,
+      "accuracy": 0.78,
+      "hit_rate_p60": 0.7865,
+      "n_confident_p60": 9678,
+      "hit_rate_p70": 0.7889,
+      "n_confident_p70": 9440,
+      "hit_rate_p80": 0.9557,
+      "n_confident_p80": 1557,
+      "calibration_ece": 0.0309,
+      "calibration_curve": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "predicted_mean": 0.0982,
+          "observed_mean": 0.0,
+          "count": 1
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "predicted_mean": 0.2468,
+          "observed_mean": 0.5,
+          "count": 8
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "predicted_mean": 0.3501,
+          "observed_mean": 0.2632,
+          "count": 19
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "predicted_mean": 0.4545,
+          "observed_mean": 0.4286,
+          "count": 77
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "predicted_mean": 0.5532,
+          "observed_mean": 0.4797,
+          "count": 148
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "predicted_mean": 0.6518,
+          "observed_mean": 0.6933,
+          "count": 238
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "predicted_mean": 0.7789,
+          "observed_mean": 0.7559,
+          "count": 7883
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "predicted_mean": 0.8374,
+          "observed_mean": 0.9496,
+          "count": 873
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "predicted_mean": 0.9615,
+          "observed_mean": 0.9635,
+          "count": 684
+        }
+      ]
+    },
+    "15plus_disp": {
+      "n": 9931,
+      "base_rate": 0.5008,
+      "brier_score": 0.2265,
+      "bss": 0.0938,
+      "accuracy": 0.7665,
+      "hit_rate_p60": 0.8582,
+      "n_confident_p60": 691,
+      "hit_rate_p70": 0.8845,
+      "n_confident_p70": 502,
+      "hit_rate_p80": 0.9218,
+      "n_confident_p80": 358,
+      "calibration_ece": 0.2124,
+      "calibration_curve": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "predicted_mean": 0.0685,
+          "observed_mean": 0.0805,
+          "count": 87
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "predicted_mean": 0.1533,
+          "observed_mean": 0.1596,
+          "count": 213
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "predicted_mean": 0.2465,
+          "observed_mean": 0.2365,
+          "count": 241
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "predicted_mean": 0.3474,
+          "observed_mean": 0.3723,
+          "count": 188
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "predicted_mean": 0.4921,
+          "observed_mean": 0.2926,
+          "count": 5414
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "predicted_mean": 0.5309,
+          "observed_mean": 0.8486,
+          "count": 3097
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "predicted_mean": 0.645,
+          "observed_mean": 0.7884,
+          "count": 189
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "predicted_mean": 0.7497,
+          "observed_mean": 0.7917,
+          "count": 144
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "predicted_mean": 0.851,
+          "observed_mean": 0.8603,
+          "count": 136
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "predicted_mean": 0.9549,
+          "observed_mean": 0.9595,
+          "count": 222
+        }
+      ]
+    },
+    "20plus_disp": {
+      "n": 9931,
+      "base_rate": 0.2722,
+      "brier_score": 0.181,
+      "bss": 0.0861,
+      "accuracy": 0.7444,
+      "hit_rate_p60": 0.7955,
+      "n_confident_p60": 269,
+      "hit_rate_p70": 0.8429,
+      "n_confident_p70": 191,
+      "hit_rate_p80": 0.8824,
+      "n_confident_p80": 119,
+      "calibration_ece": 0.0593,
+      "calibration_curve": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "predicted_mean": 0.0365,
+          "observed_mean": 0.058,
+          "count": 758
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "predicted_mean": 0.1426,
+          "observed_mean": 0.1983,
+          "count": 242
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "predicted_mean": 0.2769,
+          "observed_mean": 0.2389,
+          "count": 8003
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "predicted_mean": 0.3187,
+          "observed_mean": 0.7931,
+          "count": 493
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "predicted_mean": 0.4457,
+          "observed_mean": 0.5755,
+          "count": 106
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "predicted_mean": 0.5395,
+          "observed_mean": 0.55,
+          "count": 60
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "predicted_mean": 0.6453,
+          "observed_mean": 0.6795,
+          "count": 78
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "predicted_mean": 0.7552,
+          "observed_mean": 0.7778,
+          "count": 72
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "predicted_mean": 0.8531,
+          "observed_mean": 0.8649,
+          "count": 74
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "predicted_mean": 0.9403,
+          "observed_mean": 0.9111,
+          "count": 45
+        }
+      ]
+    },
+    "25plus_disp": {
+      "n": 9931,
+      "base_rate": 0.1258,
+      "brier_score": 0.1057,
+      "bss": 0.0384,
+      "accuracy": 0.8743,
+      "hit_rate_p60": 0.5363,
+      "n_confident_p60": 248,
+      "hit_rate_p70": 0.5842,
+      "n_confident_p70": 190,
+      "hit_rate_p80": 0.6639,
+      "n_confident_p80": 119,
+      "calibration_ece": 0.0178,
+      "calibration_curve": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "predicted_mean": 0.0271,
+          "observed_mean": 0.02,
+          "count": 951
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "predicted_mean": 0.1298,
+          "observed_mean": 0.1232,
+          "count": 8428
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "predicted_mean": 0.248,
+          "observed_mean": 0.1538,
+          "count": 117
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "predicted_mean": 0.3488,
+          "observed_mean": 0.1786,
+          "count": 84
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "predicted_mean": 0.4483,
+          "observed_mean": 0.2258,
+          "count": 62
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "predicted_mean": 0.5607,
+          "observed_mean": 0.2927,
+          "count": 41
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "predicted_mean": 0.6515,
+          "observed_mean": 0.3793,
+          "count": 58
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "predicted_mean": 0.7559,
+          "observed_mean": 0.4507,
+          "count": 71
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "predicted_mean": 0.8531,
+          "observed_mean": 0.6081,
+          "count": 74
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "predicted_mean": 0.9403,
+          "observed_mean": 0.7556,
+          "count": 45
+        }
+      ]
+    },
+    "30plus_disp": {
+      "n": 9931,
+      "base_rate": 0.0429,
+      "brier_score": 0.0408,
+      "bss": 0.0074,
+      "accuracy": 0.9571,
+      "hit_rate_p60": null,
+      "n_confident_p60": 0,
+      "hit_rate_p70": null,
+      "n_confident_p70": 0,
+      "hit_rate_p80": null,
+      "n_confident_p80": 0,
+      "calibration_ece": 0.0084,
+      "calibration_curve": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "predicted_mean": 0.0396,
+          "observed_mean": 0.0376,
+          "count": 9522
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "predicted_mean": 0.1428,
+          "observed_mean": 0.0504,
+          "count": 119
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "predicted_mean": 0.257,
+          "observed_mean": 0.0545,
+          "count": 55
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "predicted_mean": 0.349,
+          "observed_mean": 0.1087,
+          "count": 46
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "predicted_mean": 0.4482,
+          "observed_mean": 0.2857,
+          "count": 189
+        }
+      ]
+    }
+  },
+  "marks_thresholds": {
+    "3plus_mk": {
+      "n": 9931,
+      "base_rate": 0.6655,
+      "brier_score": 0.2166,
+      "bss": 0.0272,
+      "accuracy": 0.6705,
+      "hit_rate_p60": 0.6761,
+      "n_confident_p60": 9488,
+      "hit_rate_p70": 0.814,
+      "n_confident_p70": 941,
+      "hit_rate_p80": 0.8463,
+      "n_confident_p80": 462,
+      "calibration_ece": 0.0058,
+      "calibration_curve": [
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "predicted_mean": 0.2675,
+          "observed_mean": 0.5,
+          "count": 8
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "predicted_mean": 0.3561,
+          "observed_mean": 0.2857,
+          "count": 35
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "predicted_mean": 0.457,
+          "observed_mean": 0.3741,
+          "count": 139
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "predicted_mean": 0.551,
+          "observed_mean": 0.4904,
+          "count": 261
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "predicted_mean": 0.6613,
+          "observed_mean": 0.6609,
+          "count": 8547
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "predicted_mean": 0.7499,
+          "observed_mean": 0.7829,
+          "count": 479
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "predicted_mean": 0.8459,
+          "observed_mean": 0.8338,
+          "count": 379
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "predicted_mean": 0.9274,
+          "observed_mean": 0.9036,
+          "count": 83
+        }
+      ]
+    },
+    "5plus_mk": {
+      "n": 9931,
+      "base_rate": 0.3523,
+      "brier_score": 0.2196,
+      "bss": 0.0379,
+      "accuracy": 0.6544,
+      "hit_rate_p60": 0.6333,
+      "n_confident_p60": 240,
+      "hit_rate_p70": 0.6882,
+      "n_confident_p70": 93,
+      "hit_rate_p80": 0.8,
+      "n_confident_p80": 25,
+      "calibration_ece": 0.0191,
+      "calibration_curve": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "predicted_mean": 0.0693,
+          "observed_mean": 0.1111,
+          "count": 99
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "predicted_mean": 0.1512,
+          "observed_mean": 0.1555,
+          "count": 283
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "predicted_mean": 0.2544,
+          "observed_mean": 0.1437,
+          "count": 696
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "predicted_mean": 0.354,
+          "observed_mean": 0.3639,
+          "count": 8125
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "predicted_mean": 0.4486,
+          "observed_mean": 0.4632,
+          "count": 285
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "predicted_mean": 0.5466,
+          "observed_mean": 0.5074,
+          "count": 203
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "predicted_mean": 0.6447,
+          "observed_mean": 0.5986,
+          "count": 147
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "predicted_mean": 0.7416,
+          "observed_mean": 0.6471,
+          "count": 68
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "predicted_mean": 0.8377,
+          "observed_mean": 0.7826,
+          "count": 23
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "predicted_mean": 0.9304,
+          "observed_mean": 1.0,
+          "count": 2
+        }
+      ]
+    },
+    "7plus_mk": {
+      "n": 9931,
+      "base_rate": 0.1511,
+      "brier_score": 0.1243,
+      "bss": 0.0309,
+      "accuracy": 0.8486,
+      "hit_rate_p60": 0.5789,
+      "n_confident_p60": 19,
+      "hit_rate_p70": 0.625,
+      "n_confident_p70": 8,
+      "hit_rate_p80": 0.6667,
+      "n_confident_p80": 3,
+      "calibration_ece": 0.0074,
+      "calibration_curve": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "predicted_mean": 0.0511,
+          "observed_mean": 0.0443,
+          "count": 1105
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "predicted_mean": 0.1483,
+          "observed_mean": 0.15,
+          "count": 8195
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "predicted_mean": 0.2322,
+          "observed_mean": 0.3393,
+          "count": 392
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "predicted_mean": 0.3457,
+          "observed_mean": 0.3333,
+          "count": 135
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "predicted_mean": 0.447,
+          "observed_mean": 0.4068,
+          "count": 59
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "predicted_mean": 0.5397,
+          "observed_mean": 0.3846,
+          "count": 26
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "predicted_mean": 0.6434,
+          "observed_mean": 0.5455,
+          "count": 11
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "predicted_mean": 0.7525,
+          "observed_mean": 0.6,
+          "count": 5
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "predicted_mean": 0.8154,
+          "observed_mean": 0.6667,
+          "count": 3
+        }
+      ]
+    }
+  },
+  "mae": {
+    "goals_mae": 0.5043,
+    "baseline_mae": 0.7142,
+    "improvement_pct": 29.4
+  },
+  "disposal_mae": {
+    "disposals_mae": 3.8566,
+    "baseline_mae": 5.915,
+    "improvement_pct": 34.8
+  },
+  "marks_mae": {
+    "marks_mae": 1.7783,
+    "baseline_mae": 2.0209,
+    "improvement_pct": 12.0
+  }
+}

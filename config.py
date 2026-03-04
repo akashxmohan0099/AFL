@@ -41,7 +41,13 @@ ERA_WEIGHTS = {
     (2023, 2024): 0.9,
     (2025, 2026): 1.0,
 }
-RECENCY_DECAY_HALF_LIFE = 365  # days — used in exponential decay
+RECENCY_DECAY_HALF_LIFE = 250  # days — faster decay (was 365)
+
+# Dynamic current-season weighting (used in sequential mode)
+CURRENT_SEASON_BOOST_BASE = 1.3       # base multiplier for current-season rows
+CURRENT_SEASON_BOOST_PER_ROUND = 0.08 # additional boost per round of current-season data available
+CURRENT_SEASON_BOOST_MAX = 3.0        # cap
+WITHIN_SEASON_RECENCY_HALF_LIFE = 8   # rounds — within current season, recent rounds matter more
 
 # ---------------------------------------------------------------------------
 # Season era / rule regime mapping

@@ -1,0 +1,47 @@
+{
+  "label": "5_disposal_fix_v3.3",
+  "season": 2025,
+  "run_id": "sequential_2025_20260304T132951212085Z",
+  "n_predictions": 9931,
+  "n_rounds": 28,
+  "thresholds": {
+    "1plus_goals": {
+      "brier_score": 0.2083,
+      "base_rate": 0.3305
+    },
+    "2plus_goals": {
+      "brier_score": 0.1044,
+      "base_rate": 0.125
+    },
+    "3plus_goals": {
+      "brier_score": 0.0458,
+      "base_rate": 0.0501
+    }
+  },
+  "disposal_thresholds": {
+    "15plus_disp": {
+      "brier_score": 0.2263,
+      "base_rate": 0.5008,
+      "bss": 0.0948
+    },
+    "20plus_disp": {
+      "brier_score": 0.1789,
+      "base_rate": 0.2722,
+      "bss": 0.0968
+    },
+    "25plus_disp": {
+      "brier_score": 0.1044,
+      "base_rate": 0.1258,
+      "bss": 0.0501
+    },
+    "30plus_disp": {
+      "brier_score": 0.0405,
+      "base_rate": 0.0429,
+      "bss": 0.0146
+    }
+  },
+  "mae": {
+    "goals": 0.5038,
+    "disposals": 3.858
+  }
+}

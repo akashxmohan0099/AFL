@@ -1799,7 +1799,7 @@ class AFLDisposalModel:
 
         # Estimate distribution-specific parameters
         if self.distribution != "poisson":
-            self._estimate_distribution_params(X_clean, X_scaled, y)
+            self._estimate_distribution_params(X_raw, X_scaled, y)
 
     def _estimate_distribution_params(self, X_raw, X_scaled, y_actual):
         """Estimate distribution-specific parameters from training residuals."""
@@ -2253,7 +2253,7 @@ class AFLMarksModel:
         self.marks_gbt.fit(X_raw, y, sample_weight=weights)
 
         if self.distribution != "poisson":
-            self._estimate_distribution_params(X_clean, X_scaled, y)
+            self._estimate_distribution_params(X_raw, X_scaled, y)
 
     def _estimate_distribution_params(self, X_raw, X_scaled, y_actual):
         """Estimate distribution-specific parameters from training residuals."""
@@ -2503,6 +2503,349 @@ class AFLMarksModel:
         self._negbin_r = metadata.get("negbin_r")
 
         print(f"Marks models loaded from {models_dir}")
+
+
+# ---------------------------------------------------------------------------
+# Monte Carlo Simulation Engine
+# ---------------------------------------------------------------------------
+
+class MonteCarloSimulator:
+    """Game-correlated Monte Carlo simulation layer.
+
+    Runs N simulations per game, drawing player goals/disposals from
+    the fitted scoring and disposal models, then applies a game-level
+    correlation factor so that players on dominant teams get scaled up.
+
+    Usage:
+        sim = MonteCarloSimulator(scoring_model, disposal_model, winner_model)
+        sim.estimate_correlation_factors(historical_df)
+        mc_df = sim.simulate_round(predictions_df, game_preds_df, n_sims=10000)
+    """
+
+    # Default margin buckets and scaling factors (overridden by estimate_correlation_factors)
+    DEFAULT_MARGIN_BINS = np.array([0, 10, 20, 40, 200])
+    DEFAULT_SCALE_FACTORS = np.array([1.00, 1.03, 1.07, 1.12])  # per bucket
+
+    def __init__(self, scoring_model=None, disposal_model=None, winner_model=None):
+        self.scoring_model = scoring_model
+        self.disposal_model = disposal_model
+        self.winner_model = winner_model
+
+        # Correlation factors: mapping from margin bucket → (goals_scale, disp_scale)
+        self.margin_bins = self.DEFAULT_MARGIN_BINS.copy()
+        self.goals_scale = self.DEFAULT_SCALE_FACTORS.copy()
+        self.disp_scale = self.DEFAULT_SCALE_FACTORS.copy()
+
+        # Margin distribution std for game-level draws
+        self.margin_std = 30.0  # typical AFL game margin std
+
+    def estimate_correlation_factors(self, feature_df, team_match_df=None):
+        """Estimate correlation factors from historical data.
+
+        Groups player performances by game margin buckets and measures
+        how individual stats deviate from predictions at each margin level.
+
+        Args:
+            feature_df: Feature matrix with actuals (GL, DI) and predictions
+                        or at minimum GL, DI, match_id, team columns.
+            team_match_df: team_matches.parquet with margin per (team, match).
+        """
+        if team_match_df is None:
+            print("  [MC] No team_match data — using default correlation factors")
+            return
+
+        # Get team margin per match
+        tm = team_match_df[["match_id", "team", "margin", "score"]].copy()
+
+        # Merge player data with team margin
+        df = feature_df[["match_id", "player", "team", "GL", "DI"]].copy()
+        df = df.merge(tm[["match_id", "team", "margin"]], on=["match_id", "team"], how="inner")
+
+        # Need per-player expected values. Use simple career averages as proxy.
+        career = df.groupby("player", observed=True).agg(
+            career_gl=("GL", "mean"),
+            career_di=("DI", "mean"),
+            n_games=("GL", "count"),
+        ).reset_index()
+        career = career[career["n_games"] >= 10]  # need enough history
+        df = df.merge(career[["player", "career_gl", "career_di"]], on="player", how="inner")
+
+        # Bucket by absolute margin (winning side only)
+        df["is_winning_side"] = df["margin"] > 0
+        df["abs_margin"] = df["margin"].abs()
+
+        bins = [0, 10, 20, 40, 200]
+        labels = ["0-10", "10-20", "20-40", "40+"]
+        df["margin_bucket"] = pd.cut(df["abs_margin"], bins=bins, labels=labels, right=True)
+
+        # Compute scaling per bucket for winning side
+        # For goals (sparse): use mean(actual) / mean(expected) ratio
+        # For disposals: use mean(actual) / mean(expected) ratio
+        goals_scales = []
+        disp_scales = []
+        for bucket in labels:
+            bucket_df = df[(df["margin_bucket"] == bucket) & df["is_winning_side"]]
+            if len(bucket_df) < 50:
+                goals_scales.append(1.0)
+                disp_scales.append(1.0)
+                continue
+            # Mean-of-means ratio: how much do stats deviate from career avg
+            gl_ratio = float(bucket_df["GL"].mean() / bucket_df["career_gl"].mean())
+            di_ratio = float(bucket_df["DI"].mean() / bucket_df["career_di"].mean())
+            goals_scales.append(gl_ratio)
+            disp_scales.append(di_ratio)
+
+        self.margin_bins = np.array(bins)
+        self.goals_scale = np.array(goals_scales, dtype=np.float64)
+        self.disp_scale = np.array(disp_scales, dtype=np.float64)
+
+        # Estimate margin std from historical data
+        if team_match_df is not None and "margin" in team_match_df.columns:
+            home_margins = team_match_df[team_match_df["is_home"]]["margin"]
+            if len(home_margins) > 50:
+                self.margin_std = float(home_margins.std())
+
+        print(f"  [MC] Correlation factors estimated from {len(df)} player-games")
+        print(f"       Goals scaling by margin bucket: {dict(zip(labels, np.round(self.goals_scale, 3)))}")
+        print(f"       Disp scaling by margin bucket:  {dict(zip(labels, np.round(self.disp_scale, 3)))}")
+        print(f"       Margin std: {self.margin_std:.1f}")
+
+    def _get_correlation_scale(self, margin_draws, is_home_team, stat_type="goals"):
+        """Vectorized: return per-simulation scaling factor based on simulated margin.
+
+        Args:
+            margin_draws: (n_sims,) array of simulated home margins.
+            is_home_team: bool — True if this player is on the home team.
+            stat_type: 'goals' or 'disp'
+
+        Returns:
+            (n_sims,) array of scaling factors.
+        """
+        scales = self.goals_scale if stat_type == "goals" else self.disp_scale
+
+        # Team margin from player's perspective
+        team_margin = margin_draws if is_home_team else -margin_draws
+
+        # For winning side: scale up. For losing side: scale down (inverse).
+        abs_margin = np.abs(team_margin)
+        # Digitize into buckets: bins = [0, 10, 20, 40, 200]
+        bucket_idx = np.digitize(abs_margin, self.margin_bins[1:-1])  # 0, 1, 2, 3
+        bucket_idx = np.clip(bucket_idx, 0, len(scales) - 1)
+
+        raw_scale = scales[bucket_idx]
+
+        # Winning side gets scale factor; losing side gets inverse
+        is_winning = team_margin > 0
+        result = np.where(is_winning, raw_scale, 1.0 / np.maximum(raw_scale, 0.5))
+
+        # Close games (margin 0-5): no scaling
+        close_game = abs_margin <= 5
+        result[close_game] = 1.0
+
+        return result
+
+    def simulate_round(self, predictions_df, game_preds_df=None, n_sims=10000):
+        """Run Monte Carlo simulations for a round of games.
+
+        Args:
+            predictions_df: Merged predictions DataFrame with columns:
+                player, team, opponent, venue, round, match_id,
+                p_scorer (or p_scorer_raw), lambda_goals, lambda_behinds,
+                predicted_disposals, plus disposal std params.
+            game_preds_df: Game-level predictions with columns:
+                match_id, home_team, home_win_prob, predicted_margin.
+                If None, uses 50/50 with margin=0.
+            n_sims: Number of simulations per game.
+
+        Returns:
+            DataFrame with per-player MC probabilities alongside direct model probs.
+        """
+        df = predictions_df.copy()
+        n_players = len(df)
+
+        if n_players == 0:
+            return pd.DataFrame()
+
+        # Extract match-level info
+        matches = df[["match_id", "team"]].drop_duplicates()
+        match_ids = df["match_id"].unique()
+
+        # Build game-level params: P(home_win), predicted_margin, margin_std
+        game_params = {}
+        for mid in match_ids:
+            if game_preds_df is not None and len(game_preds_df) > 0:
+                gp = game_preds_df[game_preds_df["match_id"] == mid]
+                if len(gp) > 0:
+                    row = gp.iloc[0]
+                    game_params[mid] = {
+                        "home_win_prob": float(row.get("home_win_prob", 0.5)),
+                        "predicted_margin": float(row.get("predicted_margin", 0.0)),
+                        "home_team": row.get("home_team", ""),
+                    }
+                    continue
+            # Fallback: use team home status from predictions
+            game_params[mid] = {
+                "home_win_prob": 0.5,
+                "predicted_margin": 0.0,
+                "home_team": "",
+            }
+
+        # ── Vectorized simulation ─────────────────────────────────────
+        # Pre-extract player parameters
+        p_scorer = df["p_scorer"].values if "p_scorer" in df.columns else df["p_scorer_raw"].values
+        p_scorer = np.clip(p_scorer, 0.0, 1.0)
+
+        # Lambda for shifted Poisson: goals | scorer ~ 1 + Poisson(mu)
+        # lambda_goals = p_scorer * lambda_if_scorer, so lambda_if_scorer = lambda_goals / p_scorer
+        lambda_goals = df["lambda_goals"].values if "lambda_goals" in df.columns else df["predicted_goals"].values
+        lambda_if_scorer = np.where(
+            p_scorer > 0.01,
+            np.maximum(lambda_goals / p_scorer, 1.0),
+            1.0,
+        )
+
+        # Disposal parameters
+        pred_disp = df["predicted_disposals"].values if "predicted_disposals" in df.columns else np.full(n_players, 15.0)
+        # Get disposal std: use lambda_disposals and _get_std_for_mu logic
+        lambda_disp = df["lambda_disposals"].values if "lambda_disposals" in df.columns else pred_disp.copy()
+        # Compute std per player: std = a + b * sqrt(mu)
+        disp_std = np.zeros(n_players)
+        if self.disposal_model is not None and hasattr(self.disposal_model, "_std_params") and self.disposal_model._std_params is not None:
+            a, b = self.disposal_model._std_params
+            disp_std = np.maximum(a + b * np.sqrt(np.maximum(lambda_disp, 0.1)), 1.0)
+        elif self.disposal_model is not None and hasattr(self.disposal_model, "_residual_std") and self.disposal_model._residual_std is not None:
+            disp_std = np.full(n_players, max(float(self.disposal_model._residual_std), 1.0))
+        else:
+            # Fallback: std ≈ 0.5*sqrt(mu) + 3
+            disp_std = np.maximum(0.5 * np.sqrt(np.maximum(lambda_disp, 0.1)) + 3.0, 1.0)
+
+        # Player-to-match mapping
+        player_match_ids = df["match_id"].values
+        player_is_home = np.zeros(n_players, dtype=bool)
+        if "is_home" in df.columns:
+            player_is_home = df["is_home"].values.astype(bool)
+        else:
+            # Infer from game_params
+            for i in range(n_players):
+                mid = player_match_ids[i]
+                gp = game_params.get(mid, {})
+                player_is_home[i] = (df.iloc[i]["team"] == gp.get("home_team", ""))
+
+        # ── Run simulations per match (vectorized across players) ─────
+        # Accumulators for threshold counts
+        goals_counts = np.zeros((n_players, 4))  # >=1, >=2, >=3, >=4
+        disp_counts = np.zeros((n_players, 5))   # >=10, >=15, >=20, >=25, >=30
+
+        # Group players by match for correlated simulation
+        match_player_indices = {}
+        for i in range(n_players):
+            mid = int(player_match_ids[i])
+            if mid not in match_player_indices:
+                match_player_indices[mid] = []
+            match_player_indices[mid].append(i)
+
+        rng = np.random.default_rng(42)
+
+        for mid, player_idxs in match_player_indices.items():
+            idxs = np.array(player_idxs)
+            n_p = len(idxs)
+            gp = game_params.get(mid, {"home_win_prob": 0.5, "predicted_margin": 0.0})
+
+            # Draw game-level margins for all sims
+            pred_margin = gp["predicted_margin"]
+            margin_draws = rng.normal(pred_margin, self.margin_std, size=n_sims)
+
+            # Get player params for this match
+            p_sc = p_scorer[idxs]           # (n_p,)
+            lam_if = lambda_if_scorer[idxs]  # (n_p,)
+            mu_disp = lambda_disp[idxs]      # (n_p,)
+            std_disp = disp_std[idxs]        # (n_p,)
+            is_home = player_is_home[idxs]   # (n_p,)
+
+            # Process in chunks to manage memory: (n_p, n_sims)
+            chunk_size = min(n_sims, 2500)
+            n_chunks = (n_sims + chunk_size - 1) // chunk_size
+
+            for chunk_i in range(n_chunks):
+                start = chunk_i * chunk_size
+                end = min(start + chunk_size, n_sims)
+                cs = end - start
+                margin_chunk = margin_draws[start:end]  # (cs,)
+
+                # --- Goals simulation ---
+                # Stage 1: Bernoulli draw for scorer
+                scorer_draws = rng.random((n_p, cs)) < p_sc[:, None]  # (n_p, cs)
+
+                # Stage 2: Shifted Poisson for goals | scorer
+                mu_shifted = np.maximum(lam_if[:, None] - 1.0, 0.001)  # (n_p, 1)
+                pois_draws = rng.poisson(mu_shifted, size=(n_p, cs))    # (n_p, cs)
+                sim_goals = np.where(scorer_draws, 1 + pois_draws, 0)   # (n_p, cs)
+
+                # --- Disposal simulation ---
+                sim_disp = rng.normal(
+                    mu_disp[:, None],
+                    std_disp[:, None],
+                    size=(n_p, cs),
+                )  # (n_p, cs)
+
+                # --- Apply correlation scaling ---
+                for j in range(n_p):
+                    gl_scale = self._get_correlation_scale(margin_chunk, is_home[j], "goals")  # (cs,)
+                    di_scale = self._get_correlation_scale(margin_chunk, is_home[j], "disp")   # (cs,)
+                    sim_goals[j] = np.round(sim_goals[j].astype(np.float64) * gl_scale).astype(int)
+                    sim_disp[j] = sim_disp[j] * di_scale
+
+                # Clip disposals at 0
+                sim_disp = np.maximum(sim_disp, 0)
+
+                # --- Accumulate threshold counts ---
+                for t_i, threshold in enumerate([1, 2, 3, 4]):
+                    goals_counts[idxs, t_i] += (sim_goals >= threshold).sum(axis=1)
+                for t_i, threshold in enumerate([10, 15, 20, 25, 30]):
+                    disp_counts[idxs, t_i] += (sim_disp >= threshold).sum(axis=1)
+
+        # ── Compute probabilities ─────────────────────────────────────
+        mc_p_1plus = goals_counts[:, 0] / n_sims
+        mc_p_2plus = goals_counts[:, 1] / n_sims
+        mc_p_3plus = goals_counts[:, 2] / n_sims
+        mc_p_4plus = goals_counts[:, 3] / n_sims
+        mc_p_10plus_disp = disp_counts[:, 0] / n_sims
+        mc_p_15plus_disp = disp_counts[:, 1] / n_sims
+        mc_p_20plus_disp = disp_counts[:, 2] / n_sims
+        mc_p_25plus_disp = disp_counts[:, 3] / n_sims
+        mc_p_30plus_disp = disp_counts[:, 4] / n_sims
+
+        # ── Build result DataFrame ────────────────────────────────────
+        round_col = "round" if "round" in df.columns else "round_number"
+        result = df[["player", "team", "opponent", "venue", round_col, "match_id"]].copy()
+        if round_col != "round":
+            result = result.rename(columns={round_col: "round"})
+
+        # Direct model probabilities (for comparison)
+        result["direct_p_1plus_goals"] = df.get("p_1plus_goals", df.get("p_scorer", np.nan)).values
+        result["direct_p_2plus_goals"] = df.get("p_2plus_goals", np.full(n_players, np.nan)).values
+        result["direct_p_3plus_goals"] = df.get("p_3plus_goals", np.full(n_players, np.nan)).values
+        result["direct_p_15plus_disp"] = df.get("p_15plus_disp", np.full(n_players, np.nan)).values
+        result["direct_p_20plus_disp"] = df.get("p_20plus_disp", np.full(n_players, np.nan)).values
+        result["direct_p_25plus_disp"] = df.get("p_25plus_disp", np.full(n_players, np.nan)).values
+        result["direct_p_30plus_disp"] = df.get("p_30plus_disp", np.full(n_players, np.nan)).values
+
+        # Monte Carlo probabilities
+        result["mc_p_1plus_goals"] = np.round(mc_p_1plus, 4)
+        result["mc_p_2plus_goals"] = np.round(mc_p_2plus, 4)
+        result["mc_p_3plus_goals"] = np.round(mc_p_3plus, 4)
+        result["mc_p_4plus_goals"] = np.round(mc_p_4plus, 4)
+        result["mc_p_10plus_disp"] = np.round(mc_p_10plus_disp, 4)
+        result["mc_p_15plus_disp"] = np.round(mc_p_15plus_disp, 4)
+        result["mc_p_20plus_disp"] = np.round(mc_p_20plus_disp, 4)
+        result["mc_p_25plus_disp"] = np.round(mc_p_25plus_disp, 4)
+        result["mc_p_30plus_disp"] = np.round(mc_p_30plus_disp, 4)
+
+        # Predicted values for reference
+        result["predicted_goals"] = df["predicted_goals"].values
+        result["predicted_disposals"] = pred_disp
+
+        return result
 
 
 # ---------------------------------------------------------------------------
