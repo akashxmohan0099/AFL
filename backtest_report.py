@@ -17,76 +17,16 @@ import numpy as np
 import pandas as pd
 
 import config
+from analysis import _merge_pred_outcome
+from metrics import (
+    brier as brier_score,
+    bss as brier_skill_score,
+    hit_rate_at_confidence,
+    calibration_curve,
+    expected_calibration_error,
+    compute_threshold_metrics,
+)
 from store import LearningStore
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def brier_score(probs, actuals):
-    """Mean squared error between predicted probabilities and binary outcomes."""
-    p = np.asarray(probs, dtype=float)
-    a = np.asarray(actuals, dtype=float)
-    mask = np.isfinite(p) & np.isfinite(a)
-    if mask.sum() == 0:
-        return np.nan
-    return float(np.mean((p[mask] - a[mask]) ** 2))
-
-
-def brier_skill_score(probs, actuals):
-    """BSS = 1 - Brier / Brier_climatology."""
-    a = np.asarray(actuals, dtype=float)
-    mask = np.isfinite(np.asarray(probs, dtype=float)) & np.isfinite(a)
-    if mask.sum() == 0:
-        return np.nan
-    base_rate = a[mask].mean()
-    brier_clim = base_rate * (1 - base_rate)
-    bs = brier_score(probs, actuals)
-    if brier_clim == 0:
-        return 0.0
-    return float(1 - bs / brier_clim)
-
-
-def hit_rate_at_confidence(probs, actuals, threshold):
-    """Accuracy among predictions where P >= threshold."""
-    p = np.asarray(probs, dtype=float)
-    a = np.asarray(actuals, dtype=float)
-    mask = p >= threshold
-    if mask.sum() == 0:
-        return np.nan, 0
-    acc = float(a[mask].mean())
-    return acc, int(mask.sum())
-
-
-def calibration_curve(probs, actuals, n_bins=10):
-    """Simple equal-width calibration curve."""
-    p = np.asarray(probs, dtype=float)
-    a = np.asarray(actuals, dtype=float)
-    bins = []
-    for i in range(n_bins):
-        lo = i / n_bins
-        hi = (i + 1) / n_bins
-        mask = (p >= lo) & (p < hi) if i < n_bins - 1 else (p >= lo) & (p <= hi)
-        if mask.sum() > 0:
-            bins.append({
-                "bin_lower": round(lo, 2),
-                "bin_upper": round(hi, 2),
-                "predicted_mean": round(float(p[mask].mean()), 4),
-                "observed_mean": round(float(a[mask].mean()), 4),
-                "count": int(mask.sum()),
-            })
-    return bins
-
-
-def expected_calibration_error(probs, actuals, n_bins=10):
-    """Weighted absolute difference between predicted and observed rates."""
-    curve = calibration_curve(probs, actuals, n_bins)
-    total = sum(b["count"] for b in curve)
-    if total == 0:
-        return np.nan
-    ece = sum(abs(b["predicted_mean"] - b["observed_mean"]) * b["count"] for b in curve) / total
-    return round(ece, 4)
 
 
 # ---------------------------------------------------------------------------
@@ -117,50 +57,6 @@ def load_all_rounds(store, year, subdir):
     if not frames:
         return pd.DataFrame()
     return pd.concat(frames, ignore_index=True)
-
-
-# ---------------------------------------------------------------------------
-# Threshold metrics
-# ---------------------------------------------------------------------------
-
-def compute_threshold_metrics(probs, actuals, label):
-    """Compute Brier, BSS, hit rates, calibration for a single threshold."""
-    p = np.asarray(probs, dtype=float)
-    a = np.asarray(actuals, dtype=float)
-    valid = np.isfinite(p) & np.isfinite(a)
-    p, a = p[valid], a[valid]
-    n = len(p)
-
-    if n == 0:
-        return None
-
-    bs = brier_score(p, a)
-    bss = brier_skill_score(p, a)
-    base_rate = float(a.mean())
-    acc = float(((p >= 0.5) == a).mean())
-
-    hr60, n60 = hit_rate_at_confidence(p, a, 0.60)
-    hr70, n70 = hit_rate_at_confidence(p, a, 0.70)
-    hr80, n80 = hit_rate_at_confidence(p, a, 0.80)
-
-    curve = calibration_curve(p, a)
-    ece = expected_calibration_error(p, a)
-
-    return {
-        "n": n,
-        "base_rate": round(base_rate, 4),
-        "brier_score": round(bs, 4),
-        "bss": round(bss, 4),
-        "accuracy": round(acc, 4),
-        "hit_rate_p60": round(hr60, 4) if hr60 is not np.nan else None,
-        "n_confident_p60": n60,
-        "hit_rate_p70": round(hr70, 4) if hr70 is not np.nan else None,
-        "n_confident_p70": n70,
-        "hit_rate_p80": round(hr80, 4) if hr80 is not np.nan else None,
-        "n_confident_p80": n80,
-        "calibration_ece": ece,
-        "calibration_curve": curve,
-    }
 
 
 # ---------------------------------------------------------------------------
@@ -358,13 +254,11 @@ def main():
         sys.exit(1)
 
     # Merge predictions + outcomes
-    join_cols = ["player", "team"]
-    if "match_id" in predictions.columns and "match_id" in outcomes.columns:
-        join_cols.append("match_id")
-    if "round_number" in predictions.columns and "round_number" in outcomes.columns:
-        join_cols.append("round_number")
+    merged = _merge_pred_outcome(predictions, outcomes)
+    if merged.empty:
+        print("No matched predictions/outcomes found after merge")
+        sys.exit(1)
 
-    merged = predictions.merge(outcomes, on=join_cols, how="inner")
     n_rounds = merged["round_number"].nunique() if "round_number" in merged.columns else 0
     n_preds = len(merged)
 

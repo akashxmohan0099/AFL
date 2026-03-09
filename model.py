@@ -38,6 +38,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, roc_auc_sco
 from sklearn.preprocessing import StandardScaler
 
 import config
+from prediction_math import reconcile_goal_distribution
 
 warnings.filterwarnings("ignore")
 
@@ -523,6 +524,8 @@ class AFLScoringModel:
         print(f"  Behinds RMSE:    {metrics['behinds_rmse']:.4f}")
 
         # Feature importance (from GBT)
+        if not hasattr(self.goals_gbt, 'feature_importances_'):
+            return metrics
         importances = self.goals_gbt.feature_importances_
         top_idx = np.argsort(importances)[::-1][:15]
         print("\n  Top 15 goal features:")
@@ -729,8 +732,11 @@ class AFLScoringModel:
         # Apply isotonic calibration to goal thresholds if available
         if store is not None and cal_method == "isotonic":
             calibrator = store.load_isotonic_calibrator() if hasattr(store, "load_isotonic_calibrator") else None
+            skip_targets = getattr(config, "ISOTONIC_SKIP_TARGETS", set())
             if calibrator is not None:
                 for threshold, name in [(1, "1plus_goals"), (2, "2plus_goals"), (3, "3plus_goals")]:
+                    if name in skip_targets:
+                        continue
                     col = f"p_{name}"
                     if calibrator.has_calibrator(name) and col in result.columns:
                         result[col] = np.round(calibrator.transform(name, result[col].values), 4)
@@ -739,6 +745,9 @@ class AFLScoringModel:
         _enforce_non_increasing_probs(
             result, ["p_1plus_goals", "p_2plus_goals", "p_3plus_goals"], round_dp=4
         )
+
+        # Keep the exported goal PMF aligned with any calibrated threshold probabilities.
+        reconcile_goal_distribution(result, round_dp=4)
 
         # Keep p_scorer aligned to the (possibly calibrated) 1+ probability.
         result["p_scorer"] = result["p_1plus_goals"].values
@@ -766,6 +775,8 @@ class AFLScoringModel:
         Uses GBT feature importances weighted by actual feature values
         (simple approximation of SHAP without the dependency).
         """
+        if not hasattr(self.goals_gbt, 'feature_importances_'):
+            return result
         importances = self.goals_gbt.feature_importances_
 
         top1, top2, top3 = [], [], []
@@ -773,7 +784,7 @@ class AFLScoringModel:
         for i in range(len(X)):
             row = X.iloc[i] if isinstance(X, pd.DataFrame) else X[i]
             # Score = importance * abs(normalized value)
-            vals = np.abs(np.array(row, dtype=float))
+            vals = np.nan_to_num(np.abs(np.array(row, dtype=float)), nan=0.0)
             # Avoid zero values dominating
             scores = importances * (1 + vals / (vals.max() + 1e-9))
             top_idx = np.argsort(scores)[::-1][:3]
@@ -973,7 +984,9 @@ class EloSystem:
 
         # Margin-scaled K: larger upsets move ratings more
         # MOV multiplier from FiveThirtyEight formula
-        mov = np.log(abs(margin) + 1) * (2.2 / ((team_r - opp_r) * 0.001 + 2.2))
+        # Cap margin at ±60 to reduce blowout distortion
+        capped_margin = max(min(abs(margin), 60), 0)
+        mov = np.log(capped_margin + 1) * (2.2 / ((team_r - opp_r) * 0.001 + 2.2))
         k = self.k_factor * mov
         if is_finals:
             k *= 1.5
@@ -2051,10 +2064,13 @@ class AFLDisposalModel:
         # Apply isotonic calibration if available (replaces heuristic 30+ adjustments)
         if store is not None and getattr(config, "CALIBRATION_METHOD", "bucket") == "isotonic":
             calibrator = store.load_isotonic_calibrator() if hasattr(store, "load_isotonic_calibrator") else None
+            skip_targets = getattr(config, "ISOTONIC_SKIP_TARGETS", set())
             if calibrator is not None:
                 for t in thresholds:
                     tgt = f"{t}plus_disp"
                     col = f"p_{t}plus_disp"
+                    if tgt in skip_targets:
+                        continue
                     if calibrator.has_calibrator(tgt):
                         result[col] = np.round(
                             calibrator.transform(tgt, result[col].values), 4
@@ -2143,6 +2159,9 @@ class AFLMarksModel:
         self.distribution = distribution
         self.marks_poisson = None
         self.marks_gbt = None
+        self.mark_taker_clf = None
+        self._mark_taker_threshold = getattr(config, "MARKS_TAKER_THRESHOLD", 5)
+        self._mark_taker_blend = getattr(config, "MARKS_TAKER_BLEND", 0.3)
         self.scaler = None
         self.feature_cols = []
         self.eval_metrics = {}
@@ -2199,6 +2218,28 @@ class AFLMarksModel:
         self.marks_gbt = HistGradientBoostingRegressor(**self.gbt_params)
         self.marks_gbt.fit(X_train_raw, y_train, sample_weight=weights_train)
 
+        # Train mark-taker classifier (soft two-stage)
+        if self._mark_taker_blend > 0:
+            y_mt = (y_train >= self._mark_taker_threshold).astype(int)
+            mt_rate = y_mt.mean()
+            print(f"  Training mark-taker classifier (>={self._mark_taker_threshold}): {mt_rate:.1%} positive rate")
+            self.mark_taker_clf = HistGradientBoostingClassifier(
+                max_iter=100, max_depth=3, learning_rate=0.05,
+                min_samples_leaf=20, random_state=config.RANDOM_SEED,
+            )
+            self.mark_taker_clf.fit(X_train_raw, y_mt, sample_weight=weights_train)
+            if len(X_val_raw) > 0:
+                y_mt_val = (y_val >= self._mark_taker_threshold).astype(int)
+                mt_val_prob = _predict_proba_with_compatible_input(
+                    self.mark_taker_clf, X_val_raw, X_val_raw.fillna(0) if hasattr(X_val_raw, "fillna") else X_val_raw
+                )
+                from sklearn.metrics import roc_auc_score
+                try:
+                    mt_auc = roc_auc_score(y_mt_val, mt_val_prob)
+                    print(f"  Mark-taker AUC: {mt_auc:.4f}")
+                except Exception:
+                    pass
+
         if self.distribution != "poisson":
             self._estimate_distribution_params(X_train_raw, X_train_scaled, y_train)
 
@@ -2251,6 +2292,15 @@ class AFLMarksModel:
 
         self.marks_gbt = HistGradientBoostingRegressor(**hist_params)
         self.marks_gbt.fit(X_raw, y, sample_weight=weights)
+
+        # Train mark-taker classifier (soft two-stage)
+        if self._mark_taker_blend > 0:
+            y_mt = (y >= self._mark_taker_threshold).astype(int)
+            self.mark_taker_clf = HistGradientBoostingClassifier(
+                max_iter=100, max_depth=3, learning_rate=0.05,
+                min_samples_leaf=20, random_state=config.RANDOM_SEED,
+            )
+            self.mark_taker_clf.fit(X_raw, y_mt, sample_weight=weights)
 
         if self.distribution != "poisson":
             self._estimate_distribution_params(X_raw, X_scaled, y)
@@ -2344,14 +2394,22 @@ class AFLMarksModel:
             raise ValueError(f"Unknown distribution: {self.distribution}")
 
     def _predict_raw(self, X_raw, X_scaled, df=None):
-        """Raw ensemble prediction for marks."""
+        """Raw ensemble prediction for marks with optional mark-taker soft blend."""
         w_poi = self.ensemble_weights["poisson"]
         w_gbt = self.ensemble_weights["gbt"]
 
         pred_poi = self.marks_poisson.predict(X_scaled)
         X_clean = X_raw.fillna(0) if hasattr(X_raw, "fillna") else X_raw
         pred_gbt = _predict_with_compatible_input(self.marks_gbt, X_raw, X_clean)
-        return np.clip(w_poi * pred_poi + w_gbt * pred_gbt, 0, None)
+        base_pred = np.clip(w_poi * pred_poi + w_gbt * pred_gbt, 0, None)
+
+        # Soft two-stage: adjust predictions based on mark-taker probability
+        if self.mark_taker_clf is not None and self._mark_taker_blend > 0:
+            mt_prob = _predict_proba_with_compatible_input(self.mark_taker_clf, X_raw, X_clean)
+            adjustment = 1.0 + self._mark_taker_blend * (mt_prob - 0.5)
+            base_pred = base_pred * np.clip(adjustment, 0.5, 2.0)
+
+        return base_pred
 
     def predict(self, df, feature_cols=None, store=None):
         """Generate marks predictions with probability thresholds."""
@@ -2414,6 +2472,13 @@ class AFLMarksModel:
             "match_id": df["match_id"].values,
         })
 
+        # Add mark-taker probability column
+        if self.mark_taker_clf is not None:
+            X_clean = X_raw.fillna(0) if hasattr(X_raw, "fillna") else X_raw
+            result["p_mark_taker"] = np.round(
+                _predict_proba_with_compatible_input(self.mark_taker_clf, X_raw, X_clean), 4
+            )
+
         lambda_marks = np.zeros(len(df))
         cal_method = getattr(config, "CALIBRATION_METHOD", "bucket")
         for i in range(len(df)):
@@ -2434,10 +2499,13 @@ class AFLMarksModel:
 
         if store is not None and getattr(config, "CALIBRATION_METHOD", "bucket") == "isotonic":
             calibrator = store.load_isotonic_calibrator() if hasattr(store, "load_isotonic_calibrator") else None
+            skip_targets = getattr(config, "ISOTONIC_SKIP_TARGETS", set())
             if calibrator is not None:
                 for t in thresholds:
                     tgt = f"{t}plus_mk"
                     col = f"p_{t}plus_mk"
+                    if tgt in skip_targets:
+                        continue
                     if calibrator.has_calibrator(tgt):
                         result[col] = np.round(
                             calibrator.transform(tgt, result[col].values), 4
@@ -2466,6 +2534,9 @@ class AFLMarksModel:
             pickle.dump(self.marks_gbt, f)
         with open(models_dir / "marks_scaler.pkl", "wb") as f:
             pickle.dump(self.scaler, f)
+        if self.mark_taker_clf is not None:
+            with open(models_dir / "marks_taker_clf.pkl", "wb") as f:
+                pickle.dump(self.mark_taker_clf, f)
 
         metadata = {
             "feature_cols": self.feature_cols,
@@ -2475,6 +2546,8 @@ class AFLMarksModel:
             "residual_std": self._residual_std,
             "std_params": self._std_params if hasattr(self, '_std_params') else None,
             "negbin_r": self._negbin_r,
+            "mark_taker_threshold": self._mark_taker_threshold,
+            "mark_taker_blend": self._mark_taker_blend,
         }
         with open(models_dir / "marks_model_metadata.json", "w") as f:
             json.dump(metadata, f, indent=2, default=str)
@@ -2491,6 +2564,10 @@ class AFLMarksModel:
             self.marks_gbt = pickle.load(f)
         with open(models_dir / "marks_scaler.pkl", "rb") as f:
             self.scaler = pickle.load(f)
+        mt_path = models_dir / "marks_taker_clf.pkl"
+        if mt_path.exists():
+            with open(mt_path, "rb") as f:
+                self.mark_taker_clf = pickle.load(f)
 
         with open(models_dir / "marks_model_metadata.json") as f:
             metadata = json.load(f)
@@ -2501,6 +2578,8 @@ class AFLMarksModel:
         self._residual_std = metadata.get("residual_std")
         self._std_params = metadata.get("std_params")
         self._negbin_r = metadata.get("negbin_r")
+        self._mark_taker_threshold = metadata.get("mark_taker_threshold", 5)
+        self._mark_taker_blend = metadata.get("mark_taker_blend", 0.3)
 
         print(f"Marks models loaded from {models_dir}")
 

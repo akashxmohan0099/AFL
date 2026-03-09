@@ -486,16 +486,22 @@ class LearningStore:
         if rid is not None:
             path = self.base_dir / "calibration" / f"run_{rid}" / "isotonic_calibrator.pkl"
             if path.exists():
-                with open(path, "rb") as f:
-                    return pickle.load(f)
+                try:
+                    with open(path, "rb") as f:
+                        return pickle.load(f)
+                except Exception:
+                    return None
 
         # Try latest calibration run
         latest_rid = self._latest_calibration_run()
         if latest_rid is not None:
             path = self.base_dir / "calibration" / f"run_{latest_rid}" / "isotonic_calibrator.pkl"
             if path.exists():
-                with open(path, "rb") as f:
-                    return pickle.load(f)
+                try:
+                    with open(path, "rb") as f:
+                        return pickle.load(f)
+                except Exception:
+                    return None
 
         return None
 
@@ -720,8 +726,27 @@ class LearningStore:
         if not files:
             return pd.DataFrame()
 
+        if latest:
+            files = self._dedupe_latest_files(files)
+
         dfs = [pd.read_parquet(f) for f in files]
         return pd.concat(dfs, ignore_index=True)
+
+    def _dedupe_latest_files(self, files):
+        """Prefer the first file for a (year, round) pair when mixing layouts."""
+        deduped = []
+        seen = set()
+
+        for path in files:
+            key = self._parse_year_round(path)
+            if key is None:
+                key = ("path", str(path))
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(path)
+
+        return deduped
 
     def __repr__(self):
         summary = self.get_learning_summary()

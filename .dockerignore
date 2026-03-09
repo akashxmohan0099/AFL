@@ -1,0 +1,13 @@
+.git
+.github
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.next/
+web/.next/
+web/node_modules/
+node_modules/
+logs/
+scraper.log

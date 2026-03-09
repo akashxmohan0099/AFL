@@ -1,11 +1,22 @@
 import unittest
 
+import numpy as np
 import pandas as pd
 
 import features
 
 
 class TestFeatures(unittest.TestCase):
+    def test_shifted_rolling_slope_matches_polyfit_behavior(self):
+        series = pd.Series([1.0, 3.0, 2.0, 5.0, 4.0, 6.0, 7.0])
+
+        expected = series.shift(1).rolling(5, min_periods=3).apply(
+            lambda x: np.polyfit(np.arange(len(x)), x, 1)[0], raw=True
+        )
+        actual = features._rolling_linear_slope_shifted(series, window=5, min_periods=3)
+
+        pd.testing.assert_series_equal(actual, expected)
+
     def test_rolling_features_use_history_for_synthetic_row(self):
         # Minimal schema for add_rolling_features roll_cols.
         rows = [

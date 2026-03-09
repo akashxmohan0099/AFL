@@ -14,6 +14,8 @@ Usage:
     python pipeline.py --backtest --year 2024              # Walk-forward backtest
     python pipeline.py --diagnose --year 2024              # Diagnostic report on backtest
     python pipeline.py --sequential --year 2025 --reset-calibration
+    python pipeline.py --scrape-live --year 2026             # Scrape FootyWire live stats
+    python pipeline.py --daily --year 2026                   # Daily: scrape + clean + features
 """
 
 import argparse
@@ -187,6 +189,420 @@ def cmd_scrape_footywire(args):
         build_footywire_parquet()
     else:
         print("No data collected")
+
+
+def cmd_scrape_live(args):
+    """Scrape FootyWire basic match stats for the current season (incremental)."""
+    from scrape_footywire_live import scrape_season
+
+    year = getattr(args, "year", None) or config.CURRENT_SEASON_YEAR
+    print(f"Scraping FootyWire live stats for {year} (incremental)...")
+    result = scrape_season(year, incremental=True)
+    if result:
+        print(f"Live stats saved to {result}")
+    else:
+        print("No new matches to scrape.")
+
+
+def cmd_scrape_news(args):
+    """Scrape team selections, injury list, news articles, and process intel."""
+    from news import scrape_team_selections, scrape_injury_list, scrape_afl_news
+    from news import build_team_changes_parquet, build_injuries_parquet
+
+    year = getattr(args, "year", None) or config.CURRENT_SEASON_YEAR
+
+    print(f"Scraping team selections for {year}...")
+    result = scrape_team_selections(year)
+    if result:
+        print(f"  Round {result['round_number']}: {len(result['teams'])} teams")
+    else:
+        print("  No team selections found")
+
+    print("Scraping injury list...")
+    injuries = scrape_injury_list()
+    print(f"  {len(injuries)} injury records")
+
+    print("Building parquets...")
+    build_team_changes_parquet(year)
+    build_injuries_parquet()
+
+    print("Scraping news articles (RSS)...")
+    articles = scrape_afl_news()
+    print(f"  {len(articles)} articles")
+
+    print("Processing intel signals...")
+    from news_intel import process_articles, rebuild_latest
+    process_articles(days=2)
+    rebuild_latest()
+    print("News & intel scraping complete.")
+
+
+def cmd_daily(args):
+    """Daily pipeline: scrape live data + clean + features + sequential learn + predict next.
+
+    Full cycle after each round:
+      1. Scrape new match results from FootyWire (incremental)
+      2. Rebuild clean data & features
+      3. For each newly completed round: train on all prior data, record outcomes, learn
+      4. Predict the next upcoming round (from fixtures)
+    """
+    import json
+    import time
+    from scrape_footywire_live import scrape_season
+    from features import add_dynamic_sample_weights
+    from model import CalibratedPredictor, _prepare_features
+    from analysis import generate_round_analysis
+
+    year = getattr(args, "year", None) or config.CURRENT_SEASON_YEAR
+    print(f"{'='*70}")
+    print(f"  LIVE LEARNING PIPELINE — {year}")
+    print(f"{'='*70}")
+
+    # ── Step 1: Scrape new match results ──
+    print("\n[1/5] Scraping new match results from FootyWire...")
+    result = scrape_season(year, incremental=True)
+    if result is None:
+        print("  No new data scraped.")
+    else:
+        print(f"  Saved to {result}")
+
+    # ── Step 2: Rebuild clean data & features ──
+    print("\n[2/5] Rebuilding clean data...")
+    cleaned = build_player_games(save=True)
+    print(f"  Cleaned: {cleaned.shape[0]:,} rows")
+
+    features_path = config.DATA_DIR / "features" / "feature_matrix.parquet"
+    if features_path.exists():
+        features_path.unlink()
+
+    print("\n[3/5] Rebuilding features...")
+    feature_df = build_features()
+    print(f"  Features: {feature_df.shape[0]:,} rows, {feature_df.shape[1]} columns")
+
+    feat_cols_path = config.FEATURES_DIR / "feature_columns.json"
+    with open(feat_cols_path) as f:
+        feature_cols = json.load(f)
+
+    # ── Step 2.5: Update weather forecasts for upcoming matches ──
+    print("\n  Step 2.5: Fetching weather forecasts...")
+    from weather import fetch_forecast_for_fixtures
+    try:
+        forecast_df = fetch_forecast_for_fixtures(year)
+        if forecast_df is not None and not forecast_df.empty:
+            print(f"    Fetched forecasts for {len(forecast_df)} matches")
+    except Exception as e:
+        print(f"    Weather forecast fetch failed: {e}")
+
+    # ── Step 2.6: Fetch team news, articles & intel ──
+    print("\n  Step 2.6: Fetching team news & intel...")
+    try:
+        from news import scrape_team_selections, scrape_injury_list, scrape_afl_news
+        from news import build_team_changes_parquet, build_injuries_parquet
+        sel = scrape_team_selections(year)
+        if sel:
+            print(f"    Team selections: Round {sel['round_number']}, {len(sel['teams'])} teams")
+        inj = scrape_injury_list()
+        print(f"    Injuries: {len(inj)} records")
+        build_team_changes_parquet(year)
+        build_injuries_parquet()
+        articles = scrape_afl_news()
+        print(f"    Articles: {len(articles)} scraped")
+        from news_intel import process_articles, rebuild_latest
+        process_articles(days=2)
+        rebuild_latest()
+    except Exception as e:
+        print(f"    News/intel fetch failed: {e}")
+
+    # ── Step 3: Determine which rounds need learning ──
+    # Find completed rounds in feature matrix for this year
+    season_df = feature_df[feature_df["year"] == year]
+    completed_rounds = sorted(season_df["round_number"].dropna().unique())
+
+    # Find which rounds already have outcomes saved (already learned)
+    store = LearningStore(base_dir=config.SEQUENTIAL_DIR)
+    # Try to find or create a persistent run for this year's live learning
+    live_run_id = f"live_{year}"
+    store = LearningStore(base_dir=config.SEQUENTIAL_DIR, run_id=live_run_id)
+
+    already_learned = set()
+    for rnd in completed_rounds:
+        outcomes = store.load_outcomes(year=year)
+        if not outcomes.empty:
+            # Check if this round's match_ids are in outcomes
+            round_mids = set(season_df[season_df["round_number"] == rnd]["match_id"].unique())
+            outcome_mids = set(outcomes["match_id"].unique())
+            if round_mids.issubset(outcome_mids):
+                already_learned.add(int(rnd))
+
+    new_rounds = [r for r in completed_rounds if int(r) not in already_learned]
+
+    if not new_rounds:
+        print(f"\n[4/5] No new completed rounds to learn from.")
+    else:
+        print(f"\n[4/5] Learning from {len(new_rounds)} new round(s): {[int(r) for r in new_rounds]}")
+
+        # Load team-match data for game winner model
+        tm_path = config.BASE_STORE_DIR / "team_matches.parquet"
+        has_team_data = False
+        team_match_df = pd.DataFrame()
+        if tm_path.exists():
+            team_match_df = pd.read_parquet(tm_path)
+            team_match_df["date"] = pd.to_datetime(team_match_df["date"])
+            has_team_data = True
+
+        # Load or create isotonic calibrator
+        use_isotonic = getattr(config, "CALIBRATION_METHOD", "bucket") == "isotonic"
+        isotonic_calibrator = store.load_isotonic_calibrator() or CalibratedPredictor()
+        _iso_accum = {}
+
+        for rnd in new_rounds:
+            rnd_int = int(rnd)
+            rnd_start = time.time()
+
+            # Split: train on everything before this round
+            train_mask = (
+                (feature_df["year"] < year)
+                | ((feature_df["year"] == year) & (feature_df["round_number"] < rnd))
+            )
+            train_df = feature_df[train_mask].copy()
+            test_mask = (feature_df["year"] == year) & (feature_df["round_number"] == rnd)
+            test_df = feature_df[test_mask].copy()
+
+            if len(train_df) < 50 or test_df.empty:
+                print(f"  R{rnd_int:02d}: Skipping (insufficient data)")
+                continue
+
+            train_df = add_dynamic_sample_weights(train_df, year, rnd)
+
+            # Train all models
+            scoring_model = AFLScoringModel()
+            scoring_model.train_backtest(train_df, feature_cols)
+
+            disposal_model = AFLDisposalModel(distribution=config.DISPOSAL_DISTRIBUTION)
+            disposal_model.train_backtest(train_df, feature_cols)
+
+            marks_model = AFLMarksModel(distribution=config.MARKS_DISTRIBUTION)
+            marks_model.train_backtest(train_df, feature_cols)
+
+            # Player predictions for game winner features
+            player_preds_for_gw = pd.DataFrame()
+            try:
+                _pp_raw, _pp_clean, _pp_scaled = _prepare_features(
+                    train_df, feature_cols, scoring_model.scaler
+                )
+                if _pp_scaled is not None and _pp_scaled.shape[0] == _pp_raw.shape[0]:
+                    _pp_gl, _, _ = scoring_model._ensemble_predict(_pp_raw, _pp_scaled, "goals")
+                    _pp_di = disposal_model._predict_raw(_pp_raw, _pp_scaled)
+                    _pp_mk = marks_model._predict_raw(_pp_raw, _pp_scaled)
+                    player_preds_for_gw = train_df[["match_id", "team"]].copy()
+                    player_preds_for_gw["predicted_goals"] = _pp_gl
+                    player_preds_for_gw["predicted_disposals"] = _pp_di
+                    player_preds_for_gw["predicted_marks"] = _pp_mk
+            except Exception:
+                pass
+
+            # Game winner model
+            game_preds = pd.DataFrame()
+            if has_team_data:
+                winner_model = AFLGameWinnerModel()
+                tm_train = team_match_df[
+                    (team_match_df["year"] < year)
+                    | ((team_match_df["year"] == year) & (team_match_df["round_number"] < rnd))
+                ].copy()
+                tm_round = team_match_df[
+                    (team_match_df["year"] == year) & (team_match_df["round_number"] == rnd)
+                ].copy()
+
+                if len(tm_train) >= 20 and not tm_round.empty:
+                    try:
+                        winner_model.train_backtest(
+                            tm_train,
+                            player_predictions_df=player_preds_for_gw if not player_preds_for_gw.empty else None,
+                        )
+                        _test_pp = pd.DataFrame()
+                        try:
+                            _tp_raw, _tp_clean, _tp_scaled = _prepare_features(
+                                test_df, feature_cols, scoring_model.scaler
+                            )
+                            if _tp_scaled is not None and _tp_scaled.shape[0] == _tp_raw.shape[0]:
+                                _tp_gl, _, _ = scoring_model._ensemble_predict(_tp_raw, _tp_scaled, "goals")
+                                _tp_di = disposal_model._predict_raw(_tp_raw, _tp_scaled)
+                                _tp_mk = marks_model._predict_raw(_tp_raw, _tp_scaled)
+                                _test_pp = test_df[["match_id", "team"]].copy()
+                                _test_pp["predicted_goals"] = _tp_gl
+                                _test_pp["predicted_disposals"] = _tp_di
+                                _test_pp["predicted_marks"] = _tp_mk
+                        except Exception:
+                            pass
+                        all_pp = pd.concat([player_preds_for_gw, _test_pp], ignore_index=True) \
+                            if not _test_pp.empty else player_preds_for_gw
+                        game_preds = _predict_games_for_round(
+                            winner_model, tm_train, tm_round,
+                            player_predictions_df=all_pp if not all_pp.empty else None,
+                            store=store,
+                        )
+                    except Exception as e:
+                        print(f"  R{rnd_int:02d}: Game winner failed: {e}")
+
+            # Predict
+            pred_store = None if use_isotonic else store
+            scoring_raw = scoring_model.predict_distributions(test_df, store=pred_store, feature_cols=feature_cols)
+            disposal_raw = disposal_model.predict_distributions(test_df, store=pred_store, feature_cols=feature_cols)
+            marks_raw = marks_model.predict_distributions(test_df, store=pred_store, feature_cols=feature_cols)
+
+            merged_raw = _merge_predictions(scoring_raw, disposal_raw)
+            merged_raw = _merge_predictions(merged_raw, marks_raw)
+
+            merged_preds = merged_raw
+            if use_isotonic:
+                merged_preds = _apply_isotonic_calibration_to_predictions(merged_raw, isotonic_calibrator)
+
+            outcomes = _build_outcomes(test_df)
+            diagnostics = _build_diagnostics(merged_preds, outcomes, test_df=test_df)
+
+            # Save
+            store.save_predictions(year, rnd_int, merged_preds)
+            store.save_outcomes(year, rnd_int, outcomes)
+            store.save_diagnostics(year, rnd_int, diagnostics)
+            if not game_preds.empty:
+                store.save_game_predictions(year, rnd_int, game_preds)
+
+            # Learn: update calibration
+            _update_sequential_calibration(store, merged_raw, test_df)
+            store.compute_calibration_adjustments()
+
+            # Isotonic accumulation
+            if use_isotonic:
+                actual_goals = test_df["GL"].values
+                actual_disp = test_df["DI"].values if "DI" in test_df.columns else None
+                actual_marks = test_df["MK"].values if "MK" in test_df.columns else None
+                iso_skip = getattr(config, "ISOTONIC_SKIP_TARGETS", set())
+
+                if "1plus_goals" not in iso_skip:
+                    p1_col = next((c for c in ["p_1plus_goals_raw", "p_scorer_raw", "p_scorer"]
+                                   if c in merged_raw.columns), None)
+                    if p1_col:
+                        _iso_accum.setdefault("1plus_goals", {"preds": [], "actuals": []})
+                        _iso_accum["1plus_goals"]["preds"].extend(merged_raw[p1_col].values.astype(float).tolist())
+                        _iso_accum["1plus_goals"]["actuals"].extend((actual_goals >= 1).astype(int).tolist())
+
+                for threshold, name in [(2, "2plus_goals"), (3, "3plus_goals")]:
+                    if name in iso_skip:
+                        continue
+                    raw_col = f"p_{threshold}plus_goals_raw"
+                    p_col = raw_col if raw_col in merged_raw.columns else f"p_{threshold}plus_goals"
+                    if p_col in merged_raw.columns:
+                        _iso_accum.setdefault(name, {"preds": [], "actuals": []})
+                        _iso_accum[name]["preds"].extend(merged_raw[p_col].values.astype(float).tolist())
+                        _iso_accum[name]["actuals"].extend((actual_goals >= threshold).astype(int).tolist())
+
+                if actual_disp is not None:
+                    for t in config.DISPOSAL_THRESHOLDS:
+                        p_col = f"p_{t}plus_disp"
+                        if p_col in merged_raw.columns:
+                            _iso_accum.setdefault(f"{t}plus_disp", {"preds": [], "actuals": []})
+                            _iso_accum[f"{t}plus_disp"]["preds"].extend(merged_raw[p_col].values.astype(float).tolist())
+                            _iso_accum[f"{t}plus_disp"]["actuals"].extend((actual_disp >= t).astype(int).tolist())
+
+                if actual_marks is not None:
+                    for t in config.MARKS_THRESHOLDS:
+                        p_col = f"p_{t}plus_mk"
+                        if p_col in merged_raw.columns:
+                            _iso_accum.setdefault(f"{t}plus_mk", {"preds": [], "actuals": []})
+                            _iso_accum[f"{t}plus_mk"]["preds"].extend(merged_raw[p_col].values.astype(float).tolist())
+                            _iso_accum[f"{t}plus_mk"]["actuals"].extend((actual_marks >= t).astype(int).tolist())
+
+                # Refit isotonic calibrators
+                isotonic_min = getattr(config, "ISOTONIC_MIN_SAMPLES", 100)
+                for tgt, data in _iso_accum.items():
+                    if len(data["preds"]) >= isotonic_min:
+                        isotonic_calibrator.fit(tgt, np.array(data["preds"]), np.array(data["actuals"]))
+                store.save_isotonic_calibrator(isotonic_calibrator)
+
+            # Report
+            elapsed = time.time() - rnd_start
+            try:
+                tm_round_data = team_match_df[
+                    (team_match_df["year"] == year) & (team_match_df["round_number"] == rnd)
+                ] if has_team_data else pd.DataFrame()
+                analysis = generate_round_analysis(
+                    year, rnd_int, merged_preds, outcomes,
+                    game_preds, tm_round_data, test_df, store
+                )
+                store.save_analysis(year, rnd_int, analysis)
+                summary = analysis.get("summary", {})
+                mae = summary.get("goals_mae", float("nan"))
+                tm = summary.get("threshold_metrics", {})
+                br1 = tm.get("1plus_goals", {}).get("brier_score")
+                mae_str = f"MAE={mae:.3f}" if mae and not np.isnan(mae) else "MAE=N/A"
+                br1_str = f"Br1+={br1:.3f}" if br1 else "Br1+=N/A"
+                print(f"  R{rnd_int:02d}  n={len(test_df):<4d} {mae_str}  {br1_str}  ({elapsed:.1f}s)  ✓ learned")
+            except Exception as e:
+                print(f"  R{rnd_int:02d}  n={len(test_df):<4d} ({elapsed:.1f}s)  ✓ learned  (analysis: {e})")
+
+    # ── Step 4: Predict rounds with unplayed games ──
+    # Handles both in-progress rounds (some games played, some remaining)
+    # and the next fully-unplayed round.
+    all_fixture_rounds = sorted([
+        int(f.stem.split("_")[1])
+        for f in config.FIXTURES_DIR.glob(f"round_*_{year}.csv")
+    ])
+
+    # Load played game keys from matches.parquet to detect in-progress rounds
+    played_keys: set = set()
+    matches_path = config.BASE_STORE_DIR / "matches.parquet"
+    if matches_path.exists():
+        try:
+            all_matches = pd.read_parquet(matches_path)
+            sm = all_matches[all_matches["year"] == year] if not all_matches.empty else pd.DataFrame()
+            for _, m in sm.iterrows():
+                if pd.notna(m.get("home_score")) and pd.notna(m.get("away_score")):
+                    played_keys.add((str(m.get("home_team", "")), str(m.get("away_team", "")), int(m["round_number"])))
+        except Exception as e:
+            print(f"  Warning: Could not load match results for round detection: {e}")
+
+    # Find rounds to predict: any round with unplayed games, stop after first fully-unplayed
+    rounds_to_predict = []
+    for r in all_fixture_rounds:
+        fix_path = config.FIXTURES_DIR / f"round_{r}_{year}.csv"
+        if not fix_path.exists():
+            continue
+        fix_df = pd.read_csv(fix_path)
+        home_rows = fix_df[fix_df["is_home"] == 1]
+        has_unplayed = any(
+            (str(row["team"]), str(row["opponent"]), r) not in played_keys
+            for _, row in home_rows.iterrows()
+        )
+        is_fully_unplayed = not any(
+            (str(row["team"]), str(row["opponent"]), r) in played_keys
+            for _, row in home_rows.iterrows()
+        )
+        if has_unplayed:
+            rounds_to_predict.append(r)
+            if is_fully_unplayed:
+                break  # Stop after the first fully-unplayed round
+
+    if rounds_to_predict:
+        print(f"\n[5/5] Predicting round(s) with unplayed games: {rounds_to_predict}...")
+        class PredArgs:
+            pass
+        for r_pred in rounds_to_predict:
+            print(f"  Predicting Round {r_pred}...")
+            pred_args = PredArgs()
+            pred_args.round = r_pred
+            pred_args.year = year
+            preds = cmd_predict(pred_args)
+            # Also save to the sequential store so the API can read them
+            if preds is not None and not preds.empty:
+                store.save_predictions(year, r_pred, preds)
+                print(f"  Saved Round {r_pred} predictions to sequential store ({live_run_id})")
+    else:
+        print(f"\n[5/5] No upcoming rounds to predict (all fixtures played or no fixture files).")
+
+    print(f"\n{'='*70}")
+    print(f"  LIVE LEARNING COMPLETE — {year}")
+    print(f"  Sequential store: {config.SEQUENTIAL_DIR}")
+    print(f"{'='*70}")
 
 
 def cmd_clean(args):
@@ -1539,6 +1955,7 @@ def _apply_isotonic_calibration_to_predictions(preds: pd.DataFrame, calibrator) 
         return preds
 
     out = preds.copy()
+    skip_targets = getattr(config, "ISOTONIC_SKIP_TARGETS", set())
 
     def _cal(col, tgt):
         if col not in out.columns:
@@ -1550,17 +1967,20 @@ def _apply_isotonic_calibration_to_predictions(preds: pd.DataFrame, calibrator) 
 
     # Goals
     for tgt in ["1plus_goals", "2plus_goals", "3plus_goals"]:
-        _cal(f"p_{tgt}", tgt)
+        if tgt not in skip_targets:
+            _cal(f"p_{tgt}", tgt)
 
     # Disposals
     for t in getattr(config, "DISPOSAL_THRESHOLDS", []):
         tgt = f"{t}plus_disp"
-        _cal(f"p_{t}plus_disp", tgt)
+        if tgt not in skip_targets:
+            _cal(f"p_{t}plus_disp", tgt)
 
     # Marks
     for t in getattr(config, "MARKS_THRESHOLDS", []):
         tgt = f"{t}plus_mk"
-        _cal(f"p_{t}plus_mk", tgt)
+        if tgt not in skip_targets:
+            _cal(f"p_{t}plus_mk", tgt)
 
     # Game winner (optional)
     _cal("home_win_prob", "game_winner")
@@ -1971,23 +2391,27 @@ def cmd_sequential(args, disposal_distribution=None):
         if use_isotonic:
             actual_goals = test_df["GL"].values
             actual_disp = test_df["DI"].values if "DI" in test_df.columns else None
+            iso_skip = getattr(config, "ISOTONIC_SKIP_TARGETS", set())
 
-            # Accumulate goal thresholds
-            p1_col = None
-            if "p_1plus_goals_raw" in merged_raw.columns:
-                p1_col = "p_1plus_goals_raw"
-            elif "p_scorer_raw" in merged_raw.columns:
-                p1_col = "p_scorer_raw"
-            elif "p_scorer" in merged_raw.columns:
-                p1_col = "p_scorer"
+            # Accumulate goal thresholds (skip if in ISOTONIC_SKIP_TARGETS)
+            if "1plus_goals" not in iso_skip:
+                p1_col = None
+                if "p_1plus_goals_raw" in merged_raw.columns:
+                    p1_col = "p_1plus_goals_raw"
+                elif "p_scorer_raw" in merged_raw.columns:
+                    p1_col = "p_scorer_raw"
+                elif "p_scorer" in merged_raw.columns:
+                    p1_col = "p_scorer"
 
-            if p1_col is not None:
-                _iso_accum.setdefault("1plus_goals", {"preds": [], "actuals": []})
-                _iso_accum["1plus_goals"]["preds"].extend(merged_raw[p1_col].values.astype(float).tolist())
-                _iso_accum["1plus_goals"]["actuals"].extend((actual_goals >= 1).astype(int).tolist())
+                if p1_col is not None:
+                    _iso_accum.setdefault("1plus_goals", {"preds": [], "actuals": []})
+                    _iso_accum["1plus_goals"]["preds"].extend(merged_raw[p1_col].values.astype(float).tolist())
+                    _iso_accum["1plus_goals"]["actuals"].extend((actual_goals >= 1).astype(int).tolist())
 
             # 2+/3+ goals: fit on raw predicted threshold probabilities when available.
             for threshold, name in [(2, "2plus_goals"), (3, "3plus_goals")]:
+                if name in iso_skip:
+                    continue
                 raw_col = f"p_{threshold}plus_goals_raw"
                 if raw_col in merged_raw.columns:
                     p_exceed = merged_raw[raw_col].values.astype(float)
@@ -2830,14 +3254,9 @@ def cmd_sequential_report(args):
 
 def _compute_hit_rates(store, year):
     """Compute hit-rate metrics (accuracy/precision/recall at P>=0.50) per threshold."""
-    from analysis import _merge_pred_outcome, _extract_threshold_data
+    from analysis import _extract_threshold_data, _load_season_merged_predictions_outcomes
 
-    preds = store.load_predictions(year)
-    outs = store.load_outcomes(year)
-    if preds.empty or outs.empty:
-        return {}
-
-    merged = _merge_pred_outcome(preds, outs)
+    merged = _load_season_merged_predictions_outcomes(store, year)
     if merged.empty:
         return {}
 
@@ -3347,6 +3766,14 @@ Examples:
     parser.add_argument("--scrape-footywire", action="store_true",
                         dest="scrape_footywire",
                         help="Scrape FootyWire advanced stats (ED, DE%%, CCL, SCL, TO, MG, TOG%%)")
+    parser.add_argument("--scrape-live", action="store_true",
+                        dest="scrape_live",
+                        help="Scrape FootyWire basic match stats for current season (incremental)")
+    parser.add_argument("--scrape-news", action="store_true",
+                        dest="scrape_news",
+                        help="Scrape team selections + injury list for upcoming round")
+    parser.add_argument("--daily", action="store_true",
+                        help="Daily pipeline: scrape live + clean + features (for cron)")
     parser.add_argument("--simulate", action="store_true",
                         help="Run Monte Carlo simulation after prediction (requires --round or --sequential)")
     parser.add_argument("--n-sims", type=int, dest="n_sims", default=10000,
@@ -3377,7 +3804,8 @@ Examples:
                 args.backtest_winner, args.tune,
                 args.diagnose, args.sequential, args.sequential_report,
                 args.year_range, args.player, args.scrape_profiles,
-                args.scrape_footywire, args.simulate]):
+                args.scrape_footywire, args.scrape_live, args.scrape_news,
+                args.daily, args.simulate]):
         parser.print_help()
         return
 
@@ -3391,6 +3819,16 @@ Examples:
 
     if args.scrape_footywire:
         cmd_scrape_footywire(args)
+
+    if args.scrape_live:
+        cmd_scrape_live(args)
+
+    if args.scrape_news:
+        cmd_scrape_news(args)
+
+    if args.daily:
+        cmd_daily(args)
+        return  # daily runs everything
 
     if args.update:
         cmd_update(args)
@@ -3415,7 +3853,7 @@ Examples:
         cmd_train_winner(args)
 
     if args.predict:
-        if not args.round:
+        if args.round is None:
             print("Error: --predict requires --round N")
             return
         cmd_predict(args)

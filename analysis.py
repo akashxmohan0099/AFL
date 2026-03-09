@@ -10,6 +10,7 @@ import pandas as pd
 from sklearn.metrics import mean_absolute_error, mean_squared_error, roc_auc_score
 
 import config
+from metrics import compute_threshold_metrics as shared_compute_threshold_metrics
 
 
 def _to_native(val):
@@ -78,18 +79,112 @@ def generate_round_analysis(year, round_num, predictions, outcomes,
 
 
 def _merge_pred_outcome(predictions, outcomes):
-    """Merge prediction and outcome DataFrames on player+team."""
+    """Merge prediction and outcome DataFrames on the safest available key."""
     if predictions.empty or outcomes.empty:
         return pd.DataFrame()
 
-    # Determine join columns
-    join_cols = ["player", "team"]
-    if "match_id" in predictions.columns and "match_id" in outcomes.columns:
-        join_cols.append("match_id")
+    outcomes_for_merge = outcomes
+    rename_map = {}
+    if "actual_goals" not in outcomes.columns and "GL" in outcomes.columns:
+        rename_map["GL"] = "actual_goals"
+    if "actual_disposals" not in outcomes.columns and "DI" in outcomes.columns:
+        rename_map["DI"] = "actual_disposals"
+    if "actual_marks" not in outcomes.columns and "MK" in outcomes.columns:
+        rename_map["MK"] = "actual_marks"
+    if rename_map:
+        outcomes_for_merge = outcomes.rename(columns=rename_map)
 
-    pred_cols = [c for c in predictions.columns if c not in outcomes.columns or c in join_cols]
-    merged = predictions[pred_cols].merge(outcomes, on=join_cols, how="inner")
+    # Determine join columns.
+    join_cols = ["player", "team"]
+    for round_col in ["round_number", "round"]:
+        if round_col in predictions.columns and round_col in outcomes_for_merge.columns:
+            join_cols.append(round_col)
+
+    used_match_id = False
+    if "match_id" in predictions.columns and "match_id" in outcomes_for_merge.columns:
+        join_cols.append("match_id")
+        used_match_id = True
+
+    pred_cols = [c for c in predictions.columns if c not in outcomes_for_merge.columns or c in join_cols]
+    merged = predictions[pred_cols].merge(outcomes_for_merge, on=join_cols, how="inner")
+
+    # Upcoming-round predictions can carry synthetic negative match_ids while
+    # stored outcomes later use the real AFL match_id. Fall back to a round-aware
+    # (player, team) merge only when that key is unique on both sides.
+    if used_match_id and merged.empty:
+        fallback_cols = [c for c in join_cols if c != "match_id"]
+        if fallback_cols:
+            pred_unique = not predictions.duplicated(fallback_cols).any()
+            out_unique = not outcomes_for_merge.duplicated(fallback_cols).any()
+            if pred_unique and out_unique:
+                merged = predictions[pred_cols].merge(outcomes_for_merge, on=fallback_cols, how="inner")
+
     return merged
+
+
+def _list_round_numbers(store, subdir, year):
+    """List available round numbers for a given year/subdir."""
+    try:
+        return sorted(rnd for _, rnd in store.list_rounds(subdir=subdir, year=year))
+    except Exception:
+        return []
+
+
+def _list_analysis_rounds(store, year):
+    """List saved analysis rounds for a year, including round 0 seasons."""
+    year = int(year)
+    analysis_dir = store.base_dir / "analysis"
+
+    try:
+        run_id = store._resolve_read_run_id("analysis", year, run_id=None, latest=True)
+    except Exception:
+        run_id = None
+
+    if run_id is not None:
+        files = sorted(store._run_dir("analysis", year, run_id).glob("R*.json"))
+    else:
+        files = sorted(analysis_dir.glob(f"{year}_R*.json"))
+
+    rounds = []
+    for path in files:
+        parsed = store._parse_year_round(path)
+        if parsed is None:
+            continue
+        parsed_year, round_num = parsed
+        if parsed_year == year:
+            rounds.append(round_num)
+
+    return sorted(set(rounds))
+
+
+def _load_season_merged_predictions_outcomes(store, year):
+    """Load and merge all round-level predictions/outcomes for a season."""
+    pred_rounds = set(_list_round_numbers(store, "predictions", year))
+    out_rounds = set(_list_round_numbers(store, "outcomes", year))
+    available_rounds = sorted(pred_rounds & out_rounds)
+
+    merged_rounds = []
+    for round_num in available_rounds:
+        preds = store.load_predictions(year, round_num)
+        outs = store.load_outcomes(year, round_num)
+        if preds.empty or outs.empty:
+            continue
+
+        if "round_number" not in preds.columns:
+            preds = preds.copy()
+            preds["round_number"] = int(round_num)
+        if "round_number" not in outs.columns:
+            outs = outs.copy()
+            outs["round_number"] = int(round_num)
+
+        merged = _merge_pred_outcome(preds, outs)
+        if not merged.empty:
+            merged_rounds.append(merged)
+
+    if not merged_rounds:
+        return pd.DataFrame()
+
+    return pd.concat(merged_rounds, ignore_index=True)
 
 
 def _extract_threshold_data(merged):
@@ -150,57 +245,14 @@ def _extract_threshold_data(merged):
 
 
 def _compute_threshold_metrics(predicted_probs, actual_binary, n_buckets=None):
-    """Compute Brier score, log loss, and calibration curve for a threshold.
-
-    Returns dict with brier_score, log_loss, n, base_rate, calibration_curve.
-    Returns None if n < 10.
-    """
-    if n_buckets is None:
-        n_buckets = config.CALIBRATION_N_BUCKETS
-
-    n = len(predicted_probs)
-    if n < 10:
-        return None
-
-    p = np.asarray(predicted_probs, dtype=float)
-    y = np.asarray(actual_binary, dtype=float)
-
-    # Brier score
-    brier = float(np.mean((p - y) ** 2))
-
-    # Log loss (clip to avoid log(0))
-    p_clip = np.clip(p, 1e-15, 1.0 - 1e-15)
-    log_loss_val = float(np.mean(-y * np.log(p_clip) - (1 - y) * np.log(1 - p_clip)))
-
-    base_rate = float(np.mean(y))
-
-    # Calibration curve: equal-width bins
-    bin_edges = np.linspace(0.0, 1.0, n_buckets + 1)
-    cal_curve = []
-    for i in range(n_buckets):
-        lower, upper = bin_edges[i], bin_edges[i + 1]
-        if i < n_buckets - 1:
-            mask = (p >= lower) & (p < upper)
-        else:
-            mask = (p >= lower) & (p <= upper)
-        count = int(mask.sum())
-        if count < config.CALIBRATION_MIN_BUCKET_SIZE:
-            continue
-        cal_curve.append({
-            "bin_lower": round(float(lower), 2),
-            "bin_upper": round(float(upper), 2),
-            "predicted_mean": round(float(p[mask].mean()), 4),
-            "observed_mean": round(float(y[mask].mean()), 4),
-            "count": count,
-        })
-
-    return {
-        "brier_score": round(brier, 4),
-        "log_loss": round(log_loss_val, 4),
-        "n": n,
-        "base_rate": round(base_rate, 4),
-        "calibration_curve": cal_curve,
-    }
+    """Compute threshold metrics via the canonical shared implementation."""
+    return shared_compute_threshold_metrics(
+        predicted_probs,
+        actual_binary,
+        n_bins=n_buckets,
+        min_bucket_size=config.CALIBRATION_MIN_BUCKET_SIZE,
+        min_n=10,
+    )
 
 
 def _compute_summary(merged):
@@ -280,7 +332,8 @@ def compute_player_streaks(store, year, up_to_round):
     streaks = {}
     recent_disposals = {}  # (player, team) -> list of last 3 disposal counts
 
-    for rnd in range(1, up_to_round + 1):
+    rounds = [rnd for rnd in _list_round_numbers(store, "outcomes", year) if int(rnd) <= int(up_to_round)]
+    for rnd in rounds:
         outcomes = store.load_outcomes(year, rnd)
         if outcomes.empty:
             continue
@@ -638,7 +691,8 @@ def _model_improvement(store, year, round_num, merged):
 
     # Gather MAEs from prior rounds
     prior_maes = []
-    for rnd in range(1, round_num):
+    prior_rounds = [rnd for rnd in _list_round_numbers(store, "predictions", year) if int(rnd) < int(round_num)]
+    for rnd in prior_rounds:
         preds = store.load_predictions(year, rnd)
         outs = store.load_outcomes(year, rnd)
         if preds.empty or outs.empty:
@@ -673,11 +727,13 @@ def _model_improvement(store, year, round_num, merged):
 
 def _streak_summary(store, year, round_num):
     """Summarize streak changes this round."""
-    if round_num < 2:
+    prior_rounds = [rnd for rnd in _list_round_numbers(store, "outcomes", year) if int(rnd) < int(round_num)]
+    if not prior_rounds:
         return {"new_hot": [], "continued_hot": [], "broken_hot": [],
                 "new_cold": [], "note": "First round — no streak data"}
 
-    prev_streaks = compute_player_streaks(store, year, round_num - 1)
+    prev_round = int(prior_rounds[-1])
+    prev_streaks = compute_player_streaks(store, year, prev_round)
     curr_streaks = compute_player_streaks(store, year, round_num)
 
     new_hot = []
@@ -1063,11 +1119,9 @@ def generate_season_report(store, year):
     archetype accuracy, weather, game predictions, player leaderboard,
     and streak summaries.
     """
-    import json
-
     # Gather all round analyses
     analyses = []
-    for rnd in range(1, 29):
+    for rnd in _list_analysis_rounds(store, year):
         a = store.load_analysis(year, rnd)
         if a:
             analyses.append(a)
@@ -1079,9 +1133,10 @@ def generate_season_report(store, year):
         "year": year,
         "rounds_analyzed": len(analyses),
     }
+    merged = _load_season_merged_predictions_outcomes(store, year)
 
     # 0. Threshold evaluation (PRIMARY)
-    report["threshold_evaluation"] = _season_threshold_report(store, year)
+    report["threshold_evaluation"] = _season_threshold_report(merged=merged)
 
     # 1. Learning curve
     report["learning_curve"] = _season_learning_curve(analyses)
@@ -1093,7 +1148,7 @@ def generate_season_report(store, year):
     report["miss_type_distribution"] = _season_miss_distribution(analyses)
 
     # 4. Archetype accuracy
-    report["archetype_accuracy"] = _season_archetype_accuracy(store, year)
+    report["archetype_accuracy"] = _season_archetype_accuracy(store, year, merged=merged)
 
     # 5. Weather summary
     report["weather_summary"] = _season_weather_summary(analyses)
@@ -1102,7 +1157,7 @@ def generate_season_report(store, year):
     report["game_winner_accuracy"] = _season_game_winner_accuracy(analyses)
 
     # 7. Player leaderboard
-    report["player_leaderboard"] = _season_player_leaderboard(store, year)
+    report["player_leaderboard"] = _season_player_leaderboard(store, year, merged=merged)
 
     # 8. Streak summary
     report["streak_summary"] = _season_streak_summary(analyses)
@@ -1110,20 +1165,17 @@ def generate_season_report(store, year):
     return report
 
 
-def _season_threshold_report(store, year):
+def _season_threshold_report(store=None, year=None, merged=None):
     """Compute full-season probability calibration metrics per threshold.
 
     Loads ALL predictions + outcomes for the year, merges, then computes
     Brier score, log loss, base rate, and full calibration curve per threshold.
     This is the PRIMARY evaluation section.
     """
-    all_preds = store.load_predictions(year)
-    all_outs = store.load_outcomes(year)
-
-    if all_preds.empty or all_outs.empty:
-        return {}
-
-    merged = _merge_pred_outcome(all_preds, all_outs)
+    if merged is None:
+        if store is None or year is None:
+            return {}
+        merged = _load_season_merged_predictions_outcomes(store, year)
     if merged.empty:
         return {}
 
@@ -1248,21 +1300,15 @@ def _season_miss_distribution(analyses):
     }
 
 
-def _season_archetype_accuracy(store, year):
+def _season_archetype_accuracy(store, year, merged=None):
     """Per-archetype MAE and scorer AUC across the season."""
-    # Load all predictions and outcomes for the year
-    all_preds = store.load_predictions(year)
-    all_outs = store.load_outcomes(year)
-
-    if all_preds.empty or all_outs.empty:
-        return {"per_archetype": []}
-
     # Load archetype assignments
     archetypes = store.load_archetypes()
     if archetypes.empty:
         return {"per_archetype": [], "note": "No archetype data"}
 
-    merged = _merge_pred_outcome(all_preds, all_outs)
+    if merged is None:
+        merged = _load_season_merged_predictions_outcomes(store, year)
     if merged.empty:
         return {"per_archetype": []}
 
@@ -1353,18 +1399,14 @@ def _season_game_winner_accuracy(analyses):
     }
 
 
-def _season_player_leaderboard(store, year):
+def _season_player_leaderboard(store, year, merged=None):
     """Best/worst predicted players (min 10 appearances)."""
-    all_preds = store.load_predictions(year)
-    all_outs = store.load_outcomes(year)
-
-    if all_preds.empty or all_outs.empty:
-        return {"best": [], "worst": []}
-
-    merged = _merge_pred_outcome(all_preds, all_outs)
+    if merged is None:
+        merged = _load_season_merged_predictions_outcomes(store, year)
     if merged.empty or "predicted_goals" not in merged.columns:
         return {"best": [], "worst": []}
 
+    merged = merged.copy()
     merged["abs_error"] = (merged["predicted_goals"] - merged["actual_goals"]).abs()
     merged["signed_error"] = merged["predicted_goals"] - merged["actual_goals"]
 

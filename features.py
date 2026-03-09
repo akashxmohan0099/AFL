@@ -27,6 +27,108 @@ import config
 
 _MARKET_ENV_STATS_CACHE = None
 
+
+def _rolling_linear_slope_shifted(series, window=5, min_periods=3):
+    """Compute rolling linear slope on a shifted series without `np.polyfit`.
+
+    This matches the prior behavior of `shift(1).rolling(...).apply(polyfit)`:
+    any NaN inside the active window yields NaN, which callers typically
+    convert to 0 with `fillna(0)`.
+    """
+    series = pd.to_numeric(series, errors="coerce")
+
+    # Fast path for the only configuration used in this codebase. The
+    # original implementation was:
+    #   shift(1).rolling(5, min_periods=3).apply(polyfit)
+    # Because the leading shifted NaN remained inside early windows, values
+    # only became non-null once five full prior observations existed.
+    # For x = [0,1,2,3,4], the slope simplifies to:
+    #   (-2*y0 - y1 + y3 + 2*y4) / 10
+    if window == 5 and min_periods <= 5:
+        return (
+            -2.0 * series.shift(5)
+            - 1.0 * series.shift(4)
+            + 1.0 * series.shift(2)
+            + 2.0 * series.shift(1)
+        ) / 10.0
+
+    values = series.to_numpy(dtype=float, copy=False)
+    n_values = len(values)
+    result = np.full(n_values, np.nan, dtype=np.float64)
+    if n_values == 0:
+        return pd.Series(result, index=series.index)
+
+    shifted = np.empty(n_values, dtype=np.float64)
+    shifted[0] = np.nan
+    if n_values > 1:
+        shifted[1:] = values[:-1]
+
+    x_cache = {
+        length: np.arange(length, dtype=np.float64)
+        for length in range(min_periods, window + 1)
+    }
+    sum_x_cache = {length: float(x.sum()) for length, x in x_cache.items()}
+    denom_cache = {
+        length: float(length * np.square(x).sum() - sum_x_cache[length] ** 2)
+        for length, x in x_cache.items()
+    }
+
+    for end in range(n_values):
+        start = max(0, end - window + 1)
+        y = shifted[start:end + 1]
+        length = len(y)
+        if length < min_periods or not np.isfinite(y).all():
+            continue
+
+        x = x_cache[length]
+        sum_y = float(y.sum())
+        sum_xy = float(np.dot(x, y))
+        denom = denom_cache[length]
+        if denom == 0:
+            continue
+        result[end] = (length * sum_xy - sum_x_cache[length] * sum_y) / denom
+
+    return pd.Series(result, index=series.index)
+
+
+def _group_shifted_rolling_mean(df, key_cols, value_col, window, min_periods=1):
+    """Rolling mean of prior observations for a grouped column."""
+    shifted = df.groupby(key_cols, observed=True)[value_col].shift(1)
+    key_arrays = [df[col] for col in key_cols]
+    rolled = shifted.groupby(key_arrays, observed=True).rolling(
+        window, min_periods=min_periods
+    ).mean()
+    return rolled.reset_index(level=list(range(len(key_cols))), drop=True)
+
+
+def _group_shifted_expanding_mean(df, key_cols, value_col, min_periods=1):
+    """Expanding mean of prior observations for a grouped column."""
+    shifted = df.groupby(key_cols, observed=True)[value_col].shift(1)
+    key_arrays = [df[col] for col in key_cols]
+    expanded = shifted.groupby(key_arrays, observed=True).expanding(
+        min_periods=min_periods
+    ).mean()
+    return expanded.reset_index(level=list(range(len(key_cols))), drop=True)
+
+
+def _group_shifted_expanding_count(df, key_cols, value_col):
+    """Expanding count of prior observations for a grouped column."""
+    shifted = df.groupby(key_cols, observed=True)[value_col].shift(1)
+    key_arrays = [df[col] for col in key_cols]
+    expanded = shifted.groupby(key_arrays, observed=True).expanding().count()
+    return expanded.reset_index(level=list(range(len(key_cols))), drop=True)
+
+
+def _grouped_shifted_slope_5(grouped, value_col):
+    """Closed-form slope over the previous five grouped observations."""
+    series_group = grouped[value_col]
+    return (
+        -2.0 * series_group.shift(5)
+        - 1.0 * series_group.shift(4)
+        + 1.0 * series_group.shift(2)
+        + 2.0 * series_group.shift(1)
+    ) / 10.0
+
 def _era_weight(year):
     """Return era weight for a given year based on config.ERA_WEIGHTS."""
     for (lo, hi), w in config.ERA_WEIGHTS.items():
@@ -317,36 +419,29 @@ def add_rolling_features(df):
     ).astype(int)
 
     # Trend: linear slope of GL over last 5 matches
-    df_real["player_gl_trend_5"] = grouped["GL"].transform(
-        lambda s: s.shift(1).rolling(5, min_periods=3).apply(
-            lambda x: np.polyfit(np.arange(len(x)), x, 1)[0], raw=True
-        )
-    ).fillna(0)
+    df_real["player_gl_trend_5"] = _grouped_shifted_slope_5(grouped, "GL").fillna(0)
+
+    pre_roll_updates = {}
 
     # Days since last match (computed on real games only — skip DNP gaps)
-    df_real["days_since_last_match"] = grouped["date"].transform(
+    pre_roll_updates["days_since_last_match"] = grouped["date"].transform(
         lambda s: s.diff().dt.days
     )
-    df_real["is_returning_from_break"] = (
-        df_real["days_since_last_match"].fillna(0) > 21
+    pre_roll_updates["is_returning_from_break"] = (
+        pre_roll_updates["days_since_last_match"].fillna(0) > 21
     ).astype(int)
 
     # Season-to-date goals
     season_group = df_real.groupby(["player", "team", "year"], observed=True)
-    df_real["season_goals_total"] = season_group["GL"].transform(
+    pre_roll_updates["season_goals_total"] = season_group["GL"].transform(
         lambda s: s.shift(1).expanding().sum()
     ).fillna(0)
 
     # --- Disposal-specific features ---
-    df_real["player_di_volatility_5"] = grouped["DI"].transform(
+    pre_roll_updates["player_di_volatility_5"] = grouped["DI"].transform(
         lambda s: s.shift(1).rolling(5, min_periods=2).std()
     ).fillna(0)
-
-    df_real["player_di_trend_5"] = grouped["DI"].transform(
-        lambda s: s.shift(1).rolling(5, min_periods=3).apply(
-            lambda x: np.polyfit(np.arange(len(x)), x, 1)[0], raw=True
-        )
-    ).fillna(0)
+    pre_roll_updates["player_di_trend_5"] = _grouped_shifted_slope_5(grouped, "DI").fillna(0)
 
     # Kick/handball ratio
     for window in [3, 5]:
@@ -357,75 +452,66 @@ def add_rolling_features(df):
             lambda s: s.shift(1).rolling(window, min_periods=2).sum()
         )
         total_kh = ki_sum + hb_sum
-        df_real[f"player_ki_hb_ratio_{window}"] = np.where(total_kh > 0, ki_sum / total_kh, 0.5)
+        pre_roll_updates[f"player_ki_hb_ratio_{window}"] = np.where(
+            total_kh > 0, ki_sum / total_kh, 0.5
+        )
 
     # Season-to-date disposals
-    df_real["season_disposals_total"] = season_group["DI"].transform(
+    pre_roll_updates["season_disposals_total"] = season_group["DI"].transform(
         lambda s: s.shift(1).expanding().sum()
     ).fillna(0)
 
     # Season hit-rate features (% of current-season games meeting thresholds)
-    df_real["season_gl_1plus_rate"] = season_group["GL"].transform(
-        lambda s: s.shift(1).expanding().apply(lambda x: (x >= 1).mean(), raw=False)
-    ).fillna(0)
-    df_real["season_disp_20plus_rate"] = season_group["DI"].transform(
-        lambda s: s.shift(1).expanding().apply(lambda x: (x >= 20).mean(), raw=False)
-    ).fillna(0)
-    df_real["season_mk_3plus_rate"] = season_group["MK"].transform(
-        lambda s: s.shift(1).expanding().apply(lambda x: (x >= 3).mean(), raw=False)
-    ).fillna(0)
+    season_key_arrays = [df_real["player"], df_real["team"], df_real["year"]]
+    pre_roll_updates["season_gl_1plus_rate"] = season_group["GL"].shift(1).ge(1).groupby(
+        season_key_arrays, observed=True
+    ).expanding(min_periods=1).mean().reset_index(level=[0, 1, 2], drop=True).fillna(0)
+    pre_roll_updates["season_disp_20plus_rate"] = season_group["DI"].shift(1).ge(20).groupby(
+        season_key_arrays, observed=True
+    ).expanding(min_periods=1).mean().reset_index(level=[0, 1, 2], drop=True).fillna(0)
+    pre_roll_updates["season_mk_3plus_rate"] = season_group["MK"].shift(1).ge(3).groupby(
+        season_key_arrays, observed=True
+    ).expanding(min_periods=1).mean().reset_index(level=[0, 1, 2], drop=True).fillna(0)
 
     # Season-to-date rate aggregations
     if "GL_rate" in df_real.columns:
-        df_real["season_goals_rate_avg"] = season_group["GL_rate"].transform(
+        pre_roll_updates["season_goals_rate_avg"] = season_group["GL_rate"].transform(
             lambda s: s.shift(1).expanding().mean()
         ).fillna(0)
+        pre_roll_updates["player_gl_rate_volatility_5"] = grouped["GL_rate"].transform(
+            lambda s: s.shift(1).rolling(5, min_periods=2).std()
+        ).fillna(0)
+        pre_roll_updates["player_gl_rate_trend_5"] = _grouped_shifted_slope_5(
+            grouped, "GL_rate"
+        ).fillna(0)
     if "DI_rate" in df_real.columns:
-        df_real["season_disposals_rate_avg"] = season_group["DI_rate"].transform(
+        pre_roll_updates["season_disposals_rate_avg"] = season_group["DI_rate"].transform(
             lambda s: s.shift(1).expanding().mean()
         ).fillna(0)
-
-    # Rate-based volatility and trend for goals
-    if "GL_rate" in df_real.columns:
-        df_real["player_gl_rate_volatility_5"] = grouped["GL_rate"].transform(
+        pre_roll_updates["player_di_rate_volatility_5"] = grouped["DI_rate"].transform(
             lambda s: s.shift(1).rolling(5, min_periods=2).std()
         ).fillna(0)
-        df_real["player_gl_rate_trend_5"] = grouped["GL_rate"].transform(
-            lambda s: s.shift(1).rolling(5, min_periods=3).apply(
-                lambda x: np.polyfit(np.arange(len(x)), x, 1)[0], raw=True
-            )
-        ).fillna(0)
-
-    # Rate-based volatility and trend for disposals
-    if "DI_rate" in df_real.columns:
-        df_real["player_di_rate_volatility_5"] = grouped["DI_rate"].transform(
-            lambda s: s.shift(1).rolling(5, min_periods=2).std()
-        ).fillna(0)
-        df_real["player_di_rate_trend_5"] = grouped["DI_rate"].transform(
-            lambda s: s.shift(1).rolling(5, min_periods=3).apply(
-                lambda x: np.polyfit(np.arange(len(x)), x, 1)[0], raw=True
-            )
+        pre_roll_updates["player_di_rate_trend_5"] = _grouped_shifted_slope_5(
+            grouped, "DI_rate"
         ).fillna(0)
 
     # --- Phase 1A: TOG volatility, trend, and disposal intensity ---
     if "pct_played" in df_real.columns:
-        df_real["player_tog_volatility_5"] = grouped["pct_played"].transform(
+        pre_roll_updates["player_tog_volatility_5"] = grouped["pct_played"].transform(
             lambda s: s.shift(1).rolling(5, min_periods=2).std()
         ).fillna(0)
-        df_real["player_tog_trend_5"] = grouped["pct_played"].transform(
-            lambda s: s.shift(1).rolling(5, min_periods=3).apply(
-                lambda x: np.polyfit(np.arange(len(x)), x, 1)[0], raw=True
-            )
+        pre_roll_updates["player_tog_trend_5"] = _grouped_shifted_slope_5(
+            grouped, "pct_played"
         ).fillna(0)
 
         # Disposal per minute proxy: DI / (pct_played/100 * 120) rolling avg
-        # 120 = typical game length in minutes (4 × 30min quarters incl. time-on)
-        tog_frac = df_real["pct_played"].clip(lower=1) / 100.0
-        df_real["_di_per_min"] = df_real["DI"] / (tog_frac * 120.0)
-        df_real["player_disp_per_minute_5"] = grouped["_di_per_min"].transform(
+        # 120 = typical game length in minutes (4 x 30min quarters incl. time-on)
+        tog_frac = df_real["pct_played"].clip(lower=5) / 100.0
+        di_per_min = df_real["DI"] / (tog_frac * 120.0)
+        di_per_min_grouped = di_per_min.groupby([df_real["player"], df_real["team"]], observed=True)
+        pre_roll_updates["player_disp_per_minute_5"] = di_per_min_grouped.transform(
             lambda s: s.shift(1).rolling(5, min_periods=2).mean()
         ).fillna(0)
-        df_real = df_real.drop(columns=["_di_per_min"], errors="ignore")
 
     # --- Phase 1C: Contested disposal ratio ---
     cp_sum_5 = grouped["CP"].transform(
@@ -434,38 +520,70 @@ def add_rolling_features(df):
     di_sum_5 = grouped["DI"].transform(
         lambda s: s.shift(1).rolling(5, min_periods=2).sum()
     )
-    df_real["player_contested_disp_ratio_5"] = np.where(
+    pre_roll_updates["player_contested_disp_ratio_5"] = np.where(
         di_sum_5 > 0, cp_sum_5 / di_sum_5, 0.5
     )
 
     # --- Phase 1G: Kick/handball ratio trend ---
-    df_real["player_ki_hb_trend_5"] = grouped["KI"].transform(
-        lambda s: s.shift(1).rolling(5, min_periods=3).apply(
-            lambda x: np.polyfit(np.arange(len(x)), x, 1)[0], raw=True
-        )
-    ).fillna(0) - grouped["HB"].transform(
-        lambda s: s.shift(1).rolling(5, min_periods=3).apply(
-            lambda x: np.polyfit(np.arange(len(x)), x, 1)[0], raw=True
-        )
-    ).fillna(0)
+    pre_roll_updates["player_ki_hb_trend_5"] = _grouped_shifted_slope_5(
+        grouped, "KI"
+    ).fillna(0) - _grouped_shifted_slope_5(grouped, "HB").fillna(0)
 
-    # --- Phase 1H: Disposal streak / form features ---
+    if pre_roll_updates:
+        overlap = [col for col in pre_roll_updates if col in df_real.columns]
+        if overlap:
+            df_real = df_real.drop(columns=overlap, errors="ignore")
+        df_real = pd.concat(
+            [df_real, pd.DataFrame(pre_roll_updates, index=df_real.index)],
+            axis=1,
+        ).copy()
+
+    # --- Phase 1H: Disposal + marks rolling features ---
+    # Batch these late-stage rolling columns into a side frame so we avoid
+    # repeatedly fragmenting a large DataFrame with many single-column inserts.
+    rolling_feature_updates = {}
     shifted_di = grouped["DI"].shift(1)
 
     # High disposal streak: consecutive matches with DI >= 20
     di_high = shifted_di.ge(20).fillna(False).astype(int)
     epoch_di_high = (di_high == 0).cumsum()
-    df_real["player_di_streak_high"] = di_high.groupby(epoch_di_high, observed=True).cumsum()
+    rolling_feature_updates["player_di_streak_high"] = di_high.groupby(
+        epoch_di_high, observed=True
+    ).cumsum()
 
     # Low disposal streak: consecutive matches with DI < 12
     di_low = shifted_di.lt(12).fillna(False).astype(int)
     epoch_di_low = (di_low == 0).cumsum()
-    df_real["player_di_streak_low"] = di_low.groupby(epoch_di_low, observed=True).cumsum()
+    rolling_feature_updates["player_di_streak_low"] = di_low.groupby(
+        epoch_di_low, observed=True
+    ).cumsum()
 
     # Disposal cold streak: consecutive games with < 15 disposals
     disp_cold = shifted_di.lt(15).fillna(False).astype(int)
     epoch_di_cold = (disp_cold == 0).cumsum()
-    df_real["player_disp_cold_streak"] = disp_cold.groupby(epoch_di_cold, observed=True).cumsum()
+    rolling_feature_updates["player_disp_cold_streak"] = disp_cold.groupby(
+        epoch_di_cold, observed=True
+    ).cumsum()
+
+    # Disposal ceiling and floor over last 5 games
+    rolling_feature_updates["player_di_ceiling_5"] = grouped["DI"].transform(
+        lambda s: s.shift(1).rolling(5, min_periods=2).max()
+    ).fillna(0)
+    rolling_feature_updates["player_di_floor_5"] = grouped["DI"].transform(
+        lambda s: s.shift(1).rolling(5, min_periods=2).min()
+    ).fillna(0)
+
+    # Disposal consistency: 1 - (volatility / avg) — consistent players are more predictable
+    _di_avg_5 = grouped["DI"].transform(
+        lambda s: s.shift(1).rolling(5, min_periods=2).mean()
+    )
+    _di_std_5 = grouped["DI"].transform(
+        lambda s: s.shift(1).rolling(5, min_periods=2).std()
+    ).fillna(0)
+    rolling_feature_updates["player_di_consistency_5"] = pd.Series(
+        np.where(_di_avg_5 > 0, 1.0 - (_di_std_5 / _di_avg_5), 0),
+        index=df_real.index,
+    ).clip(-1, 1).fillna(0)
 
     # --- Mark streaks ---
     shifted_mk = grouped["MK"].shift(1)
@@ -473,12 +591,87 @@ def add_rolling_features(df):
     # Mark streak: consecutive games with 3+ marks
     mk_3plus = shifted_mk.ge(3).fillna(False).astype(int)
     epoch_mk = (mk_3plus == 0).cumsum()
-    df_real["player_mk_streak_3plus"] = mk_3plus.groupby(epoch_mk, observed=True).cumsum()
+    rolling_feature_updates["player_mk_streak_3plus"] = mk_3plus.groupby(
+        epoch_mk, observed=True
+    ).cumsum()
 
     # Mark cold streak: consecutive games with < 2 marks
     mk_cold = shifted_mk.lt(2).fillna(False).astype(int)
     epoch_mk_cold = (mk_cold == 0).cumsum()
-    df_real["player_mk_cold_streak"] = mk_cold.groupby(epoch_mk_cold, observed=True).cumsum()
+    rolling_feature_updates["player_mk_cold_streak"] = mk_cold.groupby(
+        epoch_mk_cold, observed=True
+    ).cumsum()
+
+    # --- Marks-specific rolling features ---
+    # Marks per disposal ratio (rolling 5)
+    mk_sum_5 = grouped["MK"].transform(
+        lambda s: s.shift(1).rolling(5, min_periods=2).sum()
+    )
+    di_sum_5 = grouped["DI"].transform(
+        lambda s: s.shift(1).rolling(5, min_periods=2).sum()
+    )
+    rolling_feature_updates["player_mk_per_disp_5"] = np.where(
+        di_sum_5 > 0, mk_sum_5 / di_sum_5, 0
+    )
+
+    # Contested marks ratio: CM / MK (rolling 5)
+    if "CM" in df_real.columns:
+        cm_sum_5 = grouped["CM"].transform(
+            lambda s: s.shift(1).rolling(5, min_periods=2).sum()
+        )
+        rolling_feature_updates["player_contested_mk_ratio_5"] = np.where(
+            mk_sum_5 > 0, cm_sum_5 / mk_sum_5, 0
+        )
+
+    # Mark form ratio: recent 3 avg / career avg (clipped 0-5)
+    mk_recent_3 = grouped["MK"].transform(
+        lambda s: s.shift(1).rolling(3, min_periods=1).mean()
+    )
+    mk_career = grouped["MK"].transform(
+        lambda s: s.shift(1).expanding(min_periods=1).mean()
+    )
+    rolling_feature_updates["player_mk_form_ratio"] = pd.Series(
+        np.where(mk_career > 0, mk_recent_3 / mk_career, 1.0),
+        index=df_real.index,
+    ).clip(0, 5.0)
+
+    # Mark volatility over last 5 games
+    rolling_feature_updates["player_mk_volatility_5"] = grouped["MK"].transform(
+        lambda s: s.shift(1).rolling(5, min_periods=2).std()
+    ).fillna(0)
+
+    # Mark trend: linear slope of MK over last 5 matches
+    rolling_feature_updates["player_mk_trend_5"] = _grouped_shifted_slope_5(
+        grouped, "MK"
+    ).fillna(0)
+
+    # --- Marks: aerial & position proxy features ---
+    # One-percenters avg (aerial contest indicator: spoils, contested marks, etc.)
+    if "one_pct" in df_real.columns:
+        rolling_feature_updates["player_one_pct_avg_5"] = grouped["one_pct"].transform(
+            lambda s: s.shift(1).rolling(5, min_periods=2).mean()
+        ).fillna(0)
+
+    # Ruck indicator: hitouts > 0 means this player contests ruck = fewer marks
+    if "HO" in df_real.columns:
+        ho_sum_5 = grouped["HO"].transform(
+            lambda s: s.shift(1).rolling(5, min_periods=1).sum()
+        ).fillna(0)
+        rolling_feature_updates["player_is_ruck_5"] = (ho_sum_5 > 0).astype(np.float32)
+
+    # Mark ceiling and floor over last 5 games
+    rolling_feature_updates["player_mk_ceiling_5"] = grouped["MK"].transform(
+        lambda s: s.shift(1).rolling(5, min_periods=2).max()
+    ).fillna(0)
+    rolling_feature_updates["player_mk_floor_5"] = grouped["MK"].transform(
+        lambda s: s.shift(1).rolling(5, min_periods=2).min()
+    ).fillna(0)
+
+    # Contested marks per game avg (absolute, not ratio) — for mark-taker signal
+    if "CM" in df_real.columns:
+        rolling_feature_updates["player_cm_avg_5"] = grouped["CM"].transform(
+            lambda s: s.shift(1).rolling(5, min_periods=2).mean()
+        ).fillna(0)
 
     # Disposal form ratio: last 3 avg / last 10 avg
     di_recent_3 = grouped["DI"].transform(
@@ -487,10 +680,19 @@ def add_rolling_features(df):
     di_career = grouped["DI"].transform(
         lambda s: s.shift(1).expanding(min_periods=1).mean()
     )
-    df_real["player_di_form_ratio"] = np.where(
-        di_career > 0, di_recent_3 / di_career, 1.0
-    )
-    df_real["player_di_form_ratio"] = df_real["player_di_form_ratio"].clip(0, 5.0)
+    rolling_feature_updates["player_di_form_ratio"] = pd.Series(
+        np.where(di_career > 0, di_recent_3 / di_career, 1.0),
+        index=df_real.index,
+    ).clip(0, 5.0)
+
+    if rolling_feature_updates:
+        overlap = [col for col in rolling_feature_updates if col in df_real.columns]
+        if overlap:
+            df_real = df_real.drop(columns=overlap, errors="ignore")
+        df_real = pd.concat(
+            [df_real, pd.DataFrame(rolling_feature_updates, index=df_real.index)],
+            axis=1,
+        ).copy()
 
     # --- Exclude DNP rows from output ---
     if n_dnp > 0:
@@ -600,10 +802,8 @@ def add_opponent_features(df):
     # Rolling averages of goals conceded
     gc_group = goals_conceded.groupby("conceding_team", observed=True)
     for window in [5, 10]:
-        goals_conceded[f"goals_conceded_avg_{window}"] = gc_group[
-            "goals_conceded"
-        ].transform(
-            lambda s: s.shift(1).rolling(window, min_periods=1).mean()
+        goals_conceded[f"goals_conceded_avg_{window}"] = _group_shifted_rolling_mean(
+            goals_conceded, ["conceding_team"], "goals_conceded", window, min_periods=1
         )
 
     # Map back to the main df: for each row, look up the opponent's
@@ -627,16 +827,16 @@ def add_opponent_features(df):
 
     # Step 2: player vs this specific opponent history
     opp_group = df.groupby(["player", "team", "opponent"], observed=True)
-    df["player_vs_opp_gl_avg"] = opp_group["GL"].transform(
-        lambda s: s.shift(1).expanding(min_periods=1).mean()
+    df["player_vs_opp_gl_avg"] = _group_shifted_expanding_mean(
+        df, ["player", "team", "opponent"], "GL", min_periods=1
     )
-    df["player_vs_opp_games"] = opp_group["GL"].transform(
-        lambda s: s.shift(1).expanding().count()
+    df["player_vs_opp_games"] = _group_shifted_expanding_count(
+        df, ["player", "team", "opponent"], "GL"
     )
 
     # Diff: player's avg vs opponent minus their overall avg
-    overall = df.groupby(["player", "team"], observed=True)["GL"].transform(
-        lambda s: s.shift(1).expanding(min_periods=1).mean()
+    overall = _group_shifted_expanding_mean(
+        df, ["player", "team"], "GL", min_periods=1
     )
     df["player_vs_opp_gl_diff"] = df["player_vs_opp_gl_avg"] - overall
 
@@ -644,6 +844,12 @@ def add_opponent_features(df):
     mask = df["player_vs_opp_games"].fillna(0) < config.MATCHUP_MIN_MATCHES
     df.loc[mask, "player_vs_opp_gl_diff"] = 0
     df.loc[mask, "player_vs_opp_gl_avg"] = np.nan
+
+    # Step 2b: player vs this specific opponent — marks history
+    df["player_vs_opp_mk_avg"] = _group_shifted_expanding_mean(
+        df, ["player", "team", "opponent"], "MK", min_periods=1
+    )
+    df.loc[mask, "player_vs_opp_mk_avg"] = np.nan
 
     # Step 3: opponent disposal concession (for disposal prediction)
     team_match_disp = (
@@ -663,10 +869,8 @@ def add_opponent_features(df):
 
     dc_group = disp_conceded.groupby("conceding_team", observed=True)
     for window in [5, 10]:
-        disp_conceded[f"disp_conceded_avg_{window}"] = dc_group[
-            "disp_conceded"
-        ].transform(
-            lambda s: s.shift(1).rolling(window, min_periods=1).mean()
+        disp_conceded[f"disp_conceded_avg_{window}"] = _group_shifted_rolling_mean(
+            disp_conceded, ["conceding_team"], "disp_conceded", window, min_periods=1
         )
 
     opp_disp_defense = disp_conceded[
@@ -682,6 +886,42 @@ def add_opponent_features(df):
     df = df.rename(columns={
         "disp_conceded_avg_5": "opp_disp_conceded_avg_5",
         "disp_conceded_avg_10": "opp_disp_conceded_avg_10",
+    })
+    df = df.drop(columns=["conceding_team"], errors="ignore")
+
+    # Step 3b: opponent marks concession (for marks prediction)
+    team_match_mk = (
+        df.groupby(["match_id", "team", "opponent"], observed=True)["MK"]
+        .sum()
+        .reset_index()
+        .rename(columns={"MK": "team_mk_scored"})
+    )
+    mk_conceded = team_match_mk.rename(columns={
+        "opponent": "conceding_team",
+        "team_mk_scored": "marks_conceded",
+    })[["match_id", "conceding_team", "marks_conceded"]]
+    mk_conceded = mk_conceded.merge(match_dates, on="match_id", how="left")
+    mk_conceded = mk_conceded.sort_values("date")
+
+    mc_group = mk_conceded.groupby("conceding_team", observed=True)
+    for window in [5, 10]:
+        mk_conceded[f"marks_conceded_avg_{window}"] = _group_shifted_rolling_mean(
+            mk_conceded, ["conceding_team"], "marks_conceded", window, min_periods=1
+        )
+
+    opp_mk_defense = mk_conceded[
+        ["match_id", "conceding_team", "marks_conceded_avg_5", "marks_conceded_avg_10"]
+    ].drop_duplicates()
+
+    df = df.merge(
+        opp_mk_defense,
+        left_on=["match_id", "opponent"],
+        right_on=["match_id", "conceding_team"],
+        how="left",
+    )
+    df = df.rename(columns={
+        "marks_conceded_avg_5": "opp_marks_conceded_avg_5",
+        "marks_conceded_avg_10": "opp_marks_conceded_avg_10",
     })
     df = df.drop(columns=["conceding_team"], errors="ignore")
 
@@ -706,8 +946,8 @@ def add_opponent_features(df):
     team_match_cp = team_match_cp.sort_values("date")
 
     cp_group = team_match_cp.groupby("team", observed=True)
-    team_match_cp["cp_diff_avg_5"] = cp_group["cp_diff"].transform(
-        lambda s: s.shift(1).rolling(5, min_periods=1).mean()
+    team_match_cp["cp_diff_avg_5"] = _group_shifted_rolling_mean(
+        team_match_cp, ["team"], "cp_diff", 5, min_periods=1
     )
 
     # Map back: for each row, look up the OPPONENT's CP differential
@@ -742,6 +982,14 @@ def add_opponent_features(df):
     df["opp_disp_conceded_avg_10"] = df["opp_disp_conceded_avg_10"].fillna(
         opp_disp_mean_10 if pd.notna(opp_disp_mean_10) else 0
     )
+    opp_mk_mean_5 = df["opp_marks_conceded_avg_5"].dropna().mean()
+    opp_mk_mean_10 = df["opp_marks_conceded_avg_10"].dropna().mean()
+    df["opp_marks_conceded_avg_5"] = df["opp_marks_conceded_avg_5"].fillna(
+        opp_mk_mean_5 if pd.notna(opp_mk_mean_5) else 0
+    )
+    df["opp_marks_conceded_avg_10"] = df["opp_marks_conceded_avg_10"].fillna(
+        opp_mk_mean_10 if pd.notna(opp_mk_mean_10) else 0
+    )
 
     # Opponent contested possession differential: 0 = neutral
     df["opp_contested_poss_diff_5"] = df["opp_contested_poss_diff_5"].fillna(0)
@@ -759,8 +1007,8 @@ def add_opponent_features(df):
 
     tk_group = tk_by_team.groupby("team", observed=True)
     for window in [5, 10]:
-        tk_by_team[f"team_tk_avg_{window}"] = tk_group["team_tk_total"].transform(
-            lambda s: s.shift(1).rolling(window, min_periods=1).mean()
+        tk_by_team[f"team_tk_avg_{window}"] = _group_shifted_rolling_mean(
+            tk_by_team, ["team"], "team_tk_total", window, min_periods=1
         )
 
     opp_tk = tk_by_team[
@@ -790,6 +1038,13 @@ def add_opponent_features(df):
     else:
         df["player_vs_opp_gl_avg"] = df["player_vs_opp_gl_avg"].fillna(0)
     df["player_vs_opp_gl_diff"] = df["player_vs_opp_gl_diff"].fillna(0)
+
+    # For player vs opponent marks: fall back to player's overall marks avg
+    if "player_vs_opp_mk_avg" in df.columns:
+        mk_career_avg = _group_shifted_expanding_mean(
+            df, ["player", "team"], "MK", min_periods=1
+        )
+        df["player_vs_opp_mk_avg"] = df["player_vs_opp_mk_avg"].fillna(mk_career_avg).fillna(0)
 
     return df
 
@@ -934,11 +1189,9 @@ def add_team_features(df):
     df = df.merge(opp_cl, left_on=["match_id", "opponent"],
                   right_on=["match_id", "opp_team"], how="left")
     df = df.drop(columns=["opp_team"], errors="ignore")
-    df["team_clearance_dominance_5"] = np.where(
-        df["opp_cl_avg_5"].fillna(0) > 0,
-        df["team_cl_avg_5"].fillna(0) / df["opp_cl_avg_5"],
-        1.0,
-    )
+    num = df["team_cl_avg_5"].fillna(0)
+    den = df["opp_cl_avg_5"].fillna(0)
+    df["team_clearance_dominance_5"] = np.where(den > 0, num / den, 1.0)
     df = df.drop(columns=["opp_cl_avg_5"], errors="ignore")
 
     # --- Midfielder quality score: aggregate DI+CL+IF rates of midfield teammates ---
@@ -1020,6 +1273,28 @@ def add_team_features(df):
 
     df = df.drop(columns=["_team_total_di"], errors="ignore")
 
+    # --- Phase 1C: Player marks share ---
+    team_match_mk_totals = (
+        df.groupby(["match_id", "team"], observed=True)["MK"]
+        .sum()
+        .reset_index()
+        .rename(columns={"MK": "_team_total_mk"})
+    )
+    df = df.merge(team_match_mk_totals, on=["match_id", "team"], how="left")
+
+    for window in [5, 10]:
+        player_mk_w = player_group["MK"].transform(
+            lambda s: s.shift(1).rolling(window, min_periods=1).sum()
+        )
+        team_mk_w = df.groupby(["player", "team"], observed=True)["_team_total_mk"].transform(
+            lambda s: s.shift(1).rolling(window, min_periods=1).sum()
+        )
+        df[f"player_mk_share_{window}"] = np.where(
+            team_mk_w > 0, player_mk_w / team_mk_w, 0,
+        )
+
+    df = df.drop(columns=["_team_total_mk"], errors="ignore")
+
     # Team win streak (approximate: did team score more than opponent last N?)
     # We need match results. Compute from team_total_goals vs opponent goals.
     opp_match = (
@@ -1065,6 +1340,7 @@ def add_team_features(df):
                 "team_cl_avg_5", "team_clearance_dominance_5",
                 "team_mid_quality_score",
                 "player_goal_share_5", "player_disp_share_5", "player_disp_share_10",
+                "player_mk_share_5", "player_mk_share_10",
                 "team_win_pct_5", "team_margin_avg_5"]:
         if col in df.columns:
             fill_val = 1.0 if col == "team_clearance_dominance_5" else 0
@@ -1645,6 +1921,8 @@ def add_game_environment_features(df):
             df["team_margin_avg_5"].fillna(0) - df["opp_margin_avg_5"].fillna(0)
         )
         df["expected_margin_abs"] = df["expected_margin_diff"].abs()
+        # Game closeness: 1 for expected even contest, → 0 for blowout
+        df["expected_game_closeness"] = 1.0 / (1.0 + df["expected_margin_abs"])
 
         df = df.drop(columns=["opp_margin_avg_5"], errors="ignore")
 
@@ -1773,7 +2051,7 @@ def add_day_night_features(df):
     n_twilight = df["is_twilight_game"].sum()
     n_day = len(df) - n_night - n_twilight
     # Count unique matches for summary
-    match_counts = df.groupby("match_id")[["is_night_game", "is_twilight_game"]].first()
+    match_counts = df.groupby("match_id", observed=True)[["is_night_game", "is_twilight_game"]].first()
     print(f"    Day/night: {(match_counts['is_night_game']==0).sum() - (match_counts['is_twilight_game']==1).sum()} day, "
           f"{(match_counts['is_twilight_game']==1).sum()} twilight, "
           f"{(match_counts['is_night_game']==1).sum()} night "
@@ -1939,6 +2217,10 @@ def add_market_features(df):
             ).astype(np.float32)
 
     df["market_is_favourite"] = (df["market_team_implied_prob"] > 0.5).astype(np.int8)
+
+    # Market-based game closeness: 1 for coin-flip, → 0 for heavy favourite
+    handicap = pd.to_numeric(df.get("market_handicap", np.nan), errors="coerce").fillna(0)
+    df["market_game_closeness"] = (1.0 / (1.0 + handicap.abs())).astype(np.float32)
 
     # Cast odds columns to float32
     for c in odds_cols:
@@ -2135,7 +2417,7 @@ def add_umpire_features(df):
 
     # --- Panel average experience (static per match) ---
     panel_exp = (
-        umpires.groupby("match_id")["umpire_career_games_pre"]
+        umpires.groupby("match_id", observed=True)["umpire_career_games_pre"]
         .mean()
         .reset_index()
         .rename(columns={"umpire_career_games_pre": "umpire_panel_avg_experience"})
@@ -2172,14 +2454,14 @@ def add_umpire_features(df):
     ump_match = ump_match.sort_values(["date", "match_id", "umpire_name"])
 
     lookback = config.UMPIRE_LOOKBACK_MATCHES
-    ug = ump_match.groupby("umpire_name")
+    ug = ump_match.groupby("umpire_name", observed=True)
     ump_match["umpire_scoring_tendency"] = ug["match_total_goals"].transform(
         lambda s: s.shift(1).rolling(lookback, min_periods=3).mean()
     )
 
     # Average across panel for each match
     panel_tendency = (
-        ump_match.groupby("match_id")["umpire_scoring_tendency"]
+        ump_match.groupby("match_id", observed=True)["umpire_scoring_tendency"]
         .mean()
         .reset_index()
     )
@@ -2219,13 +2501,13 @@ def add_umpire_features(df):
     ump_ff = ump_ff.merge(match_dates, on="match_id", how="left")
     ump_ff = ump_ff.sort_values(["date", "match_id", "umpire_name"])
 
-    ug_ff = ump_ff.groupby("umpire_name")
+    ug_ff = ump_ff.groupby("umpire_name", observed=True)
     ump_ff["umpire_home_bias"] = ug_ff["ff_home_diff"].transform(
         lambda s: s.shift(1).rolling(lookback, min_periods=3).mean()
     )
 
     panel_bias = (
-        ump_ff.groupby("match_id")["umpire_home_bias"]
+        ump_ff.groupby("match_id", observed=True)["umpire_home_bias"]
         .mean()
         .reset_index()
     )
@@ -2240,7 +2522,7 @@ def add_umpire_features(df):
     ump_teams = ump_teams.merge(match_dates, on="match_id", how="left")
     ump_teams = ump_teams.sort_values(["date", "match_id", "umpire_name", "team"])
 
-    ut_grp = ump_teams.groupby(["umpire_name", "team"])
+    ut_grp = ump_teams.groupby(["umpire_name", "team"], observed=True)
     ump_teams["_ump_team_games"] = ut_grp["match_id"].transform(
         lambda s: s.shift(1).expanding().count()
     )
@@ -2305,7 +2587,7 @@ def add_coach_features(df):
     coach_results["won"] = (coach_results["result"] == "W").astype(int)
 
     # --- Coach expanding win rate ---
-    cg = coach_results.groupby("coach")
+    cg = coach_results.groupby("coach", observed=True)
     coach_results["coach_win_rate"] = cg["won"].transform(
         lambda s: s.shift(1).expanding(min_periods=config.COACH_MIN_GAMES).mean()
     )
@@ -2318,7 +2600,7 @@ def add_coach_features(df):
     # --- Coach tenure (years with current team) ---
     # Find first game with current team per (coach, team)
     first_game = (
-        coach_results.groupby(["coach", "team"])["date"]
+        coach_results.groupby(["coach", "team"], observed=True)["date"]
         .transform("first")
     )
     coach_results["coach_tenure"] = (
@@ -2486,7 +2768,7 @@ def add_career_split_features(df):
 
             # Overall career average per player (for boost ratio)
             player_overall = (
-                opp_df.groupby("player")
+                opp_df.groupby("player", observed=True)
                 .agg(
                     _total_gl=("GL", "sum") if "GL" in opp_df.columns else ("P", "first"),
                     _total_di=("DI", "sum") if "DI" in opp_df.columns else ("P", "first"),
@@ -2544,7 +2826,7 @@ def add_career_split_features(df):
 
             # Overall career average per player for venue boost
             player_overall_v = (
-                venue_df.groupby("player")
+                venue_df.groupby("player", observed=True)
                 .agg(
                     _total_gl_v=("GL", "sum") if "GL" in venue_df.columns else ("P", "first"),
                     _total_p_v=("P", "sum"),
@@ -2915,6 +3197,72 @@ def add_disposal_interaction_features(df):
 
 
 # ---------------------------------------------------------------------------
+# X. Marks-Specific Interaction Features (runs after weather + ground + opponent)
+# ---------------------------------------------------------------------------
+
+def add_marks_interaction_features(df):
+    """Cross-feature interactions for marks prediction.
+
+    Runs after weather, ground dimensions, rest days, and opponent marks
+    concession features are available.
+    """
+    df = df.copy()
+    count = 0
+
+    # Wind × marks form
+    if "wind_speed_avg" in df.columns and "player_mk_ewm_5" in df.columns:
+        df["interact_wind_marks"] = (
+            df["wind_speed_avg"].fillna(0) * df["player_mk_ewm_5"].fillna(0)
+        )
+        count += 1
+
+    # Rain × marks form
+    if "rain_total" in df.columns and "player_mk_ewm_5" in df.columns:
+        df["interact_rain_marks"] = (
+            df["rain_total"].fillna(0) * df["player_mk_ewm_5"].fillna(0)
+        )
+        count += 1
+
+    # Ground area × marks form
+    if "ground_area" in df.columns and "player_mk_ewm_5" in df.columns:
+        df["interact_ground_area_marks"] = (
+            df["ground_area"].fillna(0) * df["player_mk_ewm_5"].fillna(0)
+        )
+        count += 1
+
+    # Marks form × opponent marks concession
+    if "player_mk_ewm_5" in df.columns and "opp_marks_conceded_avg_5" in df.columns:
+        df["interact_marks_vs_opp_conceded"] = (
+            df["player_mk_ewm_5"].fillna(0) * df["opp_marks_conceded_avg_5"].fillna(0)
+        )
+        count += 1
+
+    # Marks share × team form
+    if "player_mk_share_5" in df.columns and "team_win_pct_5" in df.columns:
+        df["interact_mk_share_team_form"] = (
+            df["player_mk_share_5"].fillna(0) * df["team_win_pct_5"].fillna(0)
+        )
+        count += 1
+
+    # Contested mark ratio × opponent tackle pressure
+    if "player_contested_mk_ratio_5" in df.columns and "opp_tackle_rate_avg_5" in df.columns:
+        df["interact_contested_mk_vs_tackles"] = (
+            df["player_contested_mk_ratio_5"].fillna(0) * df["opp_tackle_rate_avg_5"].fillna(0)
+        )
+        count += 1
+
+    # Marks form × rest day differential
+    if "player_mk_ewm_5" in df.columns and "rest_day_differential" in df.columns:
+        df["interact_marks_rest_diff"] = (
+            df["player_mk_ewm_5"].fillna(0) * df["rest_day_differential"].fillna(0)
+        )
+        count += 1
+
+    print(f"    Added {count} marks-specific interaction features")
+    return df
+
+
+# ---------------------------------------------------------------------------
 # V. FootyWire Advanced Stats Features
 # ---------------------------------------------------------------------------
 
@@ -3012,10 +3360,8 @@ def add_footywire_features(df):
 
     # Disposal efficiency trend
     if "_fw_DE_pct" in df.columns:
-        df["player_fw_de_trend_5"] = grouped["_fw_DE_pct"].transform(
-            lambda s: s.shift(1).rolling(5, min_periods=3).apply(
-                lambda x: np.polyfit(np.arange(len(x)), x, 1)[0], raw=True
-            )
+        df["player_fw_de_trend_5"] = _grouped_shifted_slope_5(
+            grouped, "_fw_DE_pct"
         ).fillna(0)
 
     # Interaction: disposal efficiency × opponent tackle pressure
@@ -3083,11 +3429,7 @@ def add_cba_features(df):
     )
 
     # CBA trend
-    df["player_cba_trend_5"] = grouped["_cba_pct"].transform(
-        lambda s: s.shift(1).rolling(5, min_periods=3).apply(
-            lambda x: np.polyfit(np.arange(len(x)), x, 1)[0], raw=True
-        )
-    ).fillna(0)
+    df["player_cba_trend_5"] = _grouped_shifted_slope_5(grouped, "_cba_pct").fillna(0)
 
     # CBA × TOG interaction
     if "player_tog_avg_5" in df.columns:
@@ -3135,6 +3477,8 @@ def build_features(df=None, data_dir=None, save=True):
     player_odds_path = config.BASE_STORE_DIR / "player_odds.parquet"
     footywire_path = config.BASE_STORE_DIR / "footywire_advanced.parquet"
     cba_path = config.BASE_STORE_DIR / "cba_stats.parquet"
+    team_changes_path = config.BASE_STORE_DIR / "team_changes.parquet"
+    injuries_path = config.BASE_STORE_DIR / "injuries.parquet"
     if save and df is None and cached_path.exists() and base_path.exists():
         cache_mtime = cached_path.stat().st_mtime
         sources_fresh = cache_mtime > base_path.stat().st_mtime
@@ -3155,7 +3499,8 @@ def build_features(df=None, data_dir=None, save=True):
             sources_fresh = sources_fresh and cache_mtime > dims_path.stat().st_mtime
         for extra_path in [umpires_path, coaches_path, profiles_path,
                            opp_splits_path, venue_splits_path, player_odds_path,
-                           footywire_path, cba_path]:
+                           footywire_path, cba_path, team_changes_path,
+                           injuries_path]:
             if extra_path.exists():
                 sources_fresh = sources_fresh and cache_mtime > extra_path.stat().st_mtime
         if sources_fresh:
@@ -3302,9 +3647,18 @@ def build_features(df=None, data_dir=None, save=True):
     print("  [T] Venue elevation features...")
     df = add_venue_elevation_features(df)
 
+    # T2. News / team changes features (ins/outs, injuries, debutants)
+    print("  [T2] News / team changes features...")
+    from news import add_news_features
+    df = add_news_features(df)
+
     # U. Disposal-specific interaction features (needs weather + ground + rest days)
     print("  [U] Disposal interaction features...")
     df = add_disposal_interaction_features(df)
+
+    # X. Marks-specific interaction features (needs weather + ground + opponent marks concession)
+    print("  [X] Marks interaction features...")
+    df = add_marks_interaction_features(df)
 
     # V. FootyWire advanced stats features — DISABLED (Phase 2 A/B test showed BSS regression)
     # FootyWire features add noise without improving disposal probability calibration.
@@ -3354,7 +3708,7 @@ def build_features(df=None, data_dir=None, save=True):
         "player_streak_just_broke", "role_other", "role_midfielder",
         "era_1", "precipitation_total", "temperature_category", "is_wet",
         "era_5", "player_bh_avg_3", "player_bh_avg_5",
-        "humidity_discomfort", "player_mk_avg_5",
+        "humidity_discomfort",
         # ── Redundant features (r=±1.0 with era_4, keep era_4 as representative) ──
         "is_covid_season", "quarter_length_ratio",
         # Legacy column names (may not exist but harmless to exclude)
@@ -3383,6 +3737,14 @@ def build_features(df=None, data_dir=None, save=True):
         for col in FEATURE_COLS:
             if df[col].dtype == np.float64:
                 df[col] = df[col].astype(np.float32)
+
+        # Fix mixed-type columns that break parquet (e.g. bool + int from fillna)
+        for col in df.columns:
+            if df[col].dtype == object:
+                try:
+                    df[col] = df[col].astype(float)
+                except (ValueError, TypeError):
+                    pass
 
         config.ensure_dirs()
         out_path = config.FEATURES_DIR / "feature_matrix.parquet"

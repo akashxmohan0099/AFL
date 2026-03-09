@@ -1,6 +1,6 @@
 # AFL Player Prediction Pipeline
 
-A machine-learning pipeline that predicts individual player scoring (goals, behinds), disposal counts, and marks for Australian Football League matches. It scrapes historical data from AFL Tables and FootyWire, integrates weather and betting odds, engineers 252 features, trains multi-stage ensemble models, and generates per-player probability distributions for upcoming rounds.
+A machine-learning pipeline that predicts individual player scoring (goals, behinds), disposal counts, and marks for Australian Football League matches. It scrapes historical data from AFL Tables and FootyWire, integrates weather and betting odds, engineers 390 feature columns (299 model features), trains multi-stage ensemble models, and generates per-player probability distributions for upcoming rounds.
 
 ## Quickstart
 
@@ -15,6 +15,11 @@ Optional dependencies (Optuna tuning, PDF generation, XLSX odds inputs):
 ```bash
 python3 -m pip install -r requirements-extra.txt
 ```
+
+Runtime env examples:
+
+- API: [api/.env.example](/Users/akash/Desktop/AFL/api/.env.example)
+- Frontend: [web/.env.local.example](/Users/akash/Desktop/AFL/web/.env.local.example)
 
 Typical workflow:
 
@@ -31,7 +36,89 @@ Notes:
 - Fixture inputs live in `data/fixtures/round_{ROUND}_{YEAR}.csv`. Minimal columns: `team,opponent,venue,date,is_home`. Optional: `players` (comma-separated team sheet).
 - Rosters can be provided via `data/fixtures/rosters_{YEAR}.json` to predict full squads for upcoming rounds.
 - Odds directory is configurable via `AFL_ODDS_DIR` (defaults to `./AFL Betting odds`).
-- Run tests with `python3 -m unittest discover -s tests -p 'test_*.py'`.
+- Run the validated backend suite with `python3 -m pytest -q tests/test_api_integration.py tests/test_backend_services.py tests/test_features.py tests/test_fixtures.py tests/test_scoring_distribution.py tests/test_threshold_monotonicity.py`.
+
+## API and Frontend
+
+Start the API:
+
+```bash
+uvicorn api.main:app --reload
+```
+
+Key API runtime controls:
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `AFL_API_KEY` | Enables shared-key protection for `/api/*` routes except exempt paths | unset |
+| `AFL_API_KEY_HEADER` | Header name checked for the shared API key | `X-API-Key` |
+| `AFL_API_ALLOW_ORIGINS` | Comma-separated CORS origins | `http://localhost:3000,http://localhost:3001,http://localhost:3002` |
+| `AFL_RATE_LIMIT_ENABLED` | Enables in-memory request limiting | `true` |
+| `AFL_RATE_LIMIT_REQUESTS` | Requests allowed per window per client | `240` |
+| `AFL_RATE_LIMIT_WINDOW_SECONDS` | Rate-limit window length | `60` |
+| `AFL_TRUST_X_FORWARDED_FOR` | Trust proxy-forwarded client IPs | `false` |
+| `AFL_API_LOG_LEVEL` | API request/exception log level | `INFO` |
+| `AFL_LOAD_CACHE_ON_STARTUP` | Eager-load parquet cache on startup; `false` defers loading until first API request | `true` |
+
+The API exposes `/api/health` publicly even when auth is enabled. Runtime observability is available from `/api/metrics/runtime`, including request totals, in-flight counts, and per-route latency summaries.
+
+Start the frontend:
+
+```bash
+cd web
+npm ci
+npm run dev
+```
+
+Frontend env:
+
+- `NEXT_PUBLIC_API_URL`: browser API base URL, defaults to `http://localhost:8000`
+- `API_KEY`: server-side API key for Next.js requests
+- `NEXT_PUBLIC_API_KEY`: browser-visible shared key; only use it if exposing the key is acceptable
+
+Containerized local runtime:
+
+```bash
+docker compose up --build
+```
+
+This starts the API on `http://localhost:8000` and the frontend on `http://localhost:3000`.
+
+## Validation
+
+Backend and feature checks:
+
+```bash
+PYTHONPYCACHEPREFIX=/tmp/pycache python3 -m py_compile \
+  $(find api -type f -name '*.py' | sort) \
+  tests/test_api_integration.py \
+  validate.py \
+  scripts/validate_artifacts.py
+
+python3 -m pytest -q \
+  tests/test_api_integration.py \
+  tests/test_backend_services.py \
+  tests/test_features.py \
+  tests/test_fixtures.py \
+  tests/test_scoring_distribution.py \
+  tests/test_threshold_monotonicity.py
+
+python3 scripts/validate_artifacts.py
+```
+
+Frontend checks:
+
+```bash
+cd web
+npm ci
+npm run build
+npm run smoke
+```
+
+`npm run smoke` starts the production Next.js server and verifies the core routes: `/`, `/schedule`, `/matches`, `/players`, `/odds`, `/predictions`.
+`npm run lint` is also part of CI.
+
+GitHub Actions runs the same backend and frontend checks from [ci.yml](/Users/akash/Desktop/AFL/.github/workflows/ci.yml).
 
 ## Architecture Overview
 
@@ -50,7 +137,7 @@ AFL Tables (web scrape)    FootyWire (scrape)    Open-Meteo API    Betting Odds 
                                  footywire_advanced.parquet (93K rows)
                                         │
                                         ▼
-                                  features.py (252 features)
+                                  features.py (390 columns / 299 model features)
                                         │
                               ┌─────────┼──────────┬──────────┐
                               ▼         ▼          ▼          ▼
@@ -87,7 +174,7 @@ python pipeline.py --scrape [--start 2015] [--end 2025]   # Fetch raw CSVs from 
 python pipeline.py --scrape-profiles                        # Fetch player height/weight/DOB + career splits
 python pipeline.py --scrape-footywire                       # Fetch FootyWire advanced stats
 python pipeline.py --clean                                  # Normalize → parquets
-python pipeline.py --features                               # Engineer 252 features
+python pipeline.py --features                               # Engineer 390 columns / 299 model features
 python pipeline.py --train                                  # Train scoring model (goals + behinds)
 python pipeline.py --train-disposals                        # Train disposal model
 python pipeline.py --train-winner                           # Train game-winner model
@@ -102,7 +189,7 @@ python pipeline.py --save-experiment NAME                    # Save experiment r
 python pipeline.py --update                                 # Scrape + rebuild + predict (current season)
 ```
 
-## Feature Engineering (252 Features)
+## Feature Engineering (390 Columns / 299 Model Features)
 
 Stages A–W, built in `features.py`:
 
@@ -209,7 +296,7 @@ All parameters in `config.py`. Key settings:
 AFL/
 ├── pipeline.py                         # CLI orchestrator (all stages)
 ├── clean.py                            # Data loading, cleaning, rate normalization
-├── features.py                         # 252-feature engineering pipeline (stages A-W)
+├── features.py                         # Feature engineering pipeline (390 columns / 299 model features)
 ├── model.py                            # AFLScoringModel, AFLDisposalModel, AFLMarksModel,
 │                                       #   EloSystem, AFLGameWinnerModel, CalibratedPredictor
 ├── config.py                           # All tunable parameters and paths
@@ -233,7 +320,7 @@ AFL/
 ├── data/
 │   ├── base/                           # Cleaned parquets (gitignored, regenerable)
 │   ├── features/
-│   │   ├── feature_matrix.parquet      # 252-feature matrix
+│   │   ├── feature_matrix.parquet      # Feature matrix (390 columns / 299 model features)
 │   │   └── feature_columns.json        # Feature name list
 │   ├── models/                         # Trained model weights + metadata JSONs
 │   ├── predictions/                    # Per-round prediction CSVs

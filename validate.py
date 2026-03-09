@@ -8,6 +8,8 @@ No external dependencies beyond pandas/numpy.
 import numpy as np
 import pandas as pd
 
+from prediction_math import audit_prediction_frame
+
 
 class ValidationError(Exception):
     """Raised when data fails a critical validation check."""
@@ -67,7 +69,7 @@ def validate_cleaned(df):
 
     # Minimum match size
     if "match_id" in df.columns and "player" in df.columns:
-        match_sizes = df.groupby("match_id")["player"].count()
+        match_sizes = df.groupby("match_id", observed=True)["player"].count()
         tiny = (match_sizes < 2).sum()
         if tiny > 0:
             warnings.append(f"{tiny} matches with fewer than 2 players")
@@ -257,7 +259,7 @@ def validate_umpires(df):
             warnings.append(f"{blank_names} rows with blank umpire names")
 
         # Panel sizes
-        panel_sizes = df.groupby("match_id")["umpire_name"].nunique()
+        panel_sizes = df.groupby("match_id", observed=True)["umpire_name"].nunique()
         unusual = panel_sizes[(panel_sizes < 3) | (panel_sizes > 4)]
         if len(unusual) > 0:
             warnings.append(
@@ -374,6 +376,41 @@ def validate_predictions(pred_df):
         out_of_range = ((pred_df["p_scorer"] < 0) | (pred_df["p_scorer"] > 1)).sum()
         if out_of_range > 0:
             errors.append(f"{out_of_range} p_scorer values outside [0, 1]")
+
+    audit = audit_prediction_frame(pred_df)
+    if audit["out_of_bounds"] > 0:
+        errors.append(f"{audit['out_of_bounds']} probability values outside [0, 1]")
+    if audit["goal_threshold_monotonic_violations"] > 0:
+        errors.append(
+            f"{audit['goal_threshold_monotonic_violations']} rows violate goal threshold monotonicity"
+        )
+    if audit["disposal_threshold_monotonic_violations"] > 0:
+        errors.append(
+            f"{audit['disposal_threshold_monotonic_violations']} rows violate disposal threshold monotonicity"
+        )
+    if audit["marks_threshold_monotonic_violations"] > 0:
+        errors.append(
+            f"{audit['marks_threshold_monotonic_violations']} rows violate marks threshold monotonicity"
+        )
+    if audit["goal_pmf_sum_max_abs_error"] > 0.002:
+        errors.append(
+            f"goal PMF rows fail to sum to 1 within tolerance (max abs error={audit['goal_pmf_sum_max_abs_error']})"
+        )
+    if audit["goal_zero_consistency_max_abs_error"] > 0.002:
+        errors.append(
+            "p_goals_0 is inconsistent with exported scorer probability "
+            f"(max abs error={audit['goal_zero_consistency_max_abs_error']})"
+        )
+    if audit["goal_2plus_consistency_max_abs_error"] > 0.002:
+        errors.append(
+            "p_2plus_goals is inconsistent with the goal PMF "
+            f"(max abs error={audit['goal_2plus_consistency_max_abs_error']})"
+        )
+    if audit["goal_3plus_consistency_max_abs_error"] > 0.002:
+        errors.append(
+            "p_3plus_goals is inconsistent with the goal PMF "
+            f"(max abs error={audit['goal_3plus_consistency_max_abs_error']})"
+        )
 
     if errors:
         msg = "Prediction validation failed:\n" + "\n".join(f"  - {e}" for e in errors)

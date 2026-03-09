@@ -1,0 +1,31 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      AFL_API_KEY: ${AFL_API_KEY:-}
+      AFL_API_KEY_HEADER: ${AFL_API_KEY_HEADER:-X-API-Key}
+      AFL_API_ALLOW_ORIGINS: ${AFL_API_ALLOW_ORIGINS:-http://localhost:3000}
+      AFL_RATE_LIMIT_ENABLED: ${AFL_RATE_LIMIT_ENABLED:-true}
+      AFL_RATE_LIMIT_REQUESTS: ${AFL_RATE_LIMIT_REQUESTS:-240}
+      AFL_RATE_LIMIT_WINDOW_SECONDS: ${AFL_RATE_LIMIT_WINDOW_SECONDS:-60}
+      AFL_TRUST_X_FORWARDED_FOR: ${AFL_TRUST_X_FORWARDED_FOR:-false}
+      AFL_API_LOG_LEVEL: ${AFL_API_LOG_LEVEL:-INFO}
+      AFL_LOAD_CACHE_ON_STARTUP: ${AFL_LOAD_CACHE_ON_STARTUP:-true}
+    ports:
+      - "8000:8000"
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        NEXT_PUBLIC_API_KEY: ${NEXT_PUBLIC_API_KEY:-}
+    depends_on:
+      - api
+    environment:
+      API_KEY: ${API_KEY:-}
+    ports:
+      - "3000:3000"
