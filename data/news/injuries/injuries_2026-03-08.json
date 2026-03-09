@@ -1,0 +1,1017 @@
+[
+  {
+    "team": "Adelaide",
+    "player": "Curtin, Dan",
+    "injury": "Knee",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Adelaide",
+    "player": "Hinge, Mitch",
+    "injury": "Back",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Adelaide",
+    "player": "Keane, Mark",
+    "injury": "Leg",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Adelaide",
+    "player": "Peatling, James",
+    "injury": "Hamstring",
+    "estimated_return": "1 week",
+    "severity": 1
+  },
+  {
+    "team": "Adelaide",
+    "player": "Rankine, Izak",
+    "injury": "Suspension",
+    "estimated_return": "Round 2",
+    "severity": 2
+  },
+  {
+    "team": "Brisbane Lions",
+    "player": "Curtin, Cody",
+    "injury": "Chest",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Brisbane Lions",
+    "player": "Doedee, Tom",
+    "injury": "Wrist",
+    "estimated_return": "2 weeks",
+    "severity": 2
+  },
+  {
+    "team": "Brisbane Lions",
+    "player": "Draper, Sam",
+    "injury": "Foot",
+    "estimated_return": "1-2 weeks",
+    "severity": 2
+  },
+  {
+    "team": "Brisbane Lions",
+    "player": "Evans, Koby",
+    "injury": "Ankle",
+    "estimated_return": "3-4 weeks",
+    "severity": 3
+  },
+  {
+    "team": "Brisbane Lions",
+    "player": "Hipwood, Eric",
+    "injury": "Knee",
+    "estimated_return": "Mid-season",
+    "severity": 2
+  },
+  {
+    "team": "Brisbane Lions",
+    "player": "Lloyd, Luke",
+    "injury": "Ankle",
+    "estimated_return": "3-4 weeks",
+    "severity": 3
+  },
+  {
+    "team": "Brisbane Lions",
+    "player": "Murphy, Ben",
+    "injury": "Chest",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Brisbane Lions",
+    "player": "Payne, Jack",
+    "injury": "Knee",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Brisbane Lions",
+    "player": "Rayner, Cam",
+    "injury": "Groin",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Brisbane Lions",
+    "player": "Smith, Henry",
+    "injury": "Foot",
+    "estimated_return": "4 weeks",
+    "severity": 3
+  },
+  {
+    "team": "Carlton",
+    "player": "Cerra, Adam",
+    "injury": "Hamstring",
+    "estimated_return": "3-4 weeks",
+    "severity": 3
+  },
+  {
+    "team": "Carlton",
+    "player": "Cottrell, Matt",
+    "injury": "Knee",
+    "estimated_return": "3-4 weeks",
+    "severity": 3
+  },
+  {
+    "team": "Carlton",
+    "player": "Evans, Francis",
+    "injury": "Knee",
+    "estimated_return": "1-3 weeks",
+    "severity": 2
+  },
+  {
+    "team": "Carlton",
+    "player": "Haynes, Nick",
+    "injury": "Ankle",
+    "estimated_return": "1-3 weeks",
+    "severity": 2
+  },
+  {
+    "team": "Carlton",
+    "player": "Motlop, Jesse",
+    "injury": "Knee",
+    "estimated_return": "Season",
+    "severity": 4
+  },
+  {
+    "team": "Carlton",
+    "player": "Newman, Nic",
+    "injury": "Suspension",
+    "estimated_return": "Round 3",
+    "severity": 2
+  },
+  {
+    "team": "Carlton",
+    "player": "O'Farrell, Harry",
+    "injury": "Knee",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Carlton",
+    "player": "Wilson, Billy",
+    "injury": "Foot",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Collingwood",
+    "player": "Hill, Bobby",
+    "injury": "Unavailable",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Collingwood",
+    "player": "Howe, Jeremy",
+    "injury": "Calf",
+    "estimated_return": "1-2 weeks",
+    "severity": 2
+  },
+  {
+    "team": "Collingwood",
+    "player": "McInnes, Reef",
+    "injury": "Knee",
+    "estimated_return": "4-6 weeks",
+    "severity": 3
+  },
+  {
+    "team": "Collingwood",
+    "player": "Moore, Darcy",
+    "injury": "Calf",
+    "estimated_return": "1 week",
+    "severity": 1
+  },
+  {
+    "team": "Essendon",
+    "player": "Bourke, Cillian",
+    "injury": "Hamstring",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Essendon",
+    "player": "Bryan, Nick",
+    "injury": "Knee",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Essendon",
+    "player": "Edwards, Tom",
+    "injury": "Knee",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Essendon",
+    "player": "Hayes, Lewis",
+    "injury": "Knee",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Essendon",
+    "player": "Kako, Isaac",
+    "injury": "Hamstring",
+    "estimated_return": "1-3 weeks",
+    "severity": 2
+  },
+  {
+    "team": "Essendon",
+    "player": "Martin, Nic",
+    "injury": "Knee",
+    "estimated_return": "Season",
+    "severity": 4
+  },
+  {
+    "team": "Essendon",
+    "player": "Ridley, Jordan",
+    "injury": "Calf",
+    "estimated_return": "4-5 weeks",
+    "severity": 3
+  },
+  {
+    "team": "Essendon",
+    "player": "Robey, Sullivan",
+    "injury": "Back",
+    "estimated_return": "1 week",
+    "severity": 1
+  },
+  {
+    "team": "Essendon",
+    "player": "Setterfield, Will",
+    "injury": "Foot",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Essendon",
+    "player": "Unwin, Rhys",
+    "injury": "Calf",
+    "estimated_return": "3 weeks",
+    "severity": 2
+  },
+  {
+    "team": "Fremantle",
+    "player": "Cox, Brennan",
+    "injury": "Calf",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Fremantle",
+    "player": "Pearce, Alex",
+    "injury": "Calf",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Fremantle",
+    "player": "Switkowski, Sam",
+    "injury": "Concussion",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Fremantle",
+    "player": "Sturt, Sam",
+    "injury": "Knee",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Fremantle",
+    "player": "Worner, Karl",
+    "injury": "Knee soreness",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Geelong",
+    "player": "Barker, Harley",
+    "injury": "Knee",
+    "estimated_return": "Indefinite",
+    "severity": 4
+  },
+  {
+    "team": "Geelong",
+    "player": "Cameron, Jeremy",
+    "injury": "Quad",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Geelong",
+    "player": "Conway, Toby",
+    "injury": "Foot/Knee",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Geelong",
+    "player": "Dangerfield, Patrick",
+    "injury": "Calf",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Geelong",
+    "player": "Matofai-Forbes, Keighton",
+    "injury": "Foot",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Geelong",
+    "player": "Miers, Gryan",
+    "injury": "Thumb",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Geelong",
+    "player": "Molier, Jacob",
+    "injury": "Foot",
+    "estimated_return": "8-10 weeks",
+    "severity": 4
+  },
+  {
+    "team": "Geelong",
+    "player": "Smith, Bailey",
+    "injury": "Calf",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Gold Coast",
+    "player": "Addinsall, Beau",
+    "injury": "Hamstring",
+    "estimated_return": "4-6 weeks",
+    "severity": 3
+  },
+  {
+    "team": "Gold Coast",
+    "player": "Ballard, Charlie",
+    "injury": "Knee",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Gold Coast",
+    "player": "Himmelberg, Elliott",
+    "injury": "Knee",
+    "estimated_return": "6-plus weeks",
+    "severity": 2
+  },
+  {
+    "team": "Gold Coast",
+    "player": "Knobel, Max",
+    "injury": "Ankle",
+    "estimated_return": "1-3 weeks",
+    "severity": 2
+  },
+  {
+    "team": "Gold Coast",
+    "player": "Murray, Jai",
+    "injury": "Leg",
+    "estimated_return": "6-plus weeks",
+    "severity": 2
+  },
+  {
+    "team": "Gold Coast",
+    "player": "Rogers, Jake",
+    "injury": "Hamstring",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Gold Coast",
+    "player": "Rowell, Matt",
+    "injury": "Finger",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Gold Coast",
+    "player": "Walter, Jed",
+    "injury": "Suspension",
+    "estimated_return": "Round 1",
+    "severity": 2
+  },
+  {
+    "team": "Greater Western Sydney",
+    "player": "Aleer, Leek",
+    "injury": "Groin",
+    "estimated_return": "1 week",
+    "severity": 1
+  },
+  {
+    "team": "Greater Western Sydney",
+    "player": "Angove, Cody",
+    "injury": "Hamstring",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Greater Western Sydney",
+    "player": "Bedford, Toby",
+    "injury": "Hamstring",
+    "estimated_return": "1 week",
+    "severity": 1
+  },
+  {
+    "team": "Greater Western Sydney",
+    "player": "Cadman, Aaron",
+    "injury": "Pelvis",
+    "estimated_return": "2 weeks",
+    "severity": 2
+  },
+  {
+    "team": "Greater Western Sydney",
+    "player": "Callaghan, Finn",
+    "injury": "Hip",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Greater Western Sydney",
+    "player": "Daniels, Brent",
+    "injury": "Hamstring",
+    "estimated_return": "3-4 weeks",
+    "severity": 3
+  },
+  {
+    "team": "Greater Western Sydney",
+    "player": "Green, Tom",
+    "injury": "Knee",
+    "estimated_return": "Season",
+    "severity": 4
+  },
+  {
+    "team": "Greater Western Sydney",
+    "player": "Jones, Darcy",
+    "injury": "Knee",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Greater Western Sydney",
+    "player": "Kelly, Josh",
+    "injury": "Hip",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Greater Western Sydney",
+    "player": "McMullin, Toby",
+    "injury": "Hamstring",
+    "estimated_return": "1 week",
+    "severity": 1
+  },
+  {
+    "team": "Greater Western Sydney",
+    "player": "Taylor, Sam",
+    "injury": "Hamstring",
+    "estimated_return": "4-6 weeks",
+    "severity": 3
+  },
+  {
+    "team": "Hawthorn",
+    "player": "Barrass, Tom",
+    "injury": "Back",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Hawthorn",
+    "player": "Blanck, James",
+    "injury": "Groin",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Hawthorn",
+    "player": "Day, Will",
+    "injury": "Shoulder",
+    "estimated_return": "3 months",
+    "severity": 2
+  },
+  {
+    "team": "Hawthorn",
+    "player": "Mackenzie, Cam",
+    "injury": "Concussion",
+    "estimated_return": "1 week",
+    "severity": 1
+  },
+  {
+    "team": "Hawthorn",
+    "player": "Nairn, Cam",
+    "injury": "Back",
+    "estimated_return": "1 week",
+    "severity": 1
+  },
+  {
+    "team": "Melbourne",
+    "player": "Bowey, Jake",
+    "injury": "Foot",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Melbourne",
+    "player": "Campbell, Tom",
+    "injury": "Neck",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Melbourne",
+    "player": "Culley, Jai",
+    "injury": "Arm",
+    "estimated_return": "1-2 weeks",
+    "severity": 2
+  },
+  {
+    "team": "Melbourne",
+    "player": "Fritsch, Bayley",
+    "injury": "Hand",
+    "estimated_return": "1-2 weeks",
+    "severity": 2
+  },
+  {
+    "team": "Melbourne",
+    "player": "Henderson, Jack",
+    "injury": "Sacrum",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Melbourne",
+    "player": "Jefferson, Matt",
+    "injury": "Foot",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Melbourne",
+    "player": "Kentfield, Luker",
+    "injury": "Knee",
+    "estimated_return": "6 weeks",
+    "severity": 3
+  },
+  {
+    "team": "Melbourne",
+    "player": "McAdam, Shane",
+    "injury": "Achilles",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Melbourne",
+    "player": "Mihocek, Brody",
+    "injury": "Concussion",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Melbourne",
+    "player": "Moniz-Wakefield, Andy",
+    "injury": "Knee",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Melbourne",
+    "player": "Viney, Jack",
+    "injury": "Achilles",
+    "estimated_return": "8 weeks",
+    "severity": 3
+  },
+  {
+    "team": "Melbourne",
+    "player": "White, Kalani",
+    "injury": "Glandular fever",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "North Melbourne",
+    "player": "Archer, Jackson",
+    "injury": "Knee",
+    "estimated_return": "Season",
+    "severity": 4
+  },
+  {
+    "team": "North Melbourne",
+    "player": "Corr, Aidan",
+    "injury": "Calf",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "North Melbourne",
+    "player": "Goad, Taylor",
+    "injury": "Ankle",
+    "estimated_return": "2-4 weeks",
+    "severity": 2
+  },
+  {
+    "team": "North Melbourne",
+    "player": "Hardeman, Riley",
+    "injury": "Ankle",
+    "estimated_return": "1-2 weeks",
+    "severity": 2
+  },
+  {
+    "team": "North Melbourne",
+    "player": "McDonald, Luke",
+    "injury": "Wrist",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "North Melbourne",
+    "player": "McKercher, Colby",
+    "injury": "Finger",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "North Melbourne",
+    "player": "Thredgold, Blake",
+    "injury": "Foot",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "North Melbourne",
+    "player": "Wardlaw, George",
+    "injury": "Hamstring",
+    "estimated_return": "2-3 weeks",
+    "severity": 2
+  },
+  {
+    "team": "Port Adelaide",
+    "player": "Cochrane, Tom",
+    "injury": "Hamstring",
+    "estimated_return": "3-4 weeks",
+    "severity": 3
+  },
+  {
+    "team": "Port Adelaide",
+    "player": "Lukosius, Jack",
+    "injury": "Groin",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Port Adelaide",
+    "player": "Powell-Pepper, Sam",
+    "injury": "Knee",
+    "estimated_return": "12-14 weeks",
+    "severity": 4
+  },
+  {
+    "team": "Port Adelaide",
+    "player": "Soldo, Ivan",
+    "injury": "Knee",
+    "estimated_return": "Season",
+    "severity": 4
+  },
+  {
+    "team": "Port Adelaide",
+    "player": "Wines, Ollie",
+    "injury": "Suspension",
+    "estimated_return": "Round 3",
+    "severity": 2
+  },
+  {
+    "team": "Richmond",
+    "player": "Clarke, Judson",
+    "injury": "ACL",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Richmond",
+    "player": "Cumming, Sam",
+    "injury": "Shoulder",
+    "estimated_return": "4 weeks",
+    "severity": 3
+  },
+  {
+    "team": "Richmond",
+    "player": "Hayes-Brown, Ollie",
+    "injury": "Patella tendon",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Richmond",
+    "player": "Hotton, Taj",
+    "injury": "Hip",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Richmond",
+    "player": "Lefau, Mykelti",
+    "injury": "Suspension",
+    "estimated_return": "Round 2",
+    "severity": 2
+  },
+  {
+    "team": "Richmond",
+    "player": "Prestia, Dion",
+    "injury": "Hamstring",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Richmond",
+    "player": "Ryan, Samson",
+    "injury": "Foot",
+    "estimated_return": "3-4 weeks",
+    "severity": 3
+  },
+  {
+    "team": "Richmond",
+    "player": "Sims, Tom",
+    "injury": "Elbow/Foot",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Richmond",
+    "player": "Smillie, Josh",
+    "injury": "Quad",
+    "estimated_return": "6-10 weeks",
+    "severity": 3
+  },
+  {
+    "team": "Richmond",
+    "player": "Vlastuin, Nick",
+    "injury": "Management",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "St Kilda",
+    "player": "Byrnes, Ryan",
+    "injury": "Foot",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "St Kilda",
+    "player": "Henry, Liam",
+    "injury": "Hamstring",
+    "estimated_return": "6-7 weeks",
+    "severity": 3
+  },
+  {
+    "team": "St Kilda",
+    "player": "King, Max",
+    "injury": "Calf/knee",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "St Kilda",
+    "player": "O'Connell, Liam",
+    "injury": "Facial fractures",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "St Kilda",
+    "player": "Silvagni, Jack",
+    "injury": "Concussion",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Sydney",
+    "player": "Andrew, Riak",
+    "injury": "Quad",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Sydney",
+    "player": "Bowman, Ned",
+    "injury": "Hamstring",
+    "estimated_return": "6 weeks",
+    "severity": 3
+  },
+  {
+    "team": "Sydney",
+    "player": "Campbell, Braeden",
+    "injury": "Shin",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Sydney",
+    "player": "Cootee, Billy",
+    "injury": "Thigh",
+    "estimated_return": "3-4 weeks",
+    "severity": 3
+  },
+  {
+    "team": "Sydney",
+    "player": "Cunningham, Harry",
+    "injury": "Quad",
+    "estimated_return": "1 week",
+    "severity": 1
+  },
+  {
+    "team": "Sydney",
+    "player": "Dattoli, Jesse",
+    "injury": "Foot",
+    "estimated_return": "1-2 weeks",
+    "severity": 2
+  },
+  {
+    "team": "Sydney",
+    "player": "Hanily, Tom",
+    "injury": "Shin",
+    "estimated_return": "2-3 weeks",
+    "severity": 2
+  },
+  {
+    "team": "Sydney",
+    "player": "King, Max",
+    "injury": "Back",
+    "estimated_return": "5 months",
+    "severity": 2
+  },
+  {
+    "team": "Sydney",
+    "player": "Phillipou, Jevan",
+    "injury": "Quad",
+    "estimated_return": "1-2 weeks",
+    "severity": 2
+  },
+  {
+    "team": "West Coast",
+    "player": "Baker, Liam",
+    "injury": "Suspension",
+    "estimated_return": "Round 2",
+    "severity": 2
+  },
+  {
+    "team": "West Coast",
+    "player": "Brockman, Tyler",
+    "injury": "ITB",
+    "estimated_return": "5 weeks",
+    "severity": 3
+  },
+  {
+    "team": "West Coast",
+    "player": "Duggan, Liam",
+    "injury": "Concussion",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "West Coast",
+    "player": "Edwards, Harry",
+    "injury": "Concussion",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "West Coast",
+    "player": "Ginbey, Reuben",
+    "injury": "Foot",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "West Coast",
+    "player": "Graham, Jack",
+    "injury": "Hamstring",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "West Coast",
+    "player": "Gross, Tom",
+    "injury": "Hamstring",
+    "estimated_return": "5-7 weeks",
+    "severity": 3
+  },
+  {
+    "team": "West Coast",
+    "player": "Hutchinson, Jack",
+    "injury": "Ankle",
+    "estimated_return": "7-9 weeks",
+    "severity": 3
+  },
+  {
+    "team": "West Coast",
+    "player": "Kelly, Tim",
+    "injury": "Hamstring",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "West Coast",
+    "player": "Long, Noah",
+    "injury": "Knee",
+    "estimated_return": "Season",
+    "severity": 4
+  },
+  {
+    "team": "West Coast",
+    "player": "Rodriguez, Fred",
+    "injury": "Foot",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "West Coast",
+    "player": "Schoenberg, Harry",
+    "injury": "Suspension",
+    "estimated_return": "Round 2",
+    "severity": 2
+  },
+  {
+    "team": "West Coast",
+    "player": "Starcevich, Brandon",
+    "injury": "Calf",
+    "estimated_return": "1-2 weeks",
+    "severity": 2
+  },
+  {
+    "team": "West Coast",
+    "player": "Williams, Bailey",
+    "injury": "Groin",
+    "estimated_return": "2-3 weeks",
+    "severity": 2
+  },
+  {
+    "team": "Western Bulldogs",
+    "player": "Dale, Bailey",
+    "injury": "Knee",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Western Bulldogs",
+    "player": "Darcy, Sam",
+    "injury": "Soreness",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Western Bulldogs",
+    "player": "Garcia, Riley",
+    "injury": "Hamstring",
+    "estimated_return": "TBC",
+    "severity": 2
+  },
+  {
+    "team": "Western Bulldogs",
+    "player": "Gardner, Ryan",
+    "injury": "Groin",
+    "estimated_return": "1-2 weeks",
+    "severity": 2
+  },
+  {
+    "team": "Western Bulldogs",
+    "player": "Treloar, Adam",
+    "injury": "Calf",
+    "estimated_return": "Test",
+    "severity": 0
+  },
+  {
+    "team": "Western Bulldogs",
+    "player": "Sanders, Ryley",
+    "injury": "Concussion",
+    "estimated_return": "1-2 weeks",
+    "severity": 2
+  },
+  {
+    "team": "Western Bulldogs",
+    "player": "Walker, Zac",
+    "injury": "Ankle",
+    "estimated_return": "5-7 weeks",
+    "severity": 3
+  },
+  {
+    "team": "Western Bulldogs",
+    "player": "Weightman, Cody",
+    "injury": "Knee",
+    "estimated_return": "TBC",
+    "severity": 2
+  }
+]

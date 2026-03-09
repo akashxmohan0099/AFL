@@ -1,0 +1,2704 @@
+{
+  "label": "pattern_discovery_2021_2025",
+  "years": [
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "n_features": 275,
+  "n_rows": 101076,
+  "step2a_stability": {
+    "strong_patterns": [
+      "player_tk_rate_avg_5",
+      "player_di_rate_avg_10",
+      "player_mk_rate_avg_10",
+      "player_tk_rate_avg_10",
+      "player_if50_rate_avg_10",
+      "player_cp_rate_avg_10",
+      "player_gl_ewm_5",
+      "player_bh_ewm_5",
+      "player_mi_ewm_5",
+      "player_if50_ewm_5",
+      "player_di_ewm_5",
+      "player_mk_ewm_5",
+      "player_tog_ewm_5",
+      "player_gl_rate_ewm_5",
+      "player_di_rate_ewm_5",
+      "player_mk_rate_ewm_5",
+      "player_accuracy_3",
+      "player_accuracy_5",
+      "player_accuracy_10",
+      "player_gl_streak",
+      "player_gl_streak_weighted",
+      "player_gl_cold_streak",
+      "player_form_ratio",
+      "player_gl_volatility_5",
+      "player_gl_trend_5",
+      "days_since_last_match",
+      "season_goals_total",
+      "player_di_volatility_5",
+      "player_di_trend_5",
+      "interact_marks_rest_diff"
+    ],
+    "weak_patterns": [],
+    "top20_stable": [
+      [
+        "interact_marks_rest_diff",
+        {
+          "ranks": [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          "mean_rank": 1.0,
+          "std_rank": 0.0,
+          "min_rank": 1,
+          "max_rank": 1,
+          "in_top30_count": 5,
+          "in_top50_count": 5,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_gl_cold_streak",
+        {
+          "ranks": [
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          "mean_rank": 2.0,
+          "std_rank": 0.0,
+          "min_rank": 2,
+          "max_rank": 2,
+          "in_top30_count": 5,
+          "in_top50_count": 5,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_mk_rate_ewm_5",
+        {
+          "ranks": [
+            3,
+            3,
+            3,
+            3,
+            3
+          ],
+          "mean_rank": 3.0,
+          "std_rank": 0.0,
+          "min_rank": 3,
+          "max_rank": 3,
+          "in_top30_count": 5,
+          "in_top50_count": 5,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_accuracy_3",
+        {
+          "ranks": [
+            4,
+            4,
+            4,
+            4,
+            4
+          ],
+          "mean_rank": 4.0,
+          "std_rank": 0.0,
+          "min_rank": 4,
+          "max_rank": 4,
+          "in_top30_count": 5,
+          "in_top50_count": 5,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_accuracy_5",
+        {
+          "ranks": [
+            5,
+            5,
+            5,
+            5,
+            5
+          ],
+          "mean_rank": 5.0,
+          "std_rank": 0.0,
+          "min_rank": 5,
+          "max_rank": 5,
+          "in_top30_count": 5,
+          "in_top50_count": 5,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_accuracy_10",
+        {
+          "ranks": [
+            6,
+            6,
+            6,
+            6,
+            6
+          ],
+          "mean_rank": 6.0,
+          "std_rank": 0.0,
+          "min_rank": 6,
+          "max_rank": 6,
+          "in_top30_count": 5,
+          "in_top50_count": 5,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_gl_streak",
+        {
+          "ranks": [
+            7,
+            7,
+            7,
+            7,
+            7
+          ],
+          "mean_rank": 7.0,
+          "std_rank": 0.0,
+          "min_rank": 7,
+          "max_rank": 7,
+          "in_top30_count": 5,
+          "in_top50_count": 5,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_gl_streak_weighted",
+        {
+          "ranks": [
+            8,
+            8,
+            8,
+            8,
+            8
+          ],
+          "mean_rank": 8.0,
+          "std_rank": 0.0,
+          "min_rank": 8,
+          "max_rank": 8,
+          "in_top30_count": 5,
+          "in_top50_count": 5,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_form_ratio",
+        {
+          "ranks": [
+            9,
+            9,
+            9,
+            9,
+            9
+          ],
+          "mean_rank": 9.0,
+          "std_rank": 0.0,
+          "min_rank": 9,
+          "max_rank": 9,
+          "in_top30_count": 5,
+          "in_top50_count": 5,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_tk_rate_avg_5",
+        {
+          "ranks": [
+            10,
+            10,
+            10,
+            10,
+            10
+          ],
+          "mean_rank": 10.0,
+          "std_rank": 0.0,
+          "min_rank": 10,
+          "max_rank": 10,
+          "in_top30_count": 5,
+          "in_top50_count": 5,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_gl_volatility_5",
+        {
+          "ranks": [
+            11,
+            11,
+            11,
+            11,
+            11
+          ],
+          "mean_rank": 11.0,
+          "std_rank": 0.0,
+          "min_rank": 11,
+          "max_rank": 11,
+          "in_top30_count": 5,
+          "in_top50_count": 5,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_gl_trend_5",
+        {
+          "ranks": [
+            12,
+            12,
+            12,
+            12,
+            12
+          ],
+          "mean_rank": 12.0,
+          "std_rank": 0.0,
+          "min_rank": 12,
+          "max_rank": 12,
+          "in_top30_count": 5,
+          "in_top50_count": 5,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "days_since_last_match",
+        {
+          "ranks": [
+            13,
+            13,
+            13,
+            13,
+            13
+          ],
+          "mean_rank": 13.0,
+          "std_rank": 0.0,
+          "min_rank": 13,
+          "max_rank": 13,
+          "in_top30_count": 5,
+          "in_top50_count": 5,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "season_goals_total",
+        {
+          "ranks": [
+            14,
+            14,
+            14,
+            14,
+            14
+          ],
+          "mean_rank": 14.0,
+          "std_rank": 0.0,
+          "min_rank": 14,
+          "max_rank": 14,
+          "in_top30_count": 5,
+          "in_top50_count": 5,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_di_volatility_5",
+        {
+          "ranks": [
+            15,
+            15,
+            15,
+            15,
+            15
+          ],
+          "mean_rank": 15.0,
+          "std_rank": 0.0,
+          "min_rank": 15,
+          "max_rank": 15,
+          "in_top30_count": 5,
+          "in_top50_count": 5,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_di_trend_5",
+        {
+          "ranks": [
+            16,
+            16,
+            16,
+            16,
+            16
+          ],
+          "mean_rank": 16.0,
+          "std_rank": 0.0,
+          "min_rank": 16,
+          "max_rank": 16,
+          "in_top30_count": 5,
+          "in_top50_count": 5,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_di_rate_ewm_5",
+        {
+          "ranks": [
+            17,
+            17,
+            17,
+            17,
+            17
+          ],
+          "mean_rank": 17.0,
+          "std_rank": 0.0,
+          "min_rank": 17,
+          "max_rank": 17,
+          "in_top30_count": 5,
+          "in_top50_count": 5,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_gl_rate_ewm_5",
+        {
+          "ranks": [
+            18,
+            18,
+            18,
+            18,
+            18
+          ],
+          "mean_rank": 18.0,
+          "std_rank": 0.0,
+          "min_rank": 18,
+          "max_rank": 18,
+          "in_top30_count": 5,
+          "in_top50_count": 5,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_tog_ewm_5",
+        {
+          "ranks": [
+            19,
+            19,
+            19,
+            19,
+            19
+          ],
+          "mean_rank": 19.0,
+          "std_rank": 0.0,
+          "min_rank": 19,
+          "max_rank": 19,
+          "in_top30_count": 5,
+          "in_top50_count": 5,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_mk_ewm_5",
+        {
+          "ranks": [
+            20,
+            20,
+            20,
+            20,
+            20
+          ],
+          "mean_rank": 20.0,
+          "std_rank": 0.0,
+          "min_rank": 20,
+          "max_rank": 20,
+          "in_top30_count": 5,
+          "in_top50_count": 5,
+          "in_bottom50_count": 0
+        }
+      ]
+    ],
+    "top20_unstable": [
+      [
+        "age_years",
+        {
+          "ranks": [
+            275,
+            275,
+            275,
+            275,
+            275
+          ],
+          "mean_rank": 275.0,
+          "std_rank": 0.0,
+          "min_rank": 275,
+          "max_rank": 275,
+          "in_top30_count": 0,
+          "in_top50_count": 0,
+          "in_bottom50_count": 5
+        }
+      ],
+      [
+        "career_games_pre",
+        {
+          "ranks": [
+            102,
+            102,
+            102,
+            102,
+            102
+          ],
+          "mean_rank": 102.0,
+          "std_rank": 0.0,
+          "min_rank": 102,
+          "max_rank": 102,
+          "in_top30_count": 0,
+          "in_top50_count": 0,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "career_goals_pre",
+        {
+          "ranks": [
+            101,
+            101,
+            101,
+            101,
+            101
+          ],
+          "mean_rank": 101.0,
+          "std_rank": 0.0,
+          "min_rank": 101,
+          "max_rank": 101,
+          "in_top30_count": 0,
+          "in_top50_count": 0,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "is_home",
+        {
+          "ranks": [
+            100,
+            100,
+            100,
+            100,
+            100
+          ],
+          "mean_rank": 100.0,
+          "std_rank": 0.0,
+          "min_rank": 100,
+          "max_rank": 100,
+          "in_top30_count": 0,
+          "in_top50_count": 0,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "is_finals",
+        {
+          "ranks": [
+            99,
+            99,
+            99,
+            99,
+            99
+          ],
+          "mean_rank": 99.0,
+          "std_rank": 0.0,
+          "min_rank": 99,
+          "max_rank": 99,
+          "in_top30_count": 0,
+          "in_top50_count": 0,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "age_squared",
+        {
+          "ranks": [
+            98,
+            98,
+            98,
+            98,
+            98
+          ],
+          "mean_rank": 98.0,
+          "std_rank": 0.0,
+          "min_rank": 98,
+          "max_rank": 98,
+          "in_top30_count": 0,
+          "in_top50_count": 0,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "career_goal_avg_capped",
+        {
+          "ranks": [
+            97,
+            97,
+            97,
+            97,
+            97
+          ],
+          "mean_rank": 97.0,
+          "std_rank": 0.0,
+          "min_rank": 97,
+          "max_rank": 97,
+          "in_top30_count": 0,
+          "in_top50_count": 0,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "career_disp_avg_pre",
+        {
+          "ranks": [
+            96,
+            96,
+            96,
+            96,
+            96
+          ],
+          "mean_rank": 96.0,
+          "std_rank": 0.0,
+          "min_rank": 96,
+          "max_rank": 96,
+          "in_top30_count": 0,
+          "in_top50_count": 0,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_gl_avg_3",
+        {
+          "ranks": [
+            95,
+            95,
+            95,
+            95,
+            95
+          ],
+          "mean_rank": 95.0,
+          "std_rank": 0.0,
+          "min_rank": 95,
+          "max_rank": 95,
+          "in_top30_count": 0,
+          "in_top50_count": 0,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_di_avg_3",
+        {
+          "ranks": [
+            94,
+            94,
+            94,
+            94,
+            94
+          ],
+          "mean_rank": 94.0,
+          "std_rank": 0.0,
+          "min_rank": 94,
+          "max_rank": 94,
+          "in_top30_count": 0,
+          "in_top50_count": 0,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_mk_avg_3",
+        {
+          "ranks": [
+            93,
+            93,
+            93,
+            93,
+            93
+          ],
+          "mean_rank": 93.0,
+          "std_rank": 0.0,
+          "min_rank": 93,
+          "max_rank": 93,
+          "in_top30_count": 0,
+          "in_top50_count": 0,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_tk_avg_3",
+        {
+          "ranks": [
+            92,
+            92,
+            92,
+            92,
+            92
+          ],
+          "mean_rank": 92.0,
+          "std_rank": 0.0,
+          "min_rank": 92,
+          "max_rank": 92,
+          "in_top30_count": 0,
+          "in_top50_count": 0,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_if50_avg_3",
+        {
+          "ranks": [
+            91,
+            91,
+            91,
+            91,
+            91
+          ],
+          "mean_rank": 91.0,
+          "std_rank": 0.0,
+          "min_rank": 91,
+          "max_rank": 91,
+          "in_top30_count": 0,
+          "in_top50_count": 0,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_cl_avg_3",
+        {
+          "ranks": [
+            90,
+            90,
+            90,
+            90,
+            90
+          ],
+          "mean_rank": 90.0,
+          "std_rank": 0.0,
+          "min_rank": 90,
+          "max_rank": 90,
+          "in_top30_count": 0,
+          "in_top50_count": 0,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_ho_avg_3",
+        {
+          "ranks": [
+            89,
+            89,
+            89,
+            89,
+            89
+          ],
+          "mean_rank": 89.0,
+          "std_rank": 0.0,
+          "min_rank": 89,
+          "max_rank": 89,
+          "in_top30_count": 0,
+          "in_top50_count": 0,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_ga_avg_3",
+        {
+          "ranks": [
+            88,
+            88,
+            88,
+            88,
+            88
+          ],
+          "mean_rank": 88.0,
+          "std_rank": 0.0,
+          "min_rank": 88,
+          "max_rank": 88,
+          "in_top30_count": 0,
+          "in_top50_count": 0,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_mi_avg_3",
+        {
+          "ranks": [
+            87,
+            87,
+            87,
+            87,
+            87
+          ],
+          "mean_rank": 87.0,
+          "std_rank": 0.0,
+          "min_rank": 87,
+          "max_rank": 87,
+          "in_top30_count": 0,
+          "in_top50_count": 0,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_cm_avg_3",
+        {
+          "ranks": [
+            86,
+            86,
+            86,
+            86,
+            86
+          ],
+          "mean_rank": 86.0,
+          "std_rank": 0.0,
+          "min_rank": 86,
+          "max_rank": 86,
+          "in_top30_count": 0,
+          "in_top50_count": 0,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_cp_avg_3",
+        {
+          "ranks": [
+            72,
+            72,
+            72,
+            72,
+            72
+          ],
+          "mean_rank": 72.0,
+          "std_rank": 0.0,
+          "min_rank": 72,
+          "max_rank": 72,
+          "in_top30_count": 0,
+          "in_top50_count": 0,
+          "in_bottom50_count": 0
+        }
+      ],
+      [
+        "player_ff_avg_3",
+        {
+          "ranks": [
+            73,
+            73,
+            73,
+            73,
+            73
+          ],
+          "mean_rank": 73.0,
+          "std_rank": 0.0,
+          "min_rank": 73,
+          "max_rank": 73,
+          "in_top30_count": 0,
+          "in_top50_count": 0,
+          "in_bottom50_count": 0
+        }
+      ]
+    ]
+  },
+  "step2b_blend_ratios": {
+    "per_year": {
+      "2021": {
+        "90/10": {
+          "1plus_goals": {
+            "brier": 0.1546,
+            "bss": 0.2888
+          },
+          "2plus_goals": {
+            "brier": 0.0822,
+            "bss": 0.2381
+          },
+          "3plus_goals": {
+            "brier": 0.0368,
+            "bss": 0.147
+          },
+          "15plus_disp": {
+            "brier": 0.1581,
+            "bss": 0.3644
+          },
+          "20plus_disp": {
+            "brier": 0.118,
+            "bss": 0.4306
+          },
+          "25plus_disp": {
+            "brier": 0.1102,
+            "bss": 0.1192
+          },
+          "30plus_disp": {
+            "brier": 0.0555,
+            "bss": -0.0221
+          },
+          "2plus_mk": {
+            "brier": 0.1179,
+            "bss": 0.0591
+          },
+          "3plus_mk": {
+            "brier": 0.1833,
+            "bss": 0.1036
+          },
+          "4plus_mk": {
+            "brier": 0.2161,
+            "bss": 0.124
+          },
+          "5plus_mk": {
+            "brier": 0.2121,
+            "bss": 0.119
+          },
+          "goals_mae": 0.4873,
+          "disp_mae": 3.9554,
+          "marks_mae": 1.8781
+        },
+        "80/20": {
+          "1plus_goals": {
+            "brier": 0.1546,
+            "bss": 0.2888
+          },
+          "2plus_goals": {
+            "brier": 0.082,
+            "bss": 0.2392
+          },
+          "3plus_goals": {
+            "brier": 0.0367,
+            "bss": 0.1485
+          },
+          "15plus_disp": {
+            "brier": 0.1567,
+            "bss": 0.3698
+          },
+          "20plus_disp": {
+            "brier": 0.1169,
+            "bss": 0.4357
+          },
+          "25plus_disp": {
+            "brier": 0.1067,
+            "bss": 0.1475
+          },
+          "30plus_disp": {
+            "brier": 0.0543,
+            "bss": 0.0007
+          },
+          "2plus_mk": {
+            "brier": 0.1177,
+            "bss": 0.061
+          },
+          "3plus_mk": {
+            "brier": 0.183,
+            "bss": 0.1051
+          },
+          "4plus_mk": {
+            "brier": 0.2157,
+            "bss": 0.1254
+          },
+          "5plus_mk": {
+            "brier": 0.2116,
+            "bss": 0.121
+          },
+          "goals_mae": 0.4877,
+          "disp_mae": 3.9222,
+          "marks_mae": 1.872
+        },
+        "70/30": {
+          "1plus_goals": {
+            "brier": 0.1546,
+            "bss": 0.2888
+          },
+          "2plus_goals": {
+            "brier": 0.082,
+            "bss": 0.24
+          },
+          "3plus_goals": {
+            "brier": 0.0367,
+            "bss": 0.1495
+          },
+          "15plus_disp": {
+            "brier": 0.1556,
+            "bss": 0.3741
+          },
+          "20plus_disp": {
+            "brier": 0.1162,
+            "bss": 0.4393
+          },
+          "25plus_disp": {
+            "brier": 0.1034,
+            "bss": 0.1737
+          },
+          "30plus_disp": {
+            "brier": 0.0531,
+            "bss": 0.023
+          },
+          "2plus_mk": {
+            "brier": 0.1175,
+            "bss": 0.0624
+          },
+          "3plus_mk": {
+            "brier": 0.1828,
+            "bss": 0.106
+          },
+          "4plus_mk": {
+            "brier": 0.2155,
+            "bss": 0.1264
+          },
+          "5plus_mk": {
+            "brier": 0.2112,
+            "bss": 0.1225
+          },
+          "goals_mae": 0.4881,
+          "disp_mae": 3.8967,
+          "marks_mae": 1.8673
+        },
+        "60/40": {
+          "1plus_goals": {
+            "brier": 0.1546,
+            "bss": 0.2888
+          },
+          "2plus_goals": {
+            "brier": 0.0819,
+            "bss": 0.2403
+          },
+          "3plus_goals": {
+            "brier": 0.0367,
+            "bss": 0.1501
+          },
+          "15plus_disp": {
+            "brier": 0.1549,
+            "bss": 0.3771
+          },
+          "20plus_disp": {
+            "brier": 0.1157,
+            "bss": 0.4414
+          },
+          "25plus_disp": {
+            "brier": 0.1004,
+            "bss": 0.1976
+          },
+          "30plus_disp": {
+            "brier": 0.0519,
+            "bss": 0.0434
+          },
+          "2plus_mk": {
+            "brier": 0.1174,
+            "bss": 0.0634
+          },
+          "3plus_mk": {
+            "brier": 0.1827,
+            "bss": 0.1065
+          },
+          "4plus_mk": {
+            "brier": 0.2154,
+            "bss": 0.1268
+          },
+          "5plus_mk": {
+            "brier": 0.2111,
+            "bss": 0.1232
+          },
+          "goals_mae": 0.4887,
+          "disp_mae": 3.8803,
+          "marks_mae": 1.8636
+        },
+        "50/50": {
+          "1plus_goals": {
+            "brier": 0.1546,
+            "bss": 0.2888
+          },
+          "2plus_goals": {
+            "brier": 0.0819,
+            "bss": 0.2402
+          },
+          "3plus_goals": {
+            "brier": 0.0367,
+            "bss": 0.1501
+          },
+          "15plus_disp": {
+            "brier": 0.1545,
+            "bss": 0.3786
+          },
+          "20plus_disp": {
+            "brier": 0.1156,
+            "bss": 0.442
+          },
+          "25plus_disp": {
+            "brier": 0.0977,
+            "bss": 0.2192
+          },
+          "30plus_disp": {
+            "brier": 0.0509,
+            "bss": 0.0628
+          },
+          "2plus_mk": {
+            "brier": 0.1173,
+            "bss": 0.0639
+          },
+          "3plus_mk": {
+            "brier": 0.1827,
+            "bss": 0.1064
+          },
+          "4plus_mk": {
+            "brier": 0.2155,
+            "bss": 0.1265
+          },
+          "5plus_mk": {
+            "brier": 0.211,
+            "bss": 0.1232
+          },
+          "goals_mae": 0.4893,
+          "disp_mae": 3.8734,
+          "marks_mae": 1.8615
+        }
+      },
+      "2022": {
+        "90/10": {
+          "1plus_goals": {
+            "brier": 0.1578,
+            "bss": 0.2869
+          },
+          "2plus_goals": {
+            "brier": 0.0801,
+            "bss": 0.2754
+          },
+          "3plus_goals": {
+            "brier": 0.0376,
+            "bss": 0.1858
+          },
+          "15plus_disp": {
+            "brier": 0.1542,
+            "bss": 0.3825
+          },
+          "20plus_disp": {
+            "brier": 0.1161,
+            "bss": 0.4361
+          },
+          "25plus_disp": {
+            "brier": 0.0973,
+            "bss": 0.1741
+          },
+          "30plus_disp": {
+            "brier": 0.0489,
+            "bss": -0.0096
+          },
+          "2plus_mk": {
+            "brier": 0.1208,
+            "bss": 0.0736
+          },
+          "3plus_mk": {
+            "brier": 0.1895,
+            "bss": 0.1072
+          },
+          "4plus_mk": {
+            "brier": 0.2155,
+            "bss": 0.1331
+          },
+          "5plus_mk": {
+            "brier": 0.2054,
+            "bss": 0.1327
+          },
+          "goals_mae": 0.4886,
+          "disp_mae": 3.8855,
+          "marks_mae": 1.824
+        },
+        "80/20": {
+          "1plus_goals": {
+            "brier": 0.1578,
+            "bss": 0.2869
+          },
+          "2plus_goals": {
+            "brier": 0.08,
+            "bss": 0.2763
+          },
+          "3plus_goals": {
+            "brier": 0.0375,
+            "bss": 0.1877
+          },
+          "15plus_disp": {
+            "brier": 0.1538,
+            "bss": 0.3841
+          },
+          "20plus_disp": {
+            "brier": 0.1158,
+            "bss": 0.4379
+          },
+          "25plus_disp": {
+            "brier": 0.0972,
+            "bss": 0.1753
+          },
+          "30plus_disp": {
+            "brier": 0.0488,
+            "bss": -0.0069
+          },
+          "2plus_mk": {
+            "brier": 0.1206,
+            "bss": 0.0744
+          },
+          "3plus_mk": {
+            "brier": 0.1894,
+            "bss": 0.1079
+          },
+          "4plus_mk": {
+            "brier": 0.2153,
+            "bss": 0.1341
+          },
+          "5plus_mk": {
+            "brier": 0.2051,
+            "bss": 0.1339
+          },
+          "goals_mae": 0.4892,
+          "disp_mae": 3.8712,
+          "marks_mae": 1.8209
+        },
+        "70/30": {
+          "1plus_goals": {
+            "brier": 0.1578,
+            "bss": 0.2869
+          },
+          "2plus_goals": {
+            "brier": 0.08,
+            "bss": 0.2767
+          },
+          "3plus_goals": {
+            "brier": 0.0374,
+            "bss": 0.1889
+          },
+          "15plus_disp": {
+            "brier": 0.1535,
+            "bss": 0.3853
+          },
+          "20plus_disp": {
+            "brier": 0.1155,
+            "bss": 0.4392
+          },
+          "25plus_disp": {
+            "brier": 0.0971,
+            "bss": 0.1756
+          },
+          "30plus_disp": {
+            "brier": 0.0487,
+            "bss": -0.0048
+          },
+          "2plus_mk": {
+            "brier": 0.1206,
+            "bss": 0.0749
+          },
+          "3plus_mk": {
+            "brier": 0.1893,
+            "bss": 0.1081
+          },
+          "4plus_mk": {
+            "brier": 0.2151,
+            "bss": 0.1346
+          },
+          "5plus_mk": {
+            "brier": 0.205,
+            "bss": 0.1345
+          },
+          "goals_mae": 0.49,
+          "disp_mae": 3.8606,
+          "marks_mae": 1.8188
+        },
+        "60/40": {
+          "1plus_goals": {
+            "brier": 0.1578,
+            "bss": 0.2869
+          },
+          "2plus_goals": {
+            "brier": 0.08,
+            "bss": 0.2765
+          },
+          "3plus_goals": {
+            "brier": 0.0374,
+            "bss": 0.1892
+          },
+          "15plus_disp": {
+            "brier": 0.1533,
+            "bss": 0.3861
+          },
+          "20plus_disp": {
+            "brier": 0.1153,
+            "bss": 0.4402
+          },
+          "25plus_disp": {
+            "brier": 0.0972,
+            "bss": 0.1752
+          },
+          "30plus_disp": {
+            "brier": 0.0486,
+            "bss": -0.0033
+          },
+          "2plus_mk": {
+            "brier": 0.1206,
+            "bss": 0.075
+          },
+          "3plus_mk": {
+            "brier": 0.1894,
+            "bss": 0.1079
+          },
+          "4plus_mk": {
+            "brier": 0.2151,
+            "bss": 0.1347
+          },
+          "5plus_mk": {
+            "brier": 0.2049,
+            "bss": 0.1346
+          },
+          "goals_mae": 0.4909,
+          "disp_mae": 3.8529,
+          "marks_mae": 1.818
+        },
+        "50/50": {
+          "1plus_goals": {
+            "brier": 0.1578,
+            "bss": 0.2869
+          },
+          "2plus_goals": {
+            "brier": 0.0801,
+            "bss": 0.2758
+          },
+          "3plus_goals": {
+            "brier": 0.0374,
+            "bss": 0.1888
+          },
+          "15plus_disp": {
+            "brier": 0.1532,
+            "bss": 0.3865
+          },
+          "20plus_disp": {
+            "brier": 0.1152,
+            "bss": 0.4407
+          },
+          "25plus_disp": {
+            "brier": 0.0973,
+            "bss": 0.1739
+          },
+          "30plus_disp": {
+            "brier": 0.0486,
+            "bss": -0.0018
+          },
+          "2plus_mk": {
+            "brier": 0.1206,
+            "bss": 0.0747
+          },
+          "3plus_mk": {
+            "brier": 0.1895,
+            "bss": 0.1072
+          },
+          "4plus_mk": {
+            "brier": 0.2152,
+            "bss": 0.1342
+          },
+          "5plus_mk": {
+            "brier": 0.205,
+            "bss": 0.1342
+          },
+          "goals_mae": 0.4918,
+          "disp_mae": 3.8482,
+          "marks_mae": 1.8181
+        }
+      },
+      "2023": {
+        "90/10": {
+          "1plus_goals": {
+            "brier": 0.158,
+            "bss": 0.2833
+          },
+          "2plus_goals": {
+            "brier": 0.0806,
+            "bss": 0.2528
+          },
+          "3plus_goals": {
+            "brier": 0.0359,
+            "bss": 0.164
+          },
+          "15plus_disp": {
+            "brier": 0.1542,
+            "bss": 0.382
+          },
+          "20plus_disp": {
+            "brier": 0.1215,
+            "bss": 0.4048
+          },
+          "25plus_disp": {
+            "brier": 0.0925,
+            "bss": 0.2104
+          },
+          "30plus_disp": {
+            "brier": 0.046,
+            "bss": 0.0357
+          },
+          "2plus_mk": {
+            "brier": 0.1272,
+            "bss": 0.1024
+          },
+          "3plus_mk": {
+            "brier": 0.1885,
+            "bss": 0.1315
+          },
+          "4plus_mk": {
+            "brier": 0.2132,
+            "bss": 0.1464
+          },
+          "5plus_mk": {
+            "brier": 0.1997,
+            "bss": 0.14
+          },
+          "goals_mae": 0.4967,
+          "disp_mae": 4.0004,
+          "marks_mae": 1.7935
+        },
+        "80/20": {
+          "1plus_goals": {
+            "brier": 0.158,
+            "bss": 0.2833
+          },
+          "2plus_goals": {
+            "brier": 0.0805,
+            "bss": 0.2539
+          },
+          "3plus_goals": {
+            "brier": 0.0359,
+            "bss": 0.1655
+          },
+          "15plus_disp": {
+            "brier": 0.1529,
+            "bss": 0.3873
+          },
+          "20plus_disp": {
+            "brier": 0.1205,
+            "bss": 0.4099
+          },
+          "25plus_disp": {
+            "brier": 0.0926,
+            "bss": 0.2099
+          },
+          "30plus_disp": {
+            "brier": 0.0461,
+            "bss": 0.0348
+          },
+          "2plus_mk": {
+            "brier": 0.1271,
+            "bss": 0.1031
+          },
+          "3plus_mk": {
+            "brier": 0.1882,
+            "bss": 0.1327
+          },
+          "4plus_mk": {
+            "brier": 0.2128,
+            "bss": 0.1481
+          },
+          "5plus_mk": {
+            "brier": 0.1992,
+            "bss": 0.1419
+          },
+          "goals_mae": 0.497,
+          "disp_mae": 3.9756,
+          "marks_mae": 1.7886
+        },
+        "70/30": {
+          "1plus_goals": {
+            "brier": 0.158,
+            "bss": 0.2833
+          },
+          "2plus_goals": {
+            "brier": 0.0804,
+            "bss": 0.2546
+          },
+          "3plus_goals": {
+            "brier": 0.0358,
+            "bss": 0.1664
+          },
+          "15plus_disp": {
+            "brier": 0.1517,
+            "bss": 0.3918
+          },
+          "20plus_disp": {
+            "brier": 0.1195,
+            "bss": 0.4145
+          },
+          "25plus_disp": {
+            "brier": 0.0928,
+            "bss": 0.2081
+          },
+          "30plus_disp": {
+            "brier": 0.0462,
+            "bss": 0.0329
+          },
+          "2plus_mk": {
+            "brier": 0.1271,
+            "bss": 0.1035
+          },
+          "3plus_mk": {
+            "brier": 0.1881,
+            "bss": 0.1336
+          },
+          "4plus_mk": {
+            "brier": 0.2125,
+            "bss": 0.1493
+          },
+          "5plus_mk": {
+            "brier": 0.1989,
+            "bss": 0.1432
+          },
+          "goals_mae": 0.4975,
+          "disp_mae": 3.9543,
+          "marks_mae": 1.7847
+        },
+        "60/40": {
+          "1plus_goals": {
+            "brier": 0.158,
+            "bss": 0.2833
+          },
+          "2plus_goals": {
+            "brier": 0.0804,
+            "bss": 0.2549
+          },
+          "3plus_goals": {
+            "brier": 0.0358,
+            "bss": 0.1666
+          },
+          "15plus_disp": {
+            "brier": 0.1508,
+            "bss": 0.3955
+          },
+          "20plus_disp": {
+            "brier": 0.1187,
+            "bss": 0.4184
+          },
+          "25plus_disp": {
+            "brier": 0.0931,
+            "bss": 0.205
+          },
+          "30plus_disp": {
+            "brier": 0.0463,
+            "bss": 0.0298
+          },
+          "2plus_mk": {
+            "brier": 0.1271,
+            "bss": 0.1036
+          },
+          "3plus_mk": {
+            "brier": 0.188,
+            "bss": 0.134
+          },
+          "4plus_mk": {
+            "brier": 0.2123,
+            "bss": 0.1501
+          },
+          "5plus_mk": {
+            "brier": 0.1987,
+            "bss": 0.1441
+          },
+          "goals_mae": 0.4981,
+          "disp_mae": 3.9371,
+          "marks_mae": 1.7821
+        },
+        "50/50": {
+          "1plus_goals": {
+            "brier": 0.158,
+            "bss": 0.2833
+          },
+          "2plus_goals": {
+            "brier": 0.0804,
+            "bss": 0.2549
+          },
+          "3plus_goals": {
+            "brier": 0.0358,
+            "bss": 0.1661
+          },
+          "15plus_disp": {
+            "brier": 0.1501,
+            "bss": 0.3983
+          },
+          "20plus_disp": {
+            "brier": 0.118,
+            "bss": 0.4218
+          },
+          "25plus_disp": {
+            "brier": 0.0937,
+            "bss": 0.2003
+          },
+          "30plus_disp": {
+            "brier": 0.0465,
+            "bss": 0.0256
+          },
+          "2plus_mk": {
+            "brier": 0.1271,
+            "bss": 0.1034
+          },
+          "3plus_mk": {
+            "brier": 0.188,
+            "bss": 0.134
+          },
+          "4plus_mk": {
+            "brier": 0.2123,
+            "bss": 0.1504
+          },
+          "5plus_mk": {
+            "brier": 0.1986,
+            "bss": 0.1444
+          },
+          "goals_mae": 0.4988,
+          "disp_mae": 3.9238,
+          "marks_mae": 1.7804
+        }
+      },
+      "2024": {
+        "90/10": {
+          "1plus_goals": {
+            "brier": 0.1572,
+            "bss": 0.293
+          },
+          "2plus_goals": {
+            "brier": 0.0875,
+            "bss": 0.2286
+          },
+          "3plus_goals": {
+            "brier": 0.0405,
+            "bss": 0.115
+          },
+          "15plus_disp": {
+            "brier": 0.154,
+            "bss": 0.3841
+          },
+          "20plus_disp": {
+            "brier": 0.1146,
+            "bss": 0.4156
+          },
+          "25plus_disp": {
+            "brier": 0.0945,
+            "bss": 0.1004
+          },
+          "30plus_disp": {
+            "brier": 0.0438,
+            "bss": -0.0447
+          },
+          "2plus_mk": {
+            "brier": 0.1281,
+            "bss": 0.1078
+          },
+          "3plus_mk": {
+            "brier": 0.1867,
+            "bss": 0.1471
+          },
+          "4plus_mk": {
+            "brier": 0.2089,
+            "bss": 0.1624
+          },
+          "5plus_mk": {
+            "brier": 0.1983,
+            "bss": 0.1585
+          },
+          "goals_mae": 0.4985,
+          "disp_mae": 3.8604,
+          "marks_mae": 1.8424
+        },
+        "80/20": {
+          "1plus_goals": {
+            "brier": 0.1572,
+            "bss": 0.293
+          },
+          "2plus_goals": {
+            "brier": 0.0872,
+            "bss": 0.2308
+          },
+          "3plus_goals": {
+            "brier": 0.0403,
+            "bss": 0.1179
+          },
+          "15plus_disp": {
+            "brier": 0.1536,
+            "bss": 0.3856
+          },
+          "20plus_disp": {
+            "brier": 0.1142,
+            "bss": 0.4173
+          },
+          "25plus_disp": {
+            "brier": 0.0944,
+            "bss": 0.102
+          },
+          "30plus_disp": {
+            "brier": 0.0436,
+            "bss": -0.0415
+          },
+          "2plus_mk": {
+            "brier": 0.1279,
+            "bss": 0.1089
+          },
+          "3plus_mk": {
+            "brier": 0.1864,
+            "bss": 0.1486
+          },
+          "4plus_mk": {
+            "brier": 0.2085,
+            "bss": 0.1641
+          },
+          "5plus_mk": {
+            "brier": 0.198,
+            "bss": 0.1598
+          },
+          "goals_mae": 0.4984,
+          "disp_mae": 3.8478,
+          "marks_mae": 1.8368
+        },
+        "70/30": {
+          "1plus_goals": {
+            "brier": 0.1572,
+            "bss": 0.293
+          },
+          "2plus_goals": {
+            "brier": 0.087,
+            "bss": 0.2326
+          },
+          "3plus_goals": {
+            "brier": 0.0402,
+            "bss": 0.1202
+          },
+          "15plus_disp": {
+            "brier": 0.1533,
+            "bss": 0.3867
+          },
+          "20plus_disp": {
+            "brier": 0.114,
+            "bss": 0.4187
+          },
+          "25plus_disp": {
+            "brier": 0.0943,
+            "bss": 0.103
+          },
+          "30plus_disp": {
+            "brier": 0.0435,
+            "bss": -0.0387
+          },
+          "2plus_mk": {
+            "brier": 0.1278,
+            "bss": 0.1097
+          },
+          "3plus_mk": {
+            "brier": 0.1862,
+            "bss": 0.1496
+          },
+          "4plus_mk": {
+            "brier": 0.2082,
+            "bss": 0.1653
+          },
+          "5plus_mk": {
+            "brier": 0.1977,
+            "bss": 0.1608
+          },
+          "goals_mae": 0.4984,
+          "disp_mae": 3.8383,
+          "marks_mae": 1.832
+        },
+        "60/40": {
+          "1plus_goals": {
+            "brier": 0.1572,
+            "bss": 0.293
+          },
+          "2plus_goals": {
+            "brier": 0.0868,
+            "bss": 0.2341
+          },
+          "3plus_goals": {
+            "brier": 0.0401,
+            "bss": 0.122
+          },
+          "15plus_disp": {
+            "brier": 0.1531,
+            "bss": 0.3874
+          },
+          "20plus_disp": {
+            "brier": 0.1138,
+            "bss": 0.4197
+          },
+          "25plus_disp": {
+            "brier": 0.0943,
+            "bss": 0.1031
+          },
+          "30plus_disp": {
+            "brier": 0.0434,
+            "bss": -0.0359
+          },
+          "2plus_mk": {
+            "brier": 0.1277,
+            "bss": 0.1101
+          },
+          "3plus_mk": {
+            "brier": 0.186,
+            "bss": 0.1502
+          },
+          "4plus_mk": {
+            "brier": 0.208,
+            "bss": 0.166
+          },
+          "5plus_mk": {
+            "brier": 0.1976,
+            "bss": 0.1613
+          },
+          "goals_mae": 0.4985,
+          "disp_mae": 3.8312,
+          "marks_mae": 1.8282
+        },
+        "50/50": {
+          "1plus_goals": {
+            "brier": 0.1572,
+            "bss": 0.293
+          },
+          "2plus_goals": {
+            "brier": 0.0867,
+            "bss": 0.2353
+          },
+          "3plus_goals": {
+            "brier": 0.0401,
+            "bss": 0.1232
+          },
+          "15plus_disp": {
+            "brier": 0.1531,
+            "bss": 0.3877
+          },
+          "20plus_disp": {
+            "brier": 0.1136,
+            "bss": 0.4203
+          },
+          "25plus_disp": {
+            "brier": 0.0943,
+            "bss": 0.1023
+          },
+          "30plus_disp": {
+            "brier": 0.0433,
+            "bss": -0.0338
+          },
+          "2plus_mk": {
+            "brier": 0.1277,
+            "bss": 0.1102
+          },
+          "3plus_mk": {
+            "brier": 0.186,
+            "bss": 0.1505
+          },
+          "4plus_mk": {
+            "brier": 0.2079,
+            "bss": 0.1663
+          },
+          "5plus_mk": {
+            "brier": 0.1976,
+            "bss": 0.1614
+          },
+          "goals_mae": 0.4986,
+          "disp_mae": 3.8268,
+          "marks_mae": 1.8252
+        }
+      },
+      "2025": {
+        "90/10": {
+          "1plus_goals": {
+            "brier": 0.1597,
+            "bss": 0.2782
+          },
+          "2plus_goals": {
+            "brier": 0.0833,
+            "bss": 0.2383
+          },
+          "3plus_goals": {
+            "brier": 0.0392,
+            "bss": 0.1773
+          },
+          "15plus_disp": {
+            "brier": 0.1517,
+            "bss": 0.3931
+          },
+          "20plus_disp": {
+            "brier": 0.1144,
+            "bss": 0.4223
+          },
+          "25plus_disp": {
+            "brier": 0.0949,
+            "bss": 0.1366
+          },
+          "30plus_disp": {
+            "brier": 0.043,
+            "bss": -0.0479
+          },
+          "2plus_mk": {
+            "brier": 0.1349,
+            "bss": 0.1106
+          },
+          "3plus_mk": {
+            "brier": 0.1894,
+            "bss": 0.1493
+          },
+          "4plus_mk": {
+            "brier": 0.2112,
+            "bss": 0.1554
+          },
+          "5plus_mk": {
+            "brier": 0.1937,
+            "bss": 0.1513
+          },
+          "goals_mae": 0.5012,
+          "disp_mae": 3.8816,
+          "marks_mae": 1.7708
+        },
+        "80/20": {
+          "1plus_goals": {
+            "brier": 0.1597,
+            "bss": 0.2782
+          },
+          "2plus_goals": {
+            "brier": 0.0831,
+            "bss": 0.2398
+          },
+          "3plus_goals": {
+            "brier": 0.0392,
+            "bss": 0.1778
+          },
+          "15plus_disp": {
+            "brier": 0.1513,
+            "bss": 0.3949
+          },
+          "20plus_disp": {
+            "brier": 0.114,
+            "bss": 0.4245
+          },
+          "25plus_disp": {
+            "brier": 0.0945,
+            "bss": 0.141
+          },
+          "30plus_disp": {
+            "brier": 0.0428,
+            "bss": -0.0422
+          },
+          "2plus_mk": {
+            "brier": 0.1348,
+            "bss": 0.1112
+          },
+          "3plus_mk": {
+            "brier": 0.1891,
+            "bss": 0.1504
+          },
+          "4plus_mk": {
+            "brier": 0.2109,
+            "bss": 0.1562
+          },
+          "5plus_mk": {
+            "brier": 0.1935,
+            "bss": 0.152
+          },
+          "goals_mae": 0.5017,
+          "disp_mae": 3.8682,
+          "marks_mae": 1.7687
+        },
+        "70/30": {
+          "1plus_goals": {
+            "brier": 0.1597,
+            "bss": 0.2782
+          },
+          "2plus_goals": {
+            "brier": 0.083,
+            "bss": 0.2409
+          },
+          "3plus_goals": {
+            "brier": 0.0392,
+            "bss": 0.178
+          },
+          "15plus_disp": {
+            "brier": 0.1509,
+            "bss": 0.3963
+          },
+          "20plus_disp": {
+            "brier": 0.1136,
+            "bss": 0.4263
+          },
+          "25plus_disp": {
+            "brier": 0.094,
+            "bss": 0.1447
+          },
+          "30plus_disp": {
+            "brier": 0.0426,
+            "bss": -0.0367
+          },
+          "2plus_mk": {
+            "brier": 0.1347,
+            "bss": 0.1114
+          },
+          "3plus_mk": {
+            "brier": 0.189,
+            "bss": 0.151
+          },
+          "4plus_mk": {
+            "brier": 0.2109,
+            "bss": 0.1565
+          },
+          "5plus_mk": {
+            "brier": 0.1935,
+            "bss": 0.1522
+          },
+          "goals_mae": 0.5023,
+          "disp_mae": 3.8574,
+          "marks_mae": 1.7676
+        },
+        "60/40": {
+          "1plus_goals": {
+            "brier": 0.1597,
+            "bss": 0.2782
+          },
+          "2plus_goals": {
+            "brier": 0.0829,
+            "bss": 0.2417
+          },
+          "3plus_goals": {
+            "brier": 0.0392,
+            "bss": 0.1777
+          },
+          "15plus_disp": {
+            "brier": 0.1507,
+            "bss": 0.3972
+          },
+          "20plus_disp": {
+            "brier": 0.1133,
+            "bss": 0.4279
+          },
+          "25plus_disp": {
+            "brier": 0.0937,
+            "bss": 0.1477
+          },
+          "30plus_disp": {
+            "brier": 0.0424,
+            "bss": -0.0322
+          },
+          "2plus_mk": {
+            "brier": 0.1348,
+            "bss": 0.1114
+          },
+          "3plus_mk": {
+            "brier": 0.189,
+            "bss": 0.1511
+          },
+          "4plus_mk": {
+            "brier": 0.2109,
+            "bss": 0.1563
+          },
+          "5plus_mk": {
+            "brier": 0.1936,
+            "bss": 0.1517
+          },
+          "goals_mae": 0.503,
+          "disp_mae": 3.8491,
+          "marks_mae": 1.7675
+        },
+        "50/50": {
+          "1plus_goals": {
+            "brier": 0.1597,
+            "bss": 0.2782
+          },
+          "2plus_goals": {
+            "brier": 0.0829,
+            "bss": 0.242
+          },
+          "3plus_goals": {
+            "brier": 0.0392,
+            "bss": 0.1771
+          },
+          "15plus_disp": {
+            "brier": 0.1506,
+            "bss": 0.3977
+          },
+          "20plus_disp": {
+            "brier": 0.1131,
+            "bss": 0.429
+          },
+          "25plus_disp": {
+            "brier": 0.0935,
+            "bss": 0.1499
+          },
+          "30plus_disp": {
+            "brier": 0.0422,
+            "bss": -0.0281
+          },
+          "2plus_mk": {
+            "brier": 0.1348,
+            "bss": 0.111
+          },
+          "3plus_mk": {
+            "brier": 0.189,
+            "bss": 0.1508
+          },
+          "4plus_mk": {
+            "brier": 0.2111,
+            "bss": 0.1555
+          },
+          "5plus_mk": {
+            "brier": 0.1938,
+            "bss": 0.1508
+          },
+          "goals_mae": 0.5038,
+          "disp_mae": 3.8436,
+          "marks_mae": 1.7685
+        }
+      }
+    },
+    "averages": {
+      "90/10": {
+        "gl1_brier_avg": 0.1575,
+        "d20_brier_avg": 0.1169,
+        "combined": 0.2744
+      },
+      "80/20": {
+        "gl1_brier_avg": 0.1575,
+        "d20_brier_avg": 0.1163,
+        "combined": 0.2737
+      },
+      "70/30": {
+        "gl1_brier_avg": 0.1575,
+        "d20_brier_avg": 0.1158,
+        "combined": 0.2732
+      },
+      "60/40": {
+        "gl1_brier_avg": 0.1575,
+        "d20_brier_avg": 0.1154,
+        "combined": 0.2728
+      },
+      "50/50": {
+        "gl1_brier_avg": 0.1575,
+        "d20_brier_avg": 0.1151,
+        "combined": 0.2726
+      }
+    },
+    "best_ratio": "50/50"
+  },
+  "step2c_feature_subsets": {
+    "all_features": {
+      "n_features": 275,
+      "metrics": {
+        "1plus_goals": {
+          "brier": 0.1597,
+          "bss": 0.2782
+        },
+        "2plus_goals": {
+          "brier": 0.0831,
+          "bss": 0.2398
+        },
+        "3plus_goals": {
+          "brier": 0.0392,
+          "bss": 0.1778
+        },
+        "15plus_disp": {
+          "brier": 0.1513,
+          "bss": 0.3949
+        },
+        "20plus_disp": {
+          "brier": 0.114,
+          "bss": 0.4245
+        },
+        "25plus_disp": {
+          "brier": 0.0945,
+          "bss": 0.141
+        },
+        "30plus_disp": {
+          "brier": 0.0428,
+          "bss": -0.0422
+        },
+        "2plus_mk": {
+          "brier": 0.1348,
+          "bss": 0.1112
+        },
+        "3plus_mk": {
+          "brier": 0.1891,
+          "bss": 0.1504
+        },
+        "4plus_mk": {
+          "brier": 0.2109,
+          "bss": 0.1562
+        },
+        "5plus_mk": {
+          "brier": 0.1935,
+          "bss": 0.152
+        },
+        "goals_mae": 0.5017,
+        "disp_mae": 3.8682,
+        "marks_mae": 1.7687
+      }
+    },
+    "stable_top50_4yr": {
+      "n_features": 50,
+      "metrics": {
+        "1plus_goals": {
+          "brier": 0.1664,
+          "bss": 0.2479
+        },
+        "2plus_goals": {
+          "brier": 0.0838,
+          "bss": 0.2332
+        },
+        "3plus_goals": {
+          "brier": 0.0395,
+          "bss": 0.1714
+        },
+        "15plus_disp": {
+          "brier": 0.1544,
+          "bss": 0.3822
+        },
+        "20plus_disp": {
+          "brier": 0.116,
+          "bss": 0.4146
+        },
+        "25plus_disp": {
+          "brier": 0.0923,
+          "bss": 0.1604
+        },
+        "30plus_disp": {
+          "brier": 0.0416,
+          "bss": -0.0127
+        },
+        "2plus_mk": {
+          "brier": 0.1371,
+          "bss": 0.0961
+        },
+        "3plus_mk": {
+          "brier": 0.1928,
+          "bss": 0.1338
+        },
+        "4plus_mk": {
+          "brier": 0.2143,
+          "bss": 0.1429
+        },
+        "5plus_mk": {
+          "brier": 0.1967,
+          "bss": 0.1381
+        },
+        "goals_mae": 0.5177,
+        "disp_mae": 3.9325,
+        "marks_mae": 1.7905
+      }
+    },
+    "very_stable_top30_3yr": {
+      "n_features": 30,
+      "metrics": {
+        "1plus_goals": {
+          "brier": 0.1672,
+          "bss": 0.2446
+        },
+        "2plus_goals": {
+          "brier": 0.0841,
+          "bss": 0.2309
+        },
+        "3plus_goals": {
+          "brier": 0.0395,
+          "bss": 0.17
+        },
+        "15plus_disp": {
+          "brier": 0.1565,
+          "bss": 0.3742
+        },
+        "20plus_disp": {
+          "brier": 0.1166,
+          "bss": 0.4116
+        },
+        "25plus_disp": {
+          "brier": 0.0917,
+          "bss": 0.1662
+        },
+        "30plus_disp": {
+          "brier": 0.0412,
+          "bss": -0.0033
+        },
+        "2plus_mk": {
+          "brier": 0.1382,
+          "bss": 0.0884
+        },
+        "3plus_mk": {
+          "brier": 0.1948,
+          "bss": 0.1248
+        },
+        "4plus_mk": {
+          "brier": 0.2163,
+          "bss": 0.135
+        },
+        "5plus_mk": {
+          "brier": 0.1987,
+          "bss": 0.1294
+        },
+        "goals_mae": 0.5214,
+        "disp_mae": 3.9744,
+        "marks_mae": 1.805
+      }
+    },
+    "prune_bottom50": {
+      "n_features": 225,
+      "metrics": {
+        "1plus_goals": {
+          "brier": 0.1595,
+          "bss": 0.2793
+        },
+        "2plus_goals": {
+          "brier": 0.0832,
+          "bss": 0.239
+        },
+        "3plus_goals": {
+          "brier": 0.0393,
+          "bss": 0.1754
+        },
+        "15plus_disp": {
+          "brier": 0.1518,
+          "bss": 0.3927
+        },
+        "20plus_disp": {
+          "brier": 0.1143,
+          "bss": 0.423
+        },
+        "25plus_disp": {
+          "brier": 0.0938,
+          "bss": 0.1471
+        },
+        "30plus_disp": {
+          "brier": 0.0427,
+          "bss": -0.0399
+        },
+        "2plus_mk": {
+          "brier": 0.135,
+          "bss": 0.1099
+        },
+        "3plus_mk": {
+          "brier": 0.1895,
+          "bss": 0.1486
+        },
+        "4plus_mk": {
+          "brier": 0.2114,
+          "bss": 0.1542
+        },
+        "5plus_mk": {
+          "brier": 0.1939,
+          "bss": 0.1503
+        },
+        "goals_mae": 0.5018,
+        "disp_mae": 3.8788,
+        "marks_mae": 1.7734
+      }
+    }
+  },
+  "step2d_era_weights": {
+    "current": {
+      "avg_gl1": 0.1558,
+      "avg_d20": 0.1156
+    },
+    "heavy_recency": {
+      "avg_gl1": 0.1557,
+      "avg_d20": 0.1156
+    },
+    "flat": {
+      "avg_gl1": 0.1556,
+      "avg_d20": 0.1157
+    }
+  },
+  "step2e_architecture": {
+    "2021": {
+      "poisson_gbt_corr": 0.9193,
+      "poisson_mae": 0.5179,
+      "gbt_mae": 0.499,
+      "poisson_mae_high_disagree": 1.0476,
+      "gbt_mae_high_disagree": 0.9491,
+      "gbt_wins_when_disagree": true
+    },
+    "2022": {
+      "poisson_gbt_corr": 0.9203,
+      "poisson_mae": 0.5076,
+      "gbt_mae": 0.5045,
+      "poisson_mae_high_disagree": 1.016,
+      "gbt_mae_high_disagree": 0.9762,
+      "gbt_wins_when_disagree": true
+    },
+    "2023": {
+      "poisson_gbt_corr": 0.927,
+      "poisson_mae": 0.52,
+      "gbt_mae": 0.507,
+      "poisson_mae_high_disagree": 1.0696,
+      "gbt_mae_high_disagree": 1.0024,
+      "gbt_wins_when_disagree": true
+    },
+    "2024": {
+      "poisson_gbt_corr": 0.8757,
+      "poisson_mae": 0.5274,
+      "gbt_mae": 0.5043,
+      "poisson_mae_high_disagree": 1.1018,
+      "gbt_mae_high_disagree": 0.954,
+      "gbt_wins_when_disagree": true
+    },
+    "2025": {
+      "poisson_gbt_corr": 0.8294,
+      "poisson_mae": 0.5281,
+      "gbt_mae": 0.5114,
+      "poisson_mae_high_disagree": 1.0415,
+      "gbt_mae_high_disagree": 0.9846,
+      "gbt_wins_when_disagree": true
+    }
+  },
+  "step3_validation": {
+    "best_config": {
+      "blend": "50/50",
+      "era": "heavy_recency",
+      "feature_subset": "prune_bottom50",
+      "n_features": 225
+    },
+    "results": {
+      "default": {
+        "2023": {
+          "1plus_goals": {
+            "brier": 0.158,
+            "bss": 0.2833
+          },
+          "2plus_goals": {
+            "brier": 0.0805,
+            "bss": 0.2539
+          },
+          "3plus_goals": {
+            "brier": 0.0359,
+            "bss": 0.1655
+          },
+          "15plus_disp": {
+            "brier": 0.1529,
+            "bss": 0.3873
+          },
+          "20plus_disp": {
+            "brier": 0.1205,
+            "bss": 0.4099
+          },
+          "25plus_disp": {
+            "brier": 0.0926,
+            "bss": 0.2099
+          },
+          "30plus_disp": {
+            "brier": 0.0461,
+            "bss": 0.0348
+          },
+          "2plus_mk": {
+            "brier": 0.1271,
+            "bss": 0.1031
+          },
+          "3plus_mk": {
+            "brier": 0.1882,
+            "bss": 0.1327
+          },
+          "4plus_mk": {
+            "brier": 0.2128,
+            "bss": 0.1481
+          },
+          "5plus_mk": {
+            "brier": 0.1992,
+            "bss": 0.1419
+          },
+          "goals_mae": 0.497,
+          "disp_mae": 3.9756,
+          "marks_mae": 1.7886
+        },
+        "2024": {
+          "1plus_goals": {
+            "brier": 0.1572,
+            "bss": 0.293
+          },
+          "2plus_goals": {
+            "brier": 0.0872,
+            "bss": 0.2308
+          },
+          "3plus_goals": {
+            "brier": 0.0403,
+            "bss": 0.1179
+          },
+          "15plus_disp": {
+            "brier": 0.1536,
+            "bss": 0.3856
+          },
+          "20plus_disp": {
+            "brier": 0.1142,
+            "bss": 0.4173
+          },
+          "25plus_disp": {
+            "brier": 0.0944,
+            "bss": 0.102
+          },
+          "30plus_disp": {
+            "brier": 0.0436,
+            "bss": -0.0415
+          },
+          "2plus_mk": {
+            "brier": 0.1279,
+            "bss": 0.1089
+          },
+          "3plus_mk": {
+            "brier": 0.1864,
+            "bss": 0.1486
+          },
+          "4plus_mk": {
+            "brier": 0.2085,
+            "bss": 0.1641
+          },
+          "5plus_mk": {
+            "brier": 0.198,
+            "bss": 0.1598
+          },
+          "goals_mae": 0.4984,
+          "disp_mae": 3.8478,
+          "marks_mae": 1.8368
+        },
+        "2025": {
+          "1plus_goals": {
+            "brier": 0.1597,
+            "bss": 0.2782
+          },
+          "2plus_goals": {
+            "brier": 0.0831,
+            "bss": 0.2398
+          },
+          "3plus_goals": {
+            "brier": 0.0392,
+            "bss": 0.1778
+          },
+          "15plus_disp": {
+            "brier": 0.1513,
+            "bss": 0.3949
+          },
+          "20plus_disp": {
+            "brier": 0.114,
+            "bss": 0.4245
+          },
+          "25plus_disp": {
+            "brier": 0.0945,
+            "bss": 0.141
+          },
+          "30plus_disp": {
+            "brier": 0.0428,
+            "bss": -0.0422
+          },
+          "2plus_mk": {
+            "brier": 0.1348,
+            "bss": 0.1112
+          },
+          "3plus_mk": {
+            "brier": 0.1891,
+            "bss": 0.1504
+          },
+          "4plus_mk": {
+            "brier": 0.2109,
+            "bss": 0.1562
+          },
+          "5plus_mk": {
+            "brier": 0.1935,
+            "bss": 0.152
+          },
+          "goals_mae": 0.5017,
+          "disp_mae": 3.8682,
+          "marks_mae": 1.7687
+        }
+      },
+      "best": {
+        "2023": {
+          "1plus_goals": {
+            "brier": 0.1564,
+            "bss": 0.2907
+          },
+          "2plus_goals": {
+            "brier": 0.0803,
+            "bss": 0.2557
+          },
+          "3plus_goals": {
+            "brier": 0.0355,
+            "bss": 0.174
+          },
+          "15plus_disp": {
+            "brier": 0.1504,
+            "bss": 0.3972
+          },
+          "20plus_disp": {
+            "brier": 0.1182,
+            "bss": 0.4209
+          },
+          "25plus_disp": {
+            "brier": 0.0936,
+            "bss": 0.2015
+          },
+          "30plus_disp": {
+            "brier": 0.0461,
+            "bss": 0.0346
+          },
+          "2plus_mk": {
+            "brier": 0.1275,
+            "bss": 0.1003
+          },
+          "3plus_mk": {
+            "brier": 0.1883,
+            "bss": 0.1325
+          },
+          "4plus_mk": {
+            "brier": 0.2116,
+            "bss": 0.153
+          },
+          "5plus_mk": {
+            "brier": 0.1976,
+            "bss": 0.1489
+          },
+          "goals_mae": 0.4983,
+          "disp_mae": 3.9399,
+          "marks_mae": 1.7774
+        },
+        "2024": {
+          "1plus_goals": {
+            "brier": 0.1553,
+            "bss": 0.3011
+          },
+          "2plus_goals": {
+            "brier": 0.0862,
+            "bss": 0.2399
+          },
+          "3plus_goals": {
+            "brier": 0.0397,
+            "bss": 0.1308
+          },
+          "15plus_disp": {
+            "brier": 0.1533,
+            "bss": 0.3869
+          },
+          "20plus_disp": {
+            "brier": 0.1138,
+            "bss": 0.4197
+          },
+          "25plus_disp": {
+            "brier": 0.0937,
+            "bss": 0.1084
+          },
+          "30plus_disp": {
+            "brier": 0.0427,
+            "bss": -0.0198
+          },
+          "2plus_mk": {
+            "brier": 0.1279,
+            "bss": 0.1086
+          },
+          "3plus_mk": {
+            "brier": 0.1857,
+            "bss": 0.1519
+          },
+          "4plus_mk": {
+            "brier": 0.2073,
+            "bss": 0.1688
+          },
+          "5plus_mk": {
+            "brier": 0.1967,
+            "bss": 0.1653
+          },
+          "goals_mae": 0.4976,
+          "disp_mae": 3.8334,
+          "marks_mae": 1.8128
+        },
+        "2025": {
+          "1plus_goals": {
+            "brier": 0.1581,
+            "bss": 0.2855
+          },
+          "2plus_goals": {
+            "brier": 0.0824,
+            "bss": 0.2468
+          },
+          "3plus_goals": {
+            "brier": 0.0388,
+            "bss": 0.1844
+          },
+          "15plus_disp": {
+            "brier": 0.1501,
+            "bss": 0.3997
+          },
+          "20plus_disp": {
+            "brier": 0.1129,
+            "bss": 0.4302
+          },
+          "25plus_disp": {
+            "brier": 0.0929,
+            "bss": 0.1549
+          },
+          "30plus_disp": {
+            "brier": 0.0419,
+            "bss": -0.0217
+          },
+          "2plus_mk": {
+            "brier": 0.1346,
+            "bss": 0.1123
+          },
+          "3plus_mk": {
+            "brier": 0.1886,
+            "bss": 0.1529
+          },
+          "4plus_mk": {
+            "brier": 0.2105,
+            "bss": 0.1578
+          },
+          "5plus_mk": {
+            "brier": 0.1931,
+            "bss": 0.1539
+          },
+          "goals_mae": 0.5051,
+          "disp_mae": 3.8389,
+          "marks_mae": 1.7687
+        }
+      }
+    }
+  },
+  "step4_removal_candidates": [
+    "age_years",
+    "opp_disp_conceded_avg_10",
+    "opp_marks_conceded_avg_5",
+    "opp_marks_conceded_avg_10",
+    "opp_contested_poss_diff_5",
+    "opp_tackle_rate_avg_5",
+    "opp_tackle_rate_avg_10",
+    "opp_key_defenders_count",
+    "opp_defender_strength_score",
+    "team_goals_avg_5",
+    "team_disp_avg_5",
+    "team_goals_avg_10",
+    "team_disp_avg_10",
+    "team_goals_avg_pre",
+    "team_disp_avg_pre",
+    "team_if_avg_5",
+    "forward_score",
+    "teammate_enabler_count",
+    "teammate_scoring_avg",
+    "interact_player_vs_opp_defense",
+    "interact_form_vs_defense",
+    "interact_home_scoring",
+    "interact_venue_boost",
+    "interact_team_form_share",
+    "interact_hot_vs_weak_defense",
+    "interact_streak_forward",
+    "interact_disp_vs_contested",
+    "interact_disp_pace",
+    "interact_disp_vs_cp_diff",
+    "interact_mid_supply_forward",
+    "interact_disp_share_team_form",
+    "interact_tog_disp_form",
+    "archetype_prob_0",
+    "archetype_prob_1",
+    "archetype_prob_2",
+    "archetype_prob_3",
+    "archetype_prob_4",
+    "archetype_prob_5",
+    "opp_arch_gl_conceded_avg_5",
+    "opp_arch_disp_conceded_avg_5",
+    "archetype_di_ceiling_ratio",
+    "archetype_di_ceiling_5",
+    "game_pace_proxy",
+    "expected_margin_diff",
+    "expected_margin_abs",
+    "team_rest_days",
+    "opp_rest_days",
+    "rest_day_differential",
+    "ground_length",
+    "ground_width"
+  ]
+}

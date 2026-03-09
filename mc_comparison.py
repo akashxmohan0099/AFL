@@ -29,13 +29,10 @@ from model import (
 def run_comparison(year: int = 2025, n_sims: int = 10000):
     """Run sequential backtest with both direct and MC predictions."""
 
-    feat_path = config.FEATURES_DIR / "feature_matrix.parquet"
-    feat_cols_path = config.FEATURES_DIR / "feature_columns.json"
+    from metrics import load_feature_matrix
     tm_path = config.BASE_STORE_DIR / "team_matches.parquet"
 
-    feature_df = pd.read_parquet(feat_path)
-    with open(feat_cols_path) as f:
-        feature_cols = json.load(f)
+    feature_df, feature_cols = load_feature_matrix()
 
     team_match_df = pd.read_parquet(tm_path)
     team_match_df["date"] = pd.to_datetime(team_match_df["date"])

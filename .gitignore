@@ -2,6 +2,7 @@
 __pycache__/
 *.pyc
 .env
+.next/
 
 # Large / regenerable data
 AFL Betting odds/

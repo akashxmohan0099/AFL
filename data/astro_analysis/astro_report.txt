@@ -1,0 +1,82 @@
+================================================================================
+AFL ASTROLOGY & NUMEROLOGY PERFORMANCE ANALYSIS — RESULTS
+================================================================================
+
+Total players: 10
+Total games analyzed: 1752
+Dimensions computed: 21 esoteric subscores per game
+
+────────────────────────────────────────────────────────────────────────────────
+1. OVERALL CORRELATION
+────────────────────────────────────────────────────────────────────────────────
+   Pearson r = 0.014907  (p = 0.532913)
+   Not statistically significant (p >= 0.05)
+
+   Favorable days avg performance:   +0.0146
+   Unfavorable days avg performance: -0.0152
+   T-test: t=1.0653, p=0.2869
+
+   Top-performing games on favorable days: 51.1%
+   Bottom-performing games on unfavorable days: 51.4%
+   (Random baseline: 50%)
+
+────────────────────────────────────────────────────────────────────────────────
+2. PER-PLAYER BREAKDOWN
+────────────────────────────────────────────────────────────────────────────────
+   Stewart, Tom              Scorpio      LP=5  #44   r=+0.1515  p=0.0364  fav=+0.056  unfav=-0.055  diff=+0.111  n=191
+   Elliott, Jamie            Cancer       LP=11  #5    r=+0.1510  p=0.0514  fav=+0.071  unfav=-0.070  diff=+0.141  n=167
+   Daicos, Nick              Capricorn    LP=9  #35   r=-0.1188  p=0.2514  fav=-0.015  unfav=+0.015  diff=-0.029  n=95
+   Cripps, Patrick           Pisces       LP=9  #9    r=-0.1136  p=0.0877  fav=-0.045  unfav=+0.051  diff=-0.096  n=227
+   King, Max                 Cancer       LP=3  #12   r=+0.0489  p=0.6603  fav=-0.019  unfav=+0.019  diff=-0.038  n=83
+   Rozee, Connor             Aquarius     LP=7  #20   r=-0.0473  p=0.5654  fav=-0.036  unfav=+0.036  diff=-0.072  n=150
+   Bontempelli, Marcus       Sagittarius  LP=5  #4    r=+0.0338  p=0.6012  fav=+0.017  unfav=-0.019  diff=+0.037  n=242
+   Miller, Touk              Leo          LP=3  #6    r=+0.0299  p=0.6640  fav=+0.019  unfav=-0.024  diff=+0.043  n=214
+   Heeney, Isaac             Taurus       LP=9  #5    r=-0.0033  p=0.9610  fav=+0.044  unfav=-0.048  diff=+0.092  n=224
+   Neale, Lachie             Pisces       LP=9  #9    r=-0.0006  p=0.9936  fav=-0.007  unfav=+0.005  diff=-0.012  n=159
+
+────────────────────────────────────────────────────────────────────────────────
+3. STRONGEST INDIVIDUAL DIMENSIONS
+────────────────────────────────────────────────────────────────────────────────
+   bio_critical              r=-0.0607  p=0.0110  **
+   mercury_retro             r=+0.0554  p=0.0205  **
+   home_advantage            r=+0.0391  p=0.1020  
+   saturn_return             r=-0.0353  p=0.1392  
+   personal_day_power        r=+0.0326  p=0.1725  
+   jersey_pd_harmony         r=-0.0310  p=0.1953  
+   pd_ud_harmony             r=-0.0265  p=0.2680  
+   bio_emotional             r=+0.0208  p=0.3852  
+   bio_intellectual          r=+0.0204  p=0.3924  
+   mars_compat               r=+0.0158  p=0.5075  
+
+────────────────────────────────────────────────────────────────────────────────
+4. SPECIFIC EFFECTS
+────────────────────────────────────────────────────────────────────────────────
+   Mercury Retrograde: avg perf = -0.0602 (395 games)
+   Mercury Direct:     avg perf = +0.0172 (1357 games)
+
+   Eclipse Season:  avg perf = -0.0126 (448 games)
+   Normal Period:   avg perf = +0.0040
+
+   Biorhythm Critical Days: avg perf = +0.0572 (484 games)
+   Normal Days:             avg perf = -0.0222
+
+────────────────────────────────────────────────────────────────────────────────
+5. MOON PHASE ANALYSIS
+────────────────────────────────────────────────────────────────────────────────
+   New Moon             perf=+0.1075  goals=1.06  n=202
+   Waxing Crescent      perf=-0.0545  goals=0.70  n=221
+   First Quarter        perf=+0.0142  goals=0.85  n=198
+   Waxing Gibbous       perf=-0.0061  goals=0.75  n=229
+   Full Moon            perf=+0.0189  goals=0.78  n=227
+   Waning Gibbous       perf=-0.0552  goals=0.76  n=208
+   Last Quarter         perf=-0.0327  goals=0.75  n=238
+   Waning Crescent      perf=+0.0149  goals=0.92  n=229
+
+────────────────────────────────────────────────────────────────────────────────
+6. VERDICT
+────────────────────────────────────────────────────────────────────────────────
+   The stars have spoken: AFL performance shows NO meaningful
+   correlation with astrological, numerological, or biorhythm factors.
+   The composite favorability score is essentially random noise.
+
+================================================================================

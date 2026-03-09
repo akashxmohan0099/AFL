@@ -424,6 +424,288 @@ def derive_weather_features(weather_df):
 
 
 # ---------------------------------------------------------------------------
+# Stage 5: Fixture Venue Name Normalization
+# ---------------------------------------------------------------------------
+
+# Maps common fixture venue names to VENUE_COORDINATES keys.
+# Also checks config.VENUE_NAME_MAP as fallback.
+FIXTURE_VENUE_MAP = {
+    "MCG": "M.C.G.",
+    "Marvel Stadium": "Docklands",
+    "Optus Stadium": "Perth Stadium",
+    "GMHBA Stadium": "Kardinia Park",
+    "SCG": "S.C.G.",
+    "ENGIE Stadium": "Sydney Showground",
+    "Engie Stadium": "Sydney Showground",
+    "UTAS Stadium": "York Park",
+    "TIO Stadium": "Marrara Oval",
+    "TIO Traeger Park": "Traeger Park",
+    "Mars Stadium": "Eureka Stadium",
+    "Accor Stadium": "Stadium Australia",
+    "People First Stadium": "Carrara",
+    "Heritage Bank Stadium": "Carrara",
+    "The Gabba": "Gabba",
+    "Norwood Oval": "Norwood Oval",
+}
+
+
+def _normalize_venue(venue_name):
+    """Normalize a fixture venue name to a VENUE_COORDINATES key.
+
+    Checks FIXTURE_VENUE_MAP first, then config.VENUE_NAME_MAP, then
+    returns the original name if it already matches a VENUE_COORDINATES key.
+    Returns None if no mapping is found.
+    """
+    # Direct match in VENUE_COORDINATES
+    if venue_name in VENUE_COORDINATES:
+        return venue_name
+
+    # Check fixture-specific map
+    if venue_name in FIXTURE_VENUE_MAP:
+        mapped = FIXTURE_VENUE_MAP[venue_name]
+        if mapped in VENUE_COORDINATES:
+            return mapped
+
+    # Check config.VENUE_NAME_MAP
+    if venue_name in config.VENUE_NAME_MAP:
+        mapped = config.VENUE_NAME_MAP[venue_name]
+        # config.VENUE_NAME_MAP maps to canonical names that may differ from
+        # VENUE_COORDINATES keys (e.g. "Giants Stadium" vs "Sydney Showground")
+        if mapped in VENUE_COORDINATES:
+            return mapped
+        # Try the FIXTURE_VENUE_MAP on the config-mapped name
+        if mapped in FIXTURE_VENUE_MAP:
+            re_mapped = FIXTURE_VENUE_MAP[mapped]
+            if re_mapped in VENUE_COORDINATES:
+                return re_mapped
+
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Stage 6: Forecast Weather for Upcoming Fixtures
+# ---------------------------------------------------------------------------
+
+FORECAST_API_URL = "https://api.open-meteo.com/v1/forecast"
+FORECAST_DIR = config.DATA_DIR / "forecasts"
+FORECAST_CACHE_DIR = FORECAST_DIR / "cache"
+
+
+def _default_game_hours(date_str):
+    """Return default game window hours based on day of week.
+
+    Sat/Sun: 14:00-17:00 (afternoon matches)
+    Thu/Fri: 19:00-22:00 (night matches)
+    Other: 14:00-17:00 (fallback to afternoon)
+    """
+    dt = pd.Timestamp(date_str)
+    day_of_week = dt.dayofweek  # 0=Mon, 4=Fri, 5=Sat, 6=Sun
+    if day_of_week in (3, 4):  # Thu, Fri
+        return set(range(19, 23))  # 19:00-22:00
+    else:
+        return set(range(14, 18))  # 14:00-17:00
+
+
+def _forecast_cache_path(team, opponent, date_str):
+    """Return path to cached forecast JSON for a fixture match."""
+    safe_key = f"{team}_{opponent}_{date_str}".replace(" ", "_")
+    return FORECAST_CACHE_DIR / f"{safe_key}.json"
+
+
+def fetch_forecast_for_fixtures(year):
+    """Fetch weather forecasts from Open-Meteo for upcoming fixture matches.
+
+    Loads all fixture files for the given year, fetches forecasts for matches
+    with dates >= today and <= 16 days in the future (Open-Meteo limit),
+    derives weather features, and saves to data/forecasts/weather_forecast_{year}.parquet.
+
+    Args:
+        year: Season year (e.g. 2026)
+
+    Returns:
+        DataFrame with forecast weather data and derived features, or None if no fixtures.
+    """
+    from datetime import datetime
+
+    today = pd.Timestamp(datetime.now().date())
+    max_forecast_date = today + pd.Timedelta(days=16)
+
+    # Ensure forecast directories exist
+    FORECAST_DIR.mkdir(parents=True, exist_ok=True)
+    FORECAST_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Load all fixture files for the year
+    fixture_files = sorted(
+        config.FIXTURES_DIR.glob(f"round_*_{year}.csv"),
+        key=lambda f: int(f.stem.split("_")[1]),
+    )
+    if not fixture_files:
+        print(f"  No fixture files found for {year}")
+        return None
+
+    # Collect all upcoming matches (home rows only to avoid duplicates)
+    upcoming = []
+    for fpath in fixture_files:
+        round_num = int(fpath.stem.split("_")[1])
+        df = pd.read_csv(fpath)
+        home_rows = df[df["is_home"] == 1]
+        for _, row in home_rows.iterrows():
+            match_date = pd.Timestamp(row["date"])
+            if match_date >= today:
+                upcoming.append({
+                    "round_number": round_num,
+                    "home_team": row["team"],
+                    "away_team": row["opponent"],
+                    "venue": row.get("venue", ""),
+                    "date": row["date"],
+                    "match_date": match_date,
+                })
+
+    if not upcoming:
+        print(f"  No upcoming matches found for {year}")
+        return None
+
+    print(f"  Found {len(upcoming)} upcoming matches for {year}")
+
+    # Fetch forecasts
+    records = []
+    fetched_count = 0
+    skipped_future = 0
+    skipped_venue = 0
+
+    hourly_vars = (
+        "temperature_2m,apparent_temperature,precipitation,rain,"
+        "wind_speed_10m,wind_gusts_10m,wind_direction_10m,"
+        "relative_humidity_2m,dew_point_2m,cloud_cover,surface_pressure"
+    )
+
+    for match in upcoming:
+        venue_raw = match["venue"]
+        date_str = match["date"]
+        match_date = match["match_date"]
+        home_team = match["home_team"]
+        away_team = match["away_team"]
+        round_num = match["round_number"]
+
+        # Skip if beyond forecast range
+        if match_date > max_forecast_date:
+            skipped_future += 1
+            continue
+
+        # Normalize venue name
+        venue_key = _normalize_venue(venue_raw)
+        if venue_key is None:
+            print(f"    WARNING: Unknown fixture venue '{venue_raw}' — skipping")
+            skipped_venue += 1
+            continue
+
+        lat, lon, is_roofed = VENUE_COORDINATES[venue_key]
+
+        # Generate synthetic match_id for fixtures
+        safe_venue = venue_key.replace(" ", "_").replace(".", "")
+        match_id = f"fixture_{date_str}_{safe_venue}"
+
+        # Check cache
+        cache_file = _forecast_cache_path(home_team, away_team, date_str)
+        if cache_file.exists():
+            with open(cache_file) as f:
+                cached = json.load(f)
+            cached["is_roofed"] = is_roofed
+            cached["round_number"] = round_num
+            cached["home_team"] = home_team
+            cached["away_team"] = away_team
+            cached["venue"] = venue_raw
+            cached["venue_normalized"] = venue_key
+            cached["date"] = date_str
+            records.append(cached)
+            continue
+
+        # Fetch from Open-Meteo Forecast API
+        url = (
+            f"{FORECAST_API_URL}"
+            f"?latitude={lat}&longitude={lon}"
+            f"&start_date={date_str}&end_date={date_str}"
+            f"&hourly={hourly_vars}"
+            f"&timezone=Australia%2FSydney"
+        )
+
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "AFL-Pipeline/1.0"})
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                data = json.loads(resp.read().decode())
+        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as e:
+            print(f"    WARNING: Failed to fetch forecast for {home_team} vs {away_team} ({date_str}): {e}")
+            continue
+
+        hourly = data.get("hourly", {})
+        times = hourly.get("time", [])
+
+        # Determine game window hours based on day of week
+        game_hours = _default_game_hours(date_str)
+        game_indices = []
+        for i, t in enumerate(times):
+            hour = int(t.split("T")[1].split(":")[0])
+            if hour in game_hours:
+                game_indices.append(i)
+
+        if not game_indices:
+            print(f"    WARNING: No game-window hours for {home_team} vs {away_team} ({date_str})")
+            continue
+
+        result = _aggregate_game_window(hourly, game_indices)
+        if result is None:
+            print(f"    WARNING: No valid forecast data for {home_team} vs {away_team} ({date_str})")
+            continue
+
+        result["match_id"] = match_id
+        result["is_roofed"] = is_roofed
+        result["round_number"] = round_num
+        result["home_team"] = home_team
+        result["away_team"] = away_team
+        result["venue"] = venue_raw
+        result["venue_normalized"] = venue_key
+        result["date"] = date_str
+
+        # Cache the result
+        FORECAST_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        with open(cache_file, "w") as f:
+            json.dump(result, f)
+
+        records.append(result)
+        fetched_count += 1
+        time.sleep(RATE_LIMIT_SECONDS)
+
+    if not records:
+        print(f"  No forecasts retrieved (skipped: {skipped_future} future, {skipped_venue} unknown venue)")
+        return None
+
+    print(f"  Fetched {fetched_count} new forecasts, {len(records) - fetched_count} from cache")
+    if skipped_future > 0:
+        print(f"  Skipped {skipped_future} matches beyond 16-day forecast range")
+    if skipped_venue > 0:
+        print(f"  Skipped {skipped_venue} matches with unknown venues")
+
+    # Build DataFrame
+    forecast_df = pd.DataFrame(records)
+
+    # Derive weather features
+    forecast_df = derive_weather_features(forecast_df)
+
+    # Save to parquet
+    out = forecast_df.copy()
+    for col in WEATHER_FLOAT_COLS:
+        if col in out.columns:
+            out[col] = out[col].astype(np.float32)
+    out["is_roofed"] = out["is_roofed"].astype(bool)
+
+    out_path = FORECAST_DIR / f"weather_forecast_{year}.parquet"
+    out.to_parquet(out_path, index=False)
+    print(f"  Saved {len(out)} forecasts to {out_path}")
+
+    return forecast_df
+
+
+# ---------------------------------------------------------------------------
 # CLI entry points
 # ---------------------------------------------------------------------------
 
@@ -431,7 +713,7 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) < 2:
-        print("Usage: python weather.py [test|fetch|features]")
+        print("Usage: python weather.py [test|fetch|features|forecast]")
         sys.exit(1)
 
     cmd = sys.argv[1]
@@ -471,3 +753,16 @@ if __name__ == "__main__":
         print(f"  Roofed games:    {weather_df['is_roofed'].sum()} / {len(weather_df)}")
         print(f"  Wind severity:   {weather_df['wind_severity'].value_counts().to_dict()}")
         print(f"  Temp category:   {weather_df['temperature_category'].value_counts().to_dict()}")
+
+    elif cmd == "forecast":
+        # Fetch forecasts for upcoming fixtures
+        year = int(sys.argv[2]) if len(sys.argv) > 2 else config.CURRENT_SEASON_YEAR
+        print(f"\nFetching weather forecasts for {year} fixtures...")
+        forecast_df = fetch_forecast_for_fixtures(year)
+        if forecast_df is not None and not forecast_df.empty:
+            print(f"\nForecast summary ({len(forecast_df)} matches):")
+            print(forecast_df[["home_team", "away_team", "venue", "date",
+                               "temperature_avg", "precipitation_total",
+                               "wind_speed_avg", "weather_difficulty_score"]].to_string())
+        else:
+            print("No forecasts available.")

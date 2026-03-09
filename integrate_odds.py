@@ -199,6 +199,8 @@ def create_features(odds_df):
     df = odds_df.copy()
 
     # Bookmaker implied probabilities (normalised to remove overround)
+    df["home_odds_close"] = df["home_odds_close"].replace(0, np.nan)
+    df["away_odds_close"] = df["away_odds_close"].replace(0, np.nan)
     inv_home = 1.0 / df["home_odds_close"]
     inv_away = 1.0 / df["away_odds_close"]
     overround = inv_home + inv_away

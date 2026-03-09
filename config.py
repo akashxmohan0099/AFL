@@ -31,6 +31,8 @@ UMPIRES_DIR = DATA_DIR / "umpires"
 COACHES_DIR = DATA_DIR / "coaches"
 PLAYER_PROFILES_DIR = DATA_DIR / "player_profiles"
 FOOTYWIRE_DIR = DATA_DIR / "footywire"
+SUPERCOACH_DIR = DATA_DIR / "supercoach"
+NEWS_DIR = DATA_DIR / "news"
 
 # ---------------------------------------------------------------------------
 # Era weights for recency — recent seasons matter more
@@ -91,6 +93,9 @@ PLAYER_PROFILE_AGE_FALLBACK = 25.0
 CAREER_SPLIT_MIN_GAMES = 3
 CAREER_SPLIT_FEATURES_ENABLED = False  # snapshot career splits are leaky for historical rows unless explicitly approved
 
+# Injury list
+INJURY_LOOKBACK_MONTHS = 12
+
 # Career disposal cold-start fallback (used when no prior match history exists)
 CAREER_DISP_AVG_FALLBACK = 15.0
 
@@ -121,16 +126,14 @@ ENSEMBLE_WEIGHTS = {"poisson": 0.8, "gbt": 0.2}
 DISPOSAL_DISTRIBUTION = "gaussian"  # 'poisson', 'gaussian', or 'negbin' — Gaussian wins at all thresholds (2025 backtest)
 
 # Upper-tail correction for Gaussian disposal probabilities.
-# Applied only to thresholds in DISPOSAL_UPPER_TAIL_THRESHOLDS.
-DISPOSAL_UPPER_TAIL_ENABLED = True
+# DISABLED — raw Gaussian CDF is well-calibrated (std ratio ~0.98 vs actuals).
+# These heuristics were compensating for broken isotonic calibration.
+DISPOSAL_UPPER_TAIL_ENABLED = False
 DISPOSAL_UPPER_TAIL_THRESHOLDS = [25, 30]
 DISPOSAL_UPPER_TAIL_STD_MULTIPLIER = 1.2
 DISPOSAL_UPPER_TAIL_SKEW_ALPHA = 2.0
-# Optional probability shaping for 30+ only:
-# - scale lifts underpredicted bulk probabilities
-# - cap prevents extreme overconfident tail probabilities
-DISPOSAL_30PLUS_PROB_SCALE = 1.3
-DISPOSAL_30PLUS_PROB_CAP = 0.45
+DISPOSAL_30PLUS_PROB_SCALE = 1.0
+DISPOSAL_30PLUS_PROB_CAP = 1.0
 
 GBT_PARAMS = {
     "n_estimators": 300,
@@ -179,7 +182,7 @@ DISPOSAL_POISSON_PARAMS = {
 }
 
 # Marks-specific params (separate from scoring/disposals)
-MARKS_DISTRIBUTION = "gaussian"
+MARKS_DISTRIBUTION = "negbin"
 MARKS_GBT_PARAMS_BACKTEST = {
     "max_iter": 217,
     "max_depth": 5,
@@ -192,6 +195,8 @@ MARKS_POISSON_PARAMS = {
     "max_iter": 1000,
 }
 MARKS_THRESHOLDS = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+MARKS_TAKER_THRESHOLD = 3     # binary classifier: P(marks >= 3)
+MARKS_TAKER_BLEND = 0.4       # adjustment weight for mark-taker prob
 
 # ---------------------------------------------------------------------------
 # Market / odds features
@@ -238,9 +243,9 @@ GAME_WINNER_PARAMS_BACKTEST = {
 
 # Hybrid winner mode: market prior + residual ML logit
 WINNER_HYBRID_ENABLED = True
-WINNER_HYBRID_ALPHA = 0.1
-WINNER_HYBRID_BETA = 0.7
-WINNER_HYBRID_BIAS = -0.02
+WINNER_HYBRID_ALPHA = 0.3
+WINNER_HYBRID_BETA = 0.6
+WINNER_HYBRID_BIAS = -0.01
 WINNER_MARKET_EPS = 1e-6
 WINNER_MIN_MARKET_COVERAGE = 0.30
 
@@ -269,6 +274,12 @@ MARKS_THRESHOLDS_EVAL = {"2plus_mk": 2, "3plus_mk": 3, "4plus_mk": 4, "5plus_mk"
 CALIBRATION_METHOD = "isotonic"    # isotonic regression calibration (bucket params kept for analysis)
 ISOTONIC_MIN_SAMPLES = 100         # min predictions before fitting isotonic calibrator
 ISOTONIC_REFIT_INTERVAL = 5        # refit every N rounds in sequential mode
+ISOTONIC_SKIP_TARGETS = {
+    "1plus_goals", "2plus_goals", "3plus_goals",  # two-stage scorer already calibrates well
+    "10plus_disp", "15plus_disp", "20plus_disp", "25plus_disp", "30plus_disp",  # Gaussian CDF well-calibrated; isotonic collapses variance
+    "2plus_mk", "3plus_mk", "4plus_mk", "5plus_mk", "6plus_mk",  # NegBin CDF well-calibrated; isotonic collapses variance
+    "7plus_mk", "8plus_mk", "9plus_mk", "10plus_mk",
+}
 CALIBRATION_N_BUCKETS = 10
 CALIBRATION_MIN_BUCKET_SIZE = 5
 
@@ -352,8 +363,10 @@ VENUE_NAME_MAP = {
     "Marvel Stadium": "Docklands",
     "Etihad Stadium": "Docklands",
     "S.C.G.": "S.C.G.",
+    "SCG": "S.C.G.",
     "Sydney Cricket Ground": "S.C.G.",
     "Gabba": "Gabba",
+    "The Gabba": "Gabba",
     "Brisbane Cricket Ground": "Gabba",
     "Kardinia Park": "Kardinia Park",
     "GMHBA Stadium": "Kardinia Park",
@@ -377,6 +390,7 @@ VENUE_NAME_MAP = {
     "Carrara": "Carrara",
     "Metricon Stadium": "Carrara",
     "Heritage Bank Stadium": "Carrara",
+    "People First Stadium": "Carrara",
     "Giants Stadium": "Giants Stadium",
     "Sydney Showground": "Giants Stadium",
     "ENGIE Stadium": "Giants Stadium",
@@ -391,6 +405,40 @@ VENUE_NAME_MAP = {
     "Mars Stadium": "Eureka Stadium",
     "Riverway Stadium": "Riverway Stadium",
     "Norwood Oval": "Norwood Oval",
+}
+
+# Canonical venue → display name (current sponsor + city)
+VENUE_DISPLAY_MAP = {
+    "M.C.G.":           "MCG, Melbourne",
+    "Docklands":        "Marvel Stadium, Melbourne",
+    "S.C.G.":           "SCG, Sydney",
+    "Gabba":            "The Gabba, Brisbane",
+    "Kardinia Park":    "GMHBA Stadium, Geelong",
+    "Adelaide Oval":    "Adelaide Oval, Adelaide",
+    "Perth Stadium":    "Optus Stadium, Perth",
+    "Carrara":          "People First Stadium, Gold Coast",
+    "Sydney Showground": "Engie Stadium, Sydney",
+    "Giants Stadium":   "Engie Stadium, Sydney",
+    "York Park":        "UTAS Stadium, Launceston",
+    "Bellerive Oval":   "Blundstone Arena, Hobart",
+    "Manuka Oval":      "Manuka Oval, Canberra",
+    "Subiaco":          "Subiaco Oval, Perth",
+    "Eureka Stadium":   "Mars Stadium, Ballarat",
+    "TIO Stadium":      "TIO Stadium, Darwin",
+    "Marrara Oval":     "TIO Stadium, Darwin",
+    "Cazalys Stadium":  "Cazalys Stadium, Cairns",
+    "Cazaly's Stadium": "Cazalys Stadium, Cairns",
+    "Traeger Park":     "Traeger Park, Alice Springs",
+    "Stadium Australia": "Accor Stadium, Sydney",
+    "Jiangwan Stadium": "Jiangwan Stadium, Shanghai",
+    "Riverway Stadium": "Riverway Stadium, Townsville",
+    "Norwood Oval":     "Norwood Oval, Adelaide",
+    "Football Park":    "Football Park, Adelaide",
+    "Summit Sports Park": "Summit Sports Park, Gold Coast",
+    "Barossa Oval":     "Barossa Oval, Adelaide",
+    "Hands Oval":       "Hands Oval, Bunbury",
+    "Wellington":       "Wellington, NZ",
+    "SCG":              "SCG, Sydney",
 }
 
 TEAM_NAME_MAP = {
@@ -419,6 +467,27 @@ TEAM_NAME_MAP = {
     "Footscray": "Western Bulldogs",
 }
 
+TEAM_HOME_GROUNDS = {
+    "Adelaide": "Adelaide Oval",
+    "Brisbane Lions": "Gabba",
+    "Carlton": "M.C.G.",
+    "Collingwood": "M.C.G.",
+    "Essendon": "Docklands",
+    "Fremantle": "Perth Stadium",
+    "Geelong": "Kardinia Park",
+    "Gold Coast": "Carrara",
+    "Greater Western Sydney": "Sydney Showground",
+    "Hawthorn": "M.C.G.",
+    "Melbourne": "M.C.G.",
+    "North Melbourne": "Docklands",
+    "Port Adelaide": "Adelaide Oval",
+    "Richmond": "M.C.G.",
+    "St Kilda": "Docklands",
+    "Sydney": "S.C.G.",
+    "West Coast": "Perth Stadium",
+    "Western Bulldogs": "Docklands",
+}
+
 # ---------------------------------------------------------------------------
 # Ensure directories exist
 # ---------------------------------------------------------------------------
@@ -427,7 +496,8 @@ def ensure_dirs():
     for d in [DATA_DIR, RAW_DIR, BASE_STORE_DIR, CLEANED_DIR, FEATURES_DIR,
               MODELS_DIR, PREDICTIONS_DIR, FIXTURES_DIR, BACKTEST_DIR,
               LEARNING_DIR, SEQUENTIAL_DIR, TUNING_DIR, EXPERIMENTS_DIR,
-              UMPIRES_DIR, COACHES_DIR, PLAYER_PROFILES_DIR, FOOTYWIRE_DIR]:
+              UMPIRES_DIR, COACHES_DIR, PLAYER_PROFILES_DIR, FOOTYWIRE_DIR,
+              SUPERCOACH_DIR, NEWS_DIR]:
         d.mkdir(parents=True, exist_ok=True)
     # Sequential learning subdirectories
     for subdir in ["predictions", "outcomes", "diagnostics", "analysis",

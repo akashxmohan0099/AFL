@@ -1,0 +1,136 @@
+{
+  "label": "WINNING_v4.1_pattern_discovery",
+  "config": {
+    "blend": "50/50",
+    "era": "heavy_recency",
+    "features": 225
+  },
+  "baseline_run": "sequential_2025_20260304T233212337121Z",
+  "winning_run": "sequential_2025_20260305T012847737193Z",
+  "baseline_metrics": {
+    "label": "BASELINE v4.0",
+    "n": 9931,
+    "1plus_goals": {
+      "brier": 0.1612,
+      "bss": 27.2,
+      "ece": 0.0201
+    },
+    "2plus_goals": {
+      "brier": 0.0837,
+      "bss": 23.4,
+      "ece": 0.0147
+    },
+    "3plus_goals": {
+      "brier": 0.0397,
+      "bss": 16.7,
+      "ece": 0.0108
+    },
+    "15plus_disp": {
+      "brier": 0.2441,
+      "bss": 2.4,
+      "ece": 0.1149
+    },
+    "20plus_disp": {
+      "brier": 0.1947,
+      "bss": 1.7,
+      "ece": 0.0383
+    },
+    "25plus_disp": {
+      "brier": 0.1085,
+      "bss": 1.3,
+      "ece": 0.006
+    },
+    "30plus_disp": {
+      "brier": 0.0404,
+      "bss": 1.6,
+      "ece": 0.0008
+    },
+    "2plus_mk": {
+      "brier": 0.1502,
+      "bss": 0.9,
+      "ece": 0.0257
+    },
+    "3plus_mk": {
+      "brier": 0.2201,
+      "bss": 1.1,
+      "ece": 0.0105
+    },
+    "4plus_mk": {
+      "brier": 0.2469,
+      "bss": 1.2,
+      "ece": 0.0194
+    },
+    "5plus_mk": {
+      "brier": 0.2252,
+      "bss": 1.3,
+      "ece": 0.0034
+    },
+    "goals_mae": 0.5043,
+    "disp_mae": 3.8581,
+    "marks_mae": 1.7719,
+    "scorer_auc": 0.8137
+  },
+  "winning_metrics": {
+    "label": "WINNING CONFIG",
+    "n": 9931,
+    "1plus_goals": {
+      "brier": 0.1613,
+      "bss": 27.1,
+      "ece": 0.0173
+    },
+    "2plus_goals": {
+      "brier": 0.0837,
+      "bss": 23.4,
+      "ece": 0.0092
+    },
+    "3plus_goals": {
+      "brier": 0.0397,
+      "bss": 16.6,
+      "ece": 0.0102
+    },
+    "15plus_disp": {
+      "brier": 0.2479,
+      "bss": 0.8,
+      "ece": 0.0685
+    },
+    "20plus_disp": {
+      "brier": 0.1968,
+      "bss": 0.6,
+      "ece": 0.0059
+    },
+    "25plus_disp": {
+      "brier": 0.1093,
+      "bss": 0.6,
+      "ece": 0.0033
+    },
+    "30plus_disp": {
+      "brier": 0.0409,
+      "bss": 0.4,
+      "ece": 0.0007
+    },
+    "2plus_mk": {
+      "brier": 0.1508,
+      "bss": 0.6,
+      "ece": 0.0044
+    },
+    "3plus_mk": {
+      "brier": 0.221,
+      "bss": 0.7,
+      "ece": 0.0032
+    },
+    "4plus_mk": {
+      "brier": 0.2484,
+      "bss": 0.6,
+      "ece": 0.0125
+    },
+    "5plus_mk": {
+      "brier": 0.2263,
+      "bss": 0.9,
+      "ece": 0.0053
+    },
+    "goals_mae": 0.5069,
+    "disp_mae": 3.8534,
+    "marks_mae": 1.7728,
+    "scorer_auc": 0.8142
+  }
+}

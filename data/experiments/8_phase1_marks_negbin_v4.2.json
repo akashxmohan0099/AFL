@@ -1,16 +1,16 @@
 {
-  "label": "6_comprehensive_v4.0",
+  "label": "8_phase1_marks_negbin_v4.2",
   "season": 2025,
-  "run_id": "sequential_2025_20260305T072533515700Z",
+  "run_id": "sequential_2025_20260305T063305464226Z",
   "n_predictions": 9931,
   "n_rounds": 28,
   "game_winner": {
     "n_games": 216,
-    "accuracy": 0.7315,
-    "brier_score": 0.1789,
-    "margin_mae": 26.37,
-    "flat_bet_roi_pct": 42.0,
-    "flat_bet_n": 195
+    "accuracy": 0.713,
+    "brier_score": 0.1858,
+    "margin_mae": 26.42,
+    "flat_bet_roi_pct": 43.5,
+    "flat_bet_n": 181
   },
   "thresholds": {
     "1plus_goals": {
