@@ -27,6 +27,9 @@ scraper.log
 # App-generated documents (keep source, ignore rendered binaries)
 app/*.pdf
 
+# Generated feature artifacts: keep schema metadata, rebuild the matrix locally.
+data/features/feature_matrix.parquet
+
 # Local fixture source documents (manual working assets, root folder only)
 /Fixtures/
 

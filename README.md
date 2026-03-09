@@ -320,7 +320,7 @@ AFL/
 ├── data/
 │   ├── base/                           # Cleaned parquets (gitignored, regenerable)
 │   ├── features/
-│   │   ├── feature_matrix.parquet      # Feature matrix (390 columns / 299 model features)
+│   │   ├── feature_matrix.parquet      # Generated locally via `python3 pipeline.py --features`
 │   │   └── feature_columns.json        # Feature name list
 │   ├── models/                         # Trained model weights + metadata JSONs
 │   ├── predictions/                    # Per-round prediction CSVs
@@ -351,6 +351,7 @@ AFL/
 
 ## Repo Hygiene
 
+- `data/features/feature_matrix.parquet` is generated locally and gitignored; rebuild it with `python3 pipeline.py --features`
 - `data/predictions/` keeps curated benchmark snapshots only (rounds 1, 2, 10, 13, 22)
 - `data/tuning/` keeps canonical `best_params_*.json` files only
 - `app/*.pdf` and `Fixtures/` are gitignored
