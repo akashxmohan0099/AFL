@@ -17,7 +17,6 @@ import {
 import { getGameOdds, getPlayerOdds, getRounds } from "@/lib/api";
 import type { OddsComparison, PlayerOddsComparison, RoundInfo } from "@/lib/types";
 import { TEAM_ABBREVS, TEAM_COLORS, CURRENT_YEAR } from "@/lib/constants";
-import { cn } from "@/lib/utils";
 
 function EdgeBadge({ edge }: { edge?: number }) {
   if (edge == null)
@@ -61,7 +60,7 @@ function ProbBar({ prob }: { prob: number }) {
 export default function OddsPage() {
   const [rounds, setRounds] = useState<RoundInfo[]>([]);
   const [year, setYear] = useState(CURRENT_YEAR);
-  const [round, setRound] = useState(1);
+  const [round, setRound] = useState<number | null>(null);
   const [gameOdds, setGameOdds] = useState<OddsComparison[]>([]);
   const [playerOdds, setPlayerOdds] = useState<PlayerOddsComparison[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,6 +95,16 @@ export default function OddsPage() {
     .map((r) => r.round_number)
     .sort((a, b) => a - b);
 
+  useEffect(() => {
+    if (availableRounds.length === 0) {
+      setRound(null);
+      return;
+    }
+    if (round == null || !availableRounds.includes(round)) {
+      setRound(availableRounds[0]);
+    }
+  }, [availableRounds, round]);
+
   // Sort player odds by absolute edge
   const sortedPlayerOdds = [...playerOdds]
     .sort((a, b) => Math.abs(b.edge ?? 0) - Math.abs(a.edge ?? 0))
@@ -127,7 +136,7 @@ export default function OddsPage() {
             size="sm"
             onClick={() => {
               setYear(y);
-              setRound(1);
+              setRound(null);
             }}
           >
             {y}
@@ -138,7 +147,7 @@ export default function OddsPage() {
             <span className="mx-2 text-muted-foreground">|</span>
             <select
               className="border border-border rounded-md px-2 py-1.5 text-sm bg-background"
-              value={round}
+              value={round ?? ""}
               onChange={(e) => setRound(Number(e.target.value))}
             >
               {availableRounds.map((r) => (
@@ -161,9 +170,10 @@ export default function OddsPage() {
           {/* Game Odds */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">
-                Game Winner: Model vs Market
-              </CardTitle>
+              <div>
+                <CardTitle className="text-base">Match Winner Odds</CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">Our predicted win probability vs bookmaker odds. Positive edge = we think the team is more likely to win than the market does.</p>
+              </div>
             </CardHeader>
             <CardContent>
               {gameOdds.length === 0 ? (
@@ -175,10 +185,10 @@ export default function OddsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Match</TableHead>
-                      <TableHead className="text-right">Model Home</TableHead>
-                      <TableHead className="text-right">Market Home</TableHead>
-                      <TableHead className="text-right">Edge Home</TableHead>
-                      <TableHead className="text-right">Edge Away</TableHead>
+                      <TableHead className="text-right">Our Prediction</TableHead>
+                      <TableHead className="text-right">Market Odds</TableHead>
+                      <TableHead className="text-right">Home Edge</TableHead>
+                      <TableHead className="text-right">Away Edge</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -236,12 +246,15 @@ export default function OddsPage() {
           {/* Player Odds */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">
-                Player Props: Model vs Market{" "}
-                <Badge variant="outline" className="ml-2 text-xs">
-                  {playerOdds.length} total
-                </Badge>
-              </CardTitle>
+              <div>
+                <CardTitle className="text-base">
+                  Player Markets{" "}
+                  <Badge variant="outline" className="ml-2 text-xs">
+                    {playerOdds.length} markets
+                  </Badge>
+                </CardTitle>
+                <p className="text-xs text-muted-foreground mt-1">Our probability vs betting market implied probability for player stat lines. Sorted by biggest disagreement.</p>
+              </div>
             </CardHeader>
             <CardContent>
               {playerOdds.length === 0 ? (
@@ -255,10 +268,10 @@ export default function OddsPage() {
                       <TableRow>
                         <TableHead>Player</TableHead>
                         <TableHead>Team</TableHead>
-                        <TableHead>Market</TableHead>
+                        <TableHead>Stat Type</TableHead>
                         <TableHead className="text-right">Line</TableHead>
-                        <TableHead className="text-right">Mkt Implied</TableHead>
-                        <TableHead className="text-right">Model</TableHead>
+                        <TableHead className="text-right">Market Prob</TableHead>
+                        <TableHead className="text-right">Our Prob</TableHead>
                         <TableHead className="text-right">Edge</TableHead>
                       </TableRow>
                     </TableHeader>

@@ -34,6 +34,43 @@ from model import AFLScoringModel, AFLDisposalModel, AFLMarksModel, AFLGameWinne
 from store import LearningStore
 
 
+def _augment_with_dl_features(df, feature_cols):
+    """Augment feature matrix with embedding + GRU form features if available.
+
+    Returns (augmented_df, extended_feature_cols).
+    Non-destructive: if no embeddings/form features exist, returns originals unchanged.
+    """
+    added = []
+
+    # Entity embeddings (Phase 2)
+    if getattr(config, "EMBEDDING_ENABLED", False):
+        try:
+            from embeddings import augment_features as emb_augment
+            df = emb_augment(df)
+            emb_cols = [c for c in df.columns if c.startswith("emb_")]
+            new_emb = [c for c in emb_cols if c not in feature_cols]
+            added.extend(new_emb)
+        except Exception as e:
+            print(f"  (Embedding augmentation skipped: {e})")
+
+    # GRU form embeddings (Phase 4)
+    if getattr(config, "SEQUENCE_ENABLED", False):
+        try:
+            from sequence_model import augment_features as seq_augment
+            df = seq_augment(df)
+            form_cols = [c for c in df.columns if c.startswith("form_emb_")]
+            new_form = [c for c in form_cols if c not in feature_cols]
+            added.extend(new_form)
+        except Exception as e:
+            print(f"  (Sequence augmentation skipped: {e})")
+
+    if added:
+        feature_cols = feature_cols + added
+        print(f"  DL features added: {len(added)} ({len(feature_cols)} total features)")
+
+    return df, feature_cols
+
+
 def _load_rosters(year):
     """Load team rosters JSON for a given year. Returns dict or None."""
     import json
@@ -55,6 +92,58 @@ def _new_run_id(prefix=None):
 
 def _set_global_seed():
     np.random.seed(config.RANDOM_SEED)
+
+
+def _build_player_predictions_for_winner_features(
+    feature_df,
+    feature_cols,
+    scoring_model=None,
+    disposal_model=None,
+    marks_model=None,
+):
+    """Build player-level predictions for winner-model team aggregates.
+
+    Each model must use its own fitted scaler. Reusing the scoring scaler for
+    disposals/marks silently distorts the Poisson component and weakens the
+    downstream winner features.
+    """
+    if feature_df is None or feature_df.empty:
+        return pd.DataFrame()
+
+    from model import _prepare_features
+
+    pred_df = feature_df[["match_id", "team"]].copy()
+    added_cols = []
+
+    if scoring_model is not None and getattr(scoring_model, "scaler", None) is not None:
+        X_raw, _, X_scaled = _prepare_features(
+            feature_df, feature_cols, scaler=scoring_model.scaler
+        )
+        if X_scaled is not None and X_scaled.shape[0] == X_raw.shape[0]:
+            pred_goals, _, _ = scoring_model._ensemble_predict(X_raw, X_scaled, "goals")
+            pred_df["predicted_goals"] = pred_goals
+            added_cols.append("predicted_goals")
+
+    if disposal_model is not None and getattr(disposal_model, "scaler", None) is not None:
+        X_raw, _, X_scaled = _prepare_features(
+            feature_df, feature_cols, scaler=disposal_model.scaler
+        )
+        if X_scaled is not None and X_scaled.shape[0] == X_raw.shape[0]:
+            pred_df["predicted_disposals"] = disposal_model._predict_raw(X_raw, X_scaled)
+            added_cols.append("predicted_disposals")
+
+    if marks_model is not None and getattr(marks_model, "scaler", None) is not None:
+        X_raw, _, X_scaled = _prepare_features(
+            feature_df, feature_cols, scaler=marks_model.scaler
+        )
+        if X_scaled is not None and X_scaled.shape[0] == X_raw.shape[0]:
+            pred_df["predicted_marks"] = marks_model._predict_raw(X_raw, X_scaled)
+            added_cols.append("predicted_marks")
+
+    if not added_cols:
+        return pd.DataFrame()
+
+    return pred_df
 
 
 def _ensure_fixture_match_ids(fixtures: pd.DataFrame) -> pd.DataFrame:
@@ -353,7 +442,7 @@ def cmd_daily(args):
         # Load or create isotonic calibrator
         use_isotonic = getattr(config, "CALIBRATION_METHOD", "bucket") == "isotonic"
         isotonic_calibrator = store.load_isotonic_calibrator() or CalibratedPredictor()
-        _iso_accum = {}
+        _iso_accum = store.load_isotonic_accum() if use_isotonic else {}
 
         for rnd in new_rounds:
             rnd_int = int(rnd)
@@ -384,22 +473,13 @@ def cmd_daily(args):
             marks_model = AFLMarksModel(distribution=config.MARKS_DISTRIBUTION)
             marks_model.train_backtest(train_df, feature_cols)
 
-            # Player predictions for game winner features
-            player_preds_for_gw = pd.DataFrame()
-            try:
-                _pp_raw, _pp_clean, _pp_scaled = _prepare_features(
-                    train_df, feature_cols, scoring_model.scaler
-                )
-                if _pp_scaled is not None and _pp_scaled.shape[0] == _pp_raw.shape[0]:
-                    _pp_gl, _, _ = scoring_model._ensemble_predict(_pp_raw, _pp_scaled, "goals")
-                    _pp_di = disposal_model._predict_raw(_pp_raw, _pp_scaled)
-                    _pp_mk = marks_model._predict_raw(_pp_raw, _pp_scaled)
-                    player_preds_for_gw = train_df[["match_id", "team"]].copy()
-                    player_preds_for_gw["predicted_goals"] = _pp_gl
-                    player_preds_for_gw["predicted_disposals"] = _pp_di
-                    player_preds_for_gw["predicted_marks"] = _pp_mk
-            except Exception:
-                pass
+            player_preds_for_gw = _build_player_predictions_for_winner_features(
+                train_df,
+                feature_cols,
+                scoring_model=scoring_model,
+                disposal_model=disposal_model,
+                marks_model=marks_model,
+            )
 
             # Game winner model
             game_preds = pd.DataFrame()
@@ -419,21 +499,13 @@ def cmd_daily(args):
                             tm_train,
                             player_predictions_df=player_preds_for_gw if not player_preds_for_gw.empty else None,
                         )
-                        _test_pp = pd.DataFrame()
-                        try:
-                            _tp_raw, _tp_clean, _tp_scaled = _prepare_features(
-                                test_df, feature_cols, scoring_model.scaler
-                            )
-                            if _tp_scaled is not None and _tp_scaled.shape[0] == _tp_raw.shape[0]:
-                                _tp_gl, _, _ = scoring_model._ensemble_predict(_tp_raw, _tp_scaled, "goals")
-                                _tp_di = disposal_model._predict_raw(_tp_raw, _tp_scaled)
-                                _tp_mk = marks_model._predict_raw(_tp_raw, _tp_scaled)
-                                _test_pp = test_df[["match_id", "team"]].copy()
-                                _test_pp["predicted_goals"] = _tp_gl
-                                _test_pp["predicted_disposals"] = _tp_di
-                                _test_pp["predicted_marks"] = _tp_mk
-                        except Exception:
-                            pass
+                        _test_pp = _build_player_predictions_for_winner_features(
+                            test_df,
+                            feature_cols,
+                            scoring_model=scoring_model,
+                            disposal_model=disposal_model,
+                            marks_model=marks_model,
+                        )
                         all_pp = pd.concat([player_preds_for_gw, _test_pp], ignore_index=True) \
                             if not _test_pp.empty else player_preds_for_gw
                         game_preds = _predict_games_for_round(
@@ -471,45 +543,61 @@ def cmd_daily(args):
             _update_sequential_calibration(store, merged_raw, test_df)
             store.compute_calibration_adjustments()
 
-            # Isotonic accumulation
+            # Isotonic accumulation (key-based alignment to avoid row-order mismatch)
             if use_isotonic:
-                actual_goals = test_df["GL"].values
-                actual_disp = test_df["DI"].values if "DI" in test_df.columns else None
-                actual_marks = test_df["MK"].values if "MK" in test_df.columns else None
                 iso_skip = getattr(config, "ISOTONIC_SKIP_TARGETS", set())
+                _actual_cols2 = {}
+                if "GL" in test_df.columns:
+                    _actual_cols2["actual_goals"] = test_df["GL"]
+                if "DI" in test_df.columns:
+                    _actual_cols2["actual_disp"] = test_df["DI"]
+                if "MK" in test_df.columns:
+                    _actual_cols2["actual_marks"] = test_df["MK"]
 
-                if "1plus_goals" not in iso_skip:
+                _iso_join2 = test_df[["player", "team", "match_id"]].copy()
+                for col, vals in _actual_cols2.items():
+                    _iso_join2[col] = vals.values
+                _iso_merged2 = merged_raw.merge(
+                    _iso_join2, on=["player", "team", "match_id"], how="inner"
+                )
+
+                actual_goals = _iso_merged2["actual_goals"].values if "actual_goals" in _iso_merged2.columns else None
+                actual_disp = _iso_merged2["actual_disp"].values if "actual_disp" in _iso_merged2.columns else None
+                actual_marks = _iso_merged2["actual_marks"].values if "actual_marks" in _iso_merged2.columns else None
+
+                if actual_goals is not None and "1plus_goals" not in iso_skip:
                     p1_col = next((c for c in ["p_1plus_goals_raw", "p_scorer_raw", "p_scorer"]
-                                   if c in merged_raw.columns), None)
+                                   if c in _iso_merged2.columns), None)
                     if p1_col:
                         _iso_accum.setdefault("1plus_goals", {"preds": [], "actuals": []})
-                        _iso_accum["1plus_goals"]["preds"].extend(merged_raw[p1_col].values.astype(float).tolist())
+                        _iso_accum["1plus_goals"]["preds"].extend(_iso_merged2[p1_col].values.astype(float).tolist())
                         _iso_accum["1plus_goals"]["actuals"].extend((actual_goals >= 1).astype(int).tolist())
 
-                for threshold, name in [(2, "2plus_goals"), (3, "3plus_goals")]:
-                    if name in iso_skip:
-                        continue
-                    raw_col = f"p_{threshold}plus_goals_raw"
-                    p_col = raw_col if raw_col in merged_raw.columns else f"p_{threshold}plus_goals"
-                    if p_col in merged_raw.columns:
-                        _iso_accum.setdefault(name, {"preds": [], "actuals": []})
-                        _iso_accum[name]["preds"].extend(merged_raw[p_col].values.astype(float).tolist())
-                        _iso_accum[name]["actuals"].extend((actual_goals >= threshold).astype(int).tolist())
+                if actual_goals is not None:
+                    for threshold, name in [(2, "2plus_goals"), (3, "3plus_goals")]:
+                        if name in iso_skip:
+                            continue
+                        raw_col = f"p_{threshold}plus_goals_raw"
+                        p_col = raw_col if raw_col in _iso_merged2.columns else f"p_{threshold}plus_goals"
+                        if p_col in _iso_merged2.columns:
+                            _iso_accum.setdefault(name, {"preds": [], "actuals": []})
+                            _iso_accum[name]["preds"].extend(_iso_merged2[p_col].values.astype(float).tolist())
+                            _iso_accum[name]["actuals"].extend((actual_goals >= threshold).astype(int).tolist())
 
                 if actual_disp is not None:
                     for t in config.DISPOSAL_THRESHOLDS:
                         p_col = f"p_{t}plus_disp"
-                        if p_col in merged_raw.columns:
+                        if p_col in _iso_merged2.columns:
                             _iso_accum.setdefault(f"{t}plus_disp", {"preds": [], "actuals": []})
-                            _iso_accum[f"{t}plus_disp"]["preds"].extend(merged_raw[p_col].values.astype(float).tolist())
+                            _iso_accum[f"{t}plus_disp"]["preds"].extend(_iso_merged2[p_col].values.astype(float).tolist())
                             _iso_accum[f"{t}plus_disp"]["actuals"].extend((actual_disp >= t).astype(int).tolist())
 
                 if actual_marks is not None:
                     for t in config.MARKS_THRESHOLDS:
                         p_col = f"p_{t}plus_mk"
-                        if p_col in merged_raw.columns:
+                        if p_col in _iso_merged2.columns:
                             _iso_accum.setdefault(f"{t}plus_mk", {"preds": [], "actuals": []})
-                            _iso_accum[f"{t}plus_mk"]["preds"].extend(merged_raw[p_col].values.astype(float).tolist())
+                            _iso_accum[f"{t}plus_mk"]["preds"].extend(_iso_merged2[p_col].values.astype(float).tolist())
                             _iso_accum[f"{t}plus_mk"]["actuals"].extend((actual_marks >= t).astype(int).tolist())
 
                 # Refit isotonic calibrators
@@ -518,6 +606,7 @@ def cmd_daily(args):
                     if len(data["preds"]) >= isotonic_min:
                         isotonic_calibrator.fit(tgt, np.array(data["preds"]), np.array(data["actuals"]))
                 store.save_isotonic_calibrator(isotonic_calibrator)
+                store.save_isotonic_accum(_iso_accum)
 
             # Report
             elapsed = time.time() - rnd_start
@@ -629,6 +718,14 @@ def cmd_train(args, feature_df=None):
             print("No feature matrix found. Run --features first.")
             return None
         feature_df = pd.read_parquet(feat_path)
+
+    # Augment with DL features if available
+    import json
+    fc_path = config.FEATURES_DIR / "feature_columns.json"
+    if fc_path.exists():
+        with open(fc_path) as f:
+            fc = json.load(f)
+        feature_df, _ = _augment_with_dl_features(feature_df, fc)
 
     print("Training models...")
     model = AFLScoringModel()
@@ -1170,6 +1267,9 @@ def cmd_backtest(args):
     feature_df = pd.read_parquet(feat_path)
     with open(feat_cols_path) as f:
         feature_cols = json.load(f)
+
+    # Augment with DL features if available
+    feature_df, feature_cols = _augment_with_dl_features(feature_df, feature_cols)
 
     # Check we have enough training history
     min_train_year = year - config.BACKTEST_TRAIN_MIN_YEARS
@@ -2176,7 +2276,8 @@ def _predict_games_for_round(winner_model, tm_train, tm_round,
         round_match_ids = tm_round["match_id"].unique()
         result = result[result["match_id"].isin(round_match_ids)]
         return result
-    except Exception:
+    except Exception as e:
+        print(f"  Warning: Game winner prediction build failed: {e}")
         return pd.DataFrame()
 
 
@@ -2202,6 +2303,9 @@ def cmd_sequential(args, disposal_distribution=None):
     feature_df = pd.read_parquet(feat_path)
     with open(feat_cols_path) as f:
         feature_cols = json.load(f)
+
+    # Augment with DL features if available
+    feature_df, feature_cols = _augment_with_dl_features(feature_df, feature_cols)
 
     # Load team-match data for game winner model
     tm_path = config.BASE_STORE_DIR / "team_matches.parquet"
@@ -2251,8 +2355,22 @@ def cmd_sequential(args, disposal_distribution=None):
     isotonic_min = getattr(config, "ISOTONIC_MIN_SAMPLES", 100)
     isotonic_interval = getattr(config, "ISOTONIC_REFIT_INTERVAL", 5)
     isotonic_calibrator = store.load_isotonic_calibrator() or CalibratedPredictor()
-    # Accumulate predictions/actuals for isotonic fitting
-    _iso_accum = {}  # target_name → {"preds": [], "actuals": []}
+    # Load accumulated isotonic data from prior year runs (cross-year calibration)
+    _iso_accum = store.load_isotonic_accum()
+    if _iso_accum:
+        n_prior = sum(len(v["preds"]) for v in _iso_accum.values())
+        print(f"  Isotonic accumulation loaded: {n_prior:,} samples across {len(_iso_accum)} targets")
+        # Immediately refit calibrator on loaded data so round 1 benefits
+        for tgt, data in _iso_accum.items():
+            if len(data["preds"]) >= isotonic_min:
+                isotonic_calibrator.fit(
+                    tgt,
+                    np.array(data["preds"]),
+                    np.array(data["actuals"]),
+                )
+        store.save_isotonic_calibrator(isotonic_calibrator)
+    else:
+        print("  Isotonic accumulation starts fresh")
 
     for rnd in rounds:
         rnd_int = int(rnd)
@@ -2289,25 +2407,13 @@ def cmd_sequential(args, disposal_distribution=None):
         marks_model.train_backtest(train_df, feature_cols)
 
         # Build player-level predictions on training data for game winner features
-        from model import _prepare_features
-        player_preds_for_gw = pd.DataFrame()
-        try:
-            _pp_raw, _pp_clean, _pp_scaled = _prepare_features(
-                train_df, feature_cols, scoring_model.scaler
-            )
-            if _pp_scaled is None or _pp_scaled.shape[0] != _pp_raw.shape[0]:
-                raise ValueError("Scaled feature matrix mismatch in sequential training context")
-            _pp_gl, _pp_scorer, _ = scoring_model._ensemble_predict(
-                _pp_raw, _pp_scaled, "goals"
-            )
-            _pp_di = disposal_model._predict_raw(_pp_raw, _pp_scaled)
-            _pp_mk = marks_model._predict_raw(_pp_raw, _pp_scaled)
-            player_preds_for_gw = train_df[["match_id", "team"]].copy()
-            player_preds_for_gw["predicted_goals"] = _pp_gl
-            player_preds_for_gw["predicted_disposals"] = _pp_di
-            player_preds_for_gw["predicted_marks"] = _pp_mk
-        except Exception:
-            pass  # Fall back to no player predictions
+        player_preds_for_gw = _build_player_predictions_for_winner_features(
+            train_df,
+            feature_cols,
+            scoring_model=scoring_model,
+            disposal_model=disposal_model,
+            marks_model=marks_model,
+        )
 
         # Game winner model
         game_preds = pd.DataFrame()
@@ -2328,24 +2434,13 @@ def cmd_sequential(args, disposal_distribution=None):
                         player_predictions_df=player_preds_for_gw if not player_preds_for_gw.empty else None,
                     )
                     # Also generate player preds for the test round for prediction
-                    _test_pp = pd.DataFrame()
-                    try:
-                        _tp_raw, _tp_clean, _tp_scaled = _prepare_features(
-                            test_df, feature_cols, scoring_model.scaler
-                        )
-                        if _tp_scaled is None or _tp_scaled.shape[0] != _tp_raw.shape[0]:
-                            raise ValueError("Scaled feature matrix mismatch in sequential test context")
-                        _tp_gl, _, _ = scoring_model._ensemble_predict(
-                            _tp_raw, _tp_scaled, "goals"
-                        )
-                        _tp_di = disposal_model._predict_raw(_tp_raw, _tp_scaled)
-                        _tp_mk = marks_model._predict_raw(_tp_raw, _tp_scaled)
-                        _test_pp = test_df[["match_id", "team"]].copy()
-                        _test_pp["predicted_goals"] = _tp_gl
-                        _test_pp["predicted_disposals"] = _tp_di
-                        _test_pp["predicted_marks"] = _tp_mk
-                    except Exception:
-                        pass
+                    _test_pp = _build_player_predictions_for_winner_features(
+                        test_df,
+                        feature_cols,
+                        scoring_model=scoring_model,
+                        disposal_model=disposal_model,
+                        marks_model=marks_model,
+                    )
                     # Combine train + test player preds for predict_with_margin
                     all_pp = pd.concat([player_preds_for_gw, _test_pp], ignore_index=True) \
                         if not _test_pp.empty else player_preds_for_gw
@@ -2389,65 +2484,84 @@ def cmd_sequential(args, disposal_distribution=None):
 
         # 5b. Isotonic calibration: accumulate data and refit periodically
         if use_isotonic:
-            actual_goals = test_df["GL"].values
-            actual_disp = test_df["DI"].values if "DI" in test_df.columns else None
             iso_skip = getattr(config, "ISOTONIC_SKIP_TARGETS", set())
 
+            # Key-based alignment: merge predictions with actuals to avoid
+            # row-order misalignment between merged_raw and test_df.
+            _actual_cols = {}
+            if "GL" in test_df.columns:
+                _actual_cols["actual_goals"] = test_df["GL"]
+            if "DI" in test_df.columns:
+                _actual_cols["actual_disp"] = test_df["DI"]
+            if "MK" in test_df.columns:
+                _actual_cols["actual_marks"] = test_df["MK"]
+
+            _iso_join = test_df[["player", "team", "match_id"]].copy()
+            for col, vals in _actual_cols.items():
+                _iso_join[col] = vals.values
+            _iso_merged = merged_raw.merge(
+                _iso_join, on=["player", "team", "match_id"], how="inner"
+            )
+
+            actual_goals = _iso_merged["actual_goals"].values if "actual_goals" in _iso_merged.columns else None
+            actual_disp = _iso_merged["actual_disp"].values if "actual_disp" in _iso_merged.columns else None
+            actual_marks = _iso_merged["actual_marks"].values if "actual_marks" in _iso_merged.columns else None
+
             # Accumulate goal thresholds (skip if in ISOTONIC_SKIP_TARGETS)
-            if "1plus_goals" not in iso_skip:
+            if actual_goals is not None and "1plus_goals" not in iso_skip:
                 p1_col = None
-                if "p_1plus_goals_raw" in merged_raw.columns:
+                if "p_1plus_goals_raw" in _iso_merged.columns:
                     p1_col = "p_1plus_goals_raw"
-                elif "p_scorer_raw" in merged_raw.columns:
+                elif "p_scorer_raw" in _iso_merged.columns:
                     p1_col = "p_scorer_raw"
-                elif "p_scorer" in merged_raw.columns:
+                elif "p_scorer" in _iso_merged.columns:
                     p1_col = "p_scorer"
 
                 if p1_col is not None:
                     _iso_accum.setdefault("1plus_goals", {"preds": [], "actuals": []})
-                    _iso_accum["1plus_goals"]["preds"].extend(merged_raw[p1_col].values.astype(float).tolist())
+                    _iso_accum["1plus_goals"]["preds"].extend(_iso_merged[p1_col].values.astype(float).tolist())
                     _iso_accum["1plus_goals"]["actuals"].extend((actual_goals >= 1).astype(int).tolist())
 
             # 2+/3+ goals: fit on raw predicted threshold probabilities when available.
-            for threshold, name in [(2, "2plus_goals"), (3, "3plus_goals")]:
-                if name in iso_skip:
-                    continue
-                raw_col = f"p_{threshold}plus_goals_raw"
-                if raw_col in merged_raw.columns:
-                    p_exceed = merged_raw[raw_col].values.astype(float)
-                else:
-                    p_col = f"p_{threshold}plus_goals"
-                    if p_col in merged_raw.columns:
-                        p_exceed = merged_raw[p_col].values.astype(float)
-                    else:
+            if actual_goals is not None:
+                for threshold, name in [(2, "2plus_goals"), (3, "3plus_goals")]:
+                    if name in iso_skip:
                         continue
-                _iso_accum.setdefault(name, {"preds": [], "actuals": []})
-                _iso_accum[name]["preds"].extend(p_exceed.tolist())
-                _iso_accum[name]["actuals"].extend((actual_goals >= threshold).astype(int).tolist())
+                    raw_col = f"p_{threshold}plus_goals_raw"
+                    if raw_col in _iso_merged.columns:
+                        p_exceed = _iso_merged[raw_col].values.astype(float)
+                    else:
+                        p_col = f"p_{threshold}plus_goals"
+                        if p_col in _iso_merged.columns:
+                            p_exceed = _iso_merged[p_col].values.astype(float)
+                        else:
+                            continue
+                    _iso_accum.setdefault(name, {"preds": [], "actuals": []})
+                    _iso_accum[name]["preds"].extend(p_exceed.tolist())
+                    _iso_accum[name]["actuals"].extend((actual_goals >= threshold).astype(int).tolist())
 
             # Accumulate disposal thresholds
             if actual_disp is not None:
                 for t in config.DISPOSAL_THRESHOLDS:
                     p_col = f"p_{t}plus_disp"
-                    if p_col in merged_raw.columns:
+                    if p_col in _iso_merged.columns:
                         name = f"{t}plus_disp"
                         _iso_accum.setdefault(name, {"preds": [], "actuals": []})
-                        _iso_accum[name]["preds"].extend(merged_raw[p_col].values.astype(float).tolist())
+                        _iso_accum[name]["preds"].extend(_iso_merged[p_col].values.astype(float).tolist())
                         _iso_accum[name]["actuals"].extend((actual_disp >= t).astype(int).tolist())
 
             # Accumulate marks thresholds
-            actual_marks = test_df["MK"].values if "MK" in test_df.columns else None
             if actual_marks is not None:
                 for t in config.MARKS_THRESHOLDS:
                     p_col = f"p_{t}plus_mk"
-                    if p_col in merged_raw.columns:
+                    if p_col in _iso_merged.columns:
                         name = f"{t}plus_mk"
                         _iso_accum.setdefault(name, {"preds": [], "actuals": []})
-                        _iso_accum[name]["preds"].extend(merged_raw[p_col].values.astype(float).tolist())
+                        _iso_accum[name]["preds"].extend(_iso_merged[p_col].values.astype(float).tolist())
                         _iso_accum[name]["actuals"].extend((actual_marks >= t).astype(int).tolist())
 
-            # Accumulate game winner calibration data
-            if not game_preds.empty and "home_win_prob" in game_preds.columns and has_team_data:
+            # Accumulate game winner calibration data (skip if in ISOTONIC_SKIP_TARGETS)
+            if not game_preds.empty and "home_win_prob" in game_preds.columns and has_team_data and "game_winner" not in iso_skip:
                 home_round = tm_round[tm_round["is_home"]].copy()
                 if not home_round.empty:
                     home_actuals_map = home_round.set_index("match_id")["margin"].to_dict()
@@ -2470,6 +2584,7 @@ def cmd_sequential(args, disposal_distribution=None):
                             np.array(data["actuals"]),
                         )
                 store.save_isotonic_calibrator(isotonic_calibrator)
+                store.save_isotonic_accum(_iso_accum)
 
         # 6. ANALYZE
         game_actuals = tm_round if has_team_data else pd.DataFrame()
@@ -2546,6 +2661,13 @@ def cmd_sequential(args, disposal_distribution=None):
         if aucs:
             print(f"  Mean Scorer AUC:   {np.mean(aucs):.4f}")
 
+    # Save final isotonic accumulation for next year's run
+    if use_isotonic and _iso_accum:
+        store.save_isotonic_accum(_iso_accum)
+        store.save_isotonic_calibrator(isotonic_calibrator)
+        n_total = sum(len(v["preds"]) for v in _iso_accum.values())
+        print(f"  Isotonic accumulation saved: {n_total:,} samples across {len(_iso_accum)} targets")
+
     print(f"\n  Total time: {total_elapsed:.1f}s")
     print(f"  Output: {config.SEQUENTIAL_DIR}")
 
@@ -2558,6 +2680,14 @@ def cmd_train_disposals(args, feature_df=None):
             print("No feature matrix found. Run --features first.")
             return None
         feature_df = pd.read_parquet(feat_path)
+
+    # Augment with DL features if available
+    import json
+    fc_path = config.FEATURES_DIR / "feature_columns.json"
+    if fc_path.exists():
+        with open(fc_path) as f:
+            fc = json.load(f)
+        feature_df, _ = _augment_with_dl_features(feature_df, fc)
 
     print(f"Training disposal model ({config.DISPOSAL_DISTRIBUTION} distribution)...")
     model = AFLDisposalModel(distribution=config.DISPOSAL_DISTRIBUTION)
@@ -2576,12 +2706,77 @@ def cmd_train_marks(args, feature_df=None):
             return None
         feature_df = pd.read_parquet(feat_path)
 
+    # Augment with DL features if available
+    import json
+    fc_path = config.FEATURES_DIR / "feature_columns.json"
+    if fc_path.exists():
+        with open(fc_path) as f:
+            fc = json.load(f)
+        feature_df, _ = _augment_with_dl_features(feature_df, fc)
+
     print(f"Training marks model ({config.MARKS_DISTRIBUTION} distribution)...")
     model = AFLMarksModel(distribution=config.MARKS_DISTRIBUTION)
     metrics = model.train(feature_df)
     model.save()
     print(f"\nMarks training complete. MAE: {metrics['marks_mae']:.4f}")
     return model
+
+
+def cmd_train_embeddings(args, feature_df=None):
+    """Train entity embedding model and augment feature matrix."""
+    if feature_df is None:
+        feat_path = config.FEATURES_DIR / "feature_matrix.parquet"
+        if not feat_path.exists():
+            print("No feature matrix found. Run --features first.")
+            return
+        feature_df = pd.read_parquet(feat_path)
+
+    from embeddings import train_embedding_model, extract_embeddings
+    from embeddings import save_embeddings, augment_features as emb_augment
+
+    import json
+    fc_path = config.FEATURES_DIR / "feature_columns.json"
+    if not fc_path.exists():
+        print("No feature_columns.json found. Run --features first.")
+        return
+    with open(fc_path) as f:
+        feature_cols = json.load(f)
+
+    print("Training entity embedding model...")
+    model, vocabs = train_embedding_model(feature_df, feature_cols)
+    emb_dfs = extract_embeddings(model, vocabs)
+    save_embeddings(model, vocabs, emb_dfs)
+
+    # Test augmentation
+    df_aug = emb_augment(feature_df)
+    emb_cols = [c for c in df_aug.columns if c.startswith("emb_")]
+    print(f"Entity embeddings trained — {len(emb_cols)} embedding features available")
+
+
+def cmd_train_sequence(args, feature_df=None):
+    """Train GRU sequence model and extract form embeddings."""
+    if feature_df is None:
+        feat_path = config.FEATURES_DIR / "feature_matrix.parquet"
+        if not feat_path.exists():
+            print("No feature matrix found. Run --features first.")
+            return
+        feature_df = pd.read_parquet(feat_path)
+
+    from sequence_model import (build_sequences, train_form_model,
+                                extract_form_embeddings, save_form_model)
+
+    print("Building player sequences...")
+    seq_data = build_sequences(feature_df)
+
+    print("Training GRU form model...")
+    model = train_form_model(seq_data)
+
+    print("Extracting form embeddings...")
+    form_df = extract_form_embeddings(model, seq_data)
+    save_form_model(model, seq_data, form_df)
+
+    emb_cols = [c for c in form_df.columns if c.startswith("form_emb_")]
+    print(f"GRU form model trained — {len(emb_cols)} form features available")
 
 
 def cmd_train_winner(args):
@@ -2594,8 +2789,59 @@ def cmd_train_winner(args):
     team_match_df = pd.read_parquet(team_match_path)
     print(f"Training game winner model on {len(team_match_df)} team-match rows...")
 
+    player_predictions_df = pd.DataFrame()
+    feat_path = config.FEATURES_DIR / "feature_matrix.parquet"
+    feat_cols_path = config.FEATURES_DIR / "feature_columns.json"
+    if feat_path.exists() and feat_cols_path.exists():
+        import json
+
+        feature_df = pd.read_parquet(feat_path)
+        with open(feat_cols_path) as f:
+            feature_cols = json.load(f)
+        feature_df, feature_cols = _augment_with_dl_features(feature_df, feature_cols)
+
+        scoring_model = None
+        disposal_model = None
+        marks_model = None
+
+        try:
+            scoring_model = AFLScoringModel()
+            scoring_model.load()
+        except FileNotFoundError:
+            pass
+
+        try:
+            disposal_model = AFLDisposalModel(distribution=config.DISPOSAL_DISTRIBUTION)
+            disposal_model.load()
+        except FileNotFoundError:
+            pass
+
+        try:
+            marks_model = AFLMarksModel(distribution=config.MARKS_DISTRIBUTION)
+            marks_model.load()
+        except FileNotFoundError:
+            pass
+
+        player_predictions_df = _build_player_predictions_for_winner_features(
+            feature_df,
+            feature_cols,
+            scoring_model=scoring_model,
+            disposal_model=disposal_model,
+            marks_model=marks_model,
+        )
+        if not player_predictions_df.empty:
+            print(
+                f"  Using aggregated player predictions for winner training "
+                f"({len(player_predictions_df)} player rows)"
+            )
+        else:
+            print("  Warning: winner training falling back to team-only features")
+
     model = AFLGameWinnerModel()
-    metrics = model.train(team_match_df)
+    metrics = model.train(
+        team_match_df,
+        player_predictions_df=player_predictions_df if not player_predictions_df.empty else None,
+    )
     model.save()
     return model
 
@@ -2618,6 +2864,21 @@ def cmd_backtest_winner(args):
 
     team_match_df = pd.read_parquet(tm_path)
     team_match_df["date"] = pd.to_datetime(team_match_df["date"])
+
+    feature_df = pd.DataFrame()
+    feature_cols = []
+    feat_path = config.FEATURES_DIR / "feature_matrix.parquet"
+    feat_cols_path = config.FEATURES_DIR / "feature_columns.json"
+    if feat_path.exists() and feat_cols_path.exists():
+        import json
+
+        feature_df = pd.read_parquet(feat_path)
+        with open(feat_cols_path) as f:
+            feature_cols = json.load(f)
+        feature_df, feature_cols = _augment_with_dl_features(feature_df, feature_cols)
+        print(f"  Loaded feature matrix for winner backtest ({len(feature_cols)} features)")
+    else:
+        print("  Warning: no feature matrix available — winner backtest will use team-only features")
 
     odds_map = {}
     odds_col = "market_home_implied_prob"
@@ -2694,11 +2955,63 @@ def cmd_backtest_winner(args):
         if len(tm_train) < 50 or tm_round.empty:
             continue
 
+        player_preds_train = pd.DataFrame()
+        player_preds_test = pd.DataFrame()
+        if not feature_df.empty:
+            train_df = feature_df[
+                (feature_df["year"] < year)
+                | ((feature_df["year"] == year) & (feature_df["round_number"] < rnd))
+            ].copy()
+            test_df = feature_df[
+                (feature_df["year"] == year) & (feature_df["round_number"] == rnd)
+            ].copy()
+
+            if len(train_df) >= 20 and not test_df.empty:
+                scoring_model = AFLScoringModel()
+                scoring_model.train_backtest(train_df, feature_cols)
+
+                disposal_model = AFLDisposalModel(
+                    distribution=config.DISPOSAL_DISTRIBUTION
+                )
+                disposal_model.train_backtest(train_df, feature_cols)
+
+                marks_model = AFLMarksModel(
+                    distribution=config.MARKS_DISTRIBUTION
+                )
+                marks_model.train_backtest(train_df, feature_cols)
+
+                player_preds_train = _build_player_predictions_for_winner_features(
+                    train_df,
+                    feature_cols,
+                    scoring_model=scoring_model,
+                    disposal_model=disposal_model,
+                    marks_model=marks_model,
+                )
+                player_preds_test = _build_player_predictions_for_winner_features(
+                    test_df,
+                    feature_cols,
+                    scoring_model=scoring_model,
+                    disposal_model=disposal_model,
+                    marks_model=marks_model,
+                )
+
         model = AFLGameWinnerModel()
-        model.train_backtest(tm_train)
+        model.train_backtest(
+            tm_train,
+            player_predictions_df=player_preds_train if not player_preds_train.empty else None,
+        )
 
         # Predict this round
-        game_preds = _predict_games_for_round(model, tm_train, tm_round)
+        all_pp = (
+            pd.concat([player_preds_train, player_preds_test], ignore_index=True)
+            if not player_preds_test.empty else player_preds_train
+        )
+        game_preds = _predict_games_for_round(
+            model,
+            tm_train,
+            tm_round,
+            player_predictions_df=all_pp if not all_pp.empty else None,
+        )
         if game_preds.empty:
             continue
 
@@ -3571,9 +3884,31 @@ def cmd_simulate(args):
         if len(tm_train) >= 20 and not tm_round.empty:
             winner_model = AFLGameWinnerModel()
             try:
-                winner_model.train_backtest(tm_train)
+                train_pp = _build_player_predictions_for_winner_features(
+                    train_df,
+                    feature_cols,
+                    scoring_model=scoring_model,
+                    disposal_model=disposal_model,
+                )
+                test_pp = _build_player_predictions_for_winner_features(
+                    test_df,
+                    feature_cols,
+                    scoring_model=scoring_model,
+                    disposal_model=disposal_model,
+                )
+                all_pp = (
+                    pd.concat([train_pp, test_pp], ignore_index=True)
+                    if not test_pp.empty else train_pp
+                )
+                winner_model.train_backtest(
+                    tm_train,
+                    player_predictions_df=train_pp if not train_pp.empty else None,
+                )
                 game_preds = _predict_games_for_round(
-                    winner_model, tm_train, tm_round
+                    winner_model,
+                    tm_train,
+                    tm_round,
+                    player_predictions_df=all_pp if not all_pp.empty else None,
                 )
             except Exception as e:
                 print(f"  Warning: Game winner model failed: {e}")
@@ -3732,6 +4067,12 @@ Examples:
     parser.add_argument("--train-winner", action="store_true",
                         dest="train_winner",
                         help="Train game winner prediction model")
+    parser.add_argument("--train-embeddings", action="store_true",
+                        dest="train_embeddings",
+                        help="Train entity embedding model (Phase 2 — requires PyTorch)")
+    parser.add_argument("--train-sequence", action="store_true",
+                        dest="train_sequence",
+                        help="Train GRU sequence form model (Phase 4 — requires PyTorch)")
     parser.add_argument("--predict", action="store_true",
                         help="Generate predictions for a round")
     parser.add_argument("--evaluate", action="store_true",
@@ -3774,6 +4115,8 @@ Examples:
                         help="Scrape team selections + injury list for upcoming round")
     parser.add_argument("--daily", action="store_true",
                         help="Daily pipeline: scrape live + clean + features (for cron)")
+    parser.add_argument("--multi", action="store_true",
+                        help="Run correlated multi-bet analysis (requires --round)")
     parser.add_argument("--simulate", action="store_true",
                         help="Run Monte Carlo simulation after prediction (requires --round or --sequential)")
     parser.add_argument("--n-sims", type=int, dest="n_sims", default=10000,
@@ -3800,12 +4143,13 @@ Examples:
     # No flags → show help
     if not any([args.scrape, args.update, args.clean, args.features,
                 args.train, args.train_disposals, args.train_marks, args.train_winner,
+                args.train_embeddings, args.train_sequence,
                 args.predict, args.evaluate, args.backtest,
                 args.backtest_winner, args.tune,
                 args.diagnose, args.sequential, args.sequential_report,
                 args.year_range, args.player, args.scrape_profiles,
                 args.scrape_footywire, args.scrape_live, args.scrape_news,
-                args.daily, args.simulate]):
+                args.daily, args.simulate, args.multi]):
         parser.print_help()
         return
 
@@ -3849,6 +4193,12 @@ Examples:
     if args.train_marks:
         cmd_train_marks(args)
 
+    if args.train_embeddings:
+        cmd_train_embeddings(args)
+
+    if args.train_sequence:
+        cmd_train_sequence(args)
+
     if args.train_winner:
         cmd_train_winner(args)
 
@@ -3885,6 +4235,10 @@ Examples:
 
     if args.simulate:
         cmd_simulate(args)
+
+    if args.multi:
+        from multi import cmd_multi
+        cmd_multi(args)
 
     if args.year_range:
         cmd_sequential_year_range(args)

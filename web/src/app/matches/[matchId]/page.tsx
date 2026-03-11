@@ -13,8 +13,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getMatchDetail, getMatchComparison } from "@/lib/api";
-import type { MatchDetail, MatchComparison, MatchComparisonPlayer } from "@/lib/types";
+import { getMatchDetail, getMatchComparison, getMatchSimulation } from "@/lib/api";
+import type { MatchDetail, MatchComparison, MatchComparisonPlayer, MatchSimulation } from "@/lib/types";
 import { TEAM_ABBREVS, TEAM_COLORS, CURRENT_YEAR, displayVenue } from "@/lib/constants";
 import { cn, formatDate } from "@/lib/utils";
 import Link from "next/link";
@@ -22,6 +22,8 @@ import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { MatchContextCard } from "@/components/matches/MatchContextCard";
 import { BettingMarketsCard } from "@/components/matches/BettingMarkets";
 import { PlayerComparisonTable, PlayerAdvancedTable, predColor } from "@/components/matches/PlayerComparison";
+import { MonteCarloCard } from "@/components/matches/MonteCarloCard";
+import { ExportButton } from "@/components/ui/export-button";
 
 function DiffCell({ actual, predicted, decimals = 1 }: { actual?: number; predicted?: number; decimals?: number }) {
   if (actual == null && predicted == null)
@@ -51,6 +53,8 @@ export default function MatchDetailPage() {
   const awayTeamParam = searchParams.get('away') || undefined;
   const [match, setMatch] = useState<MatchDetail | null>(null);
   const [comparison, setComparison] = useState<MatchComparison | null>(null);
+  const [simulation, setSimulation] = useState<MatchSimulation | null>(null);
+  const [simLoading, setSimLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"post-match" | "prediction">("post-match");
   const [teamView, setTeamView] = useState<"split" | "combined">("split");
@@ -72,6 +76,16 @@ export default function MatchDetailPage() {
       })
       .finally(() => setLoading(false));
   }, [matchId, roundNumber, homeTeamParam, awayTeamParam]);
+
+  // Lazy-load Monte Carlo simulation
+  useEffect(() => {
+    if (!matchId) return;
+    setSimLoading(true);
+    getMatchSimulation(matchId)
+      .then(setSimulation)
+      .catch(() => setSimulation(null))
+      .finally(() => setSimLoading(false));
+  }, [matchId]);
 
   if (loading) {
     return (
@@ -176,6 +190,28 @@ export default function MatchDetailPage() {
   const homeSummary = computeTeamSummary(homePlayers);
   const awaySummary = computeTeamSummary(awayPlayers);
 
+  const playerExportData = compPlayers.map((p) => ({
+    Player: p.player,
+    Team: p.team,
+    "Predicted GL": p.predicted_gl?.toFixed(2) ?? "",
+    "Actual GL": p.actual_gl != null ? String(p.actual_gl) : "",
+    "Predicted DI": p.predicted_di?.toFixed(1) ?? "",
+    "Actual DI": p.actual_di != null ? String(p.actual_di) : "",
+    "Predicted MK": p.predicted_mk?.toFixed(1) ?? "",
+    "Actual MK": p.actual_mk != null ? String(p.actual_mk) : "",
+  }));
+
+  const playerExportColumns = [
+    { key: "Player", header: "Player" },
+    { key: "Team", header: "Team" },
+    { key: "Predicted GL", header: "Predicted GL" },
+    { key: "Actual GL", header: "Actual GL" },
+    { key: "Predicted DI", header: "Predicted DI" },
+    { key: "Actual DI", header: "Actual DI" },
+    { key: "Predicted MK", header: "Predicted MK" },
+    { key: "Actual MK", header: "Actual MK" },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -188,7 +224,9 @@ export default function MatchDetailPage() {
           {homeAbbr} vs {awayAbbr}
         </h1>
         {!showAsPlayed && hasComparison && (
-          <p className="text-sm font-medium text-primary mt-1">Predicted — Game has not been played yet</p>
+          <p className="text-sm font-medium text-primary mt-1">
+            {isPlayed ? "Showing pre-match predictions" : "Pre-match predictions"}
+          </p>
         )}
         <div className="flex gap-2 mt-1.5 flex-wrap">
           {data!.round_number != null && (
@@ -295,6 +333,17 @@ export default function MatchDetailPage() {
                 {predWinner && (
                   <span className="flex items-center gap-1">
                     Pick: {TEAM_ABBREVS[predWinner] || predWinner}
+                    {(() => {
+                      const edge = Math.abs(homeWinProb - 0.5) * 100;
+                      const conf = edge >= 20 ? { label: "High", cls: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30" }
+                        : edge >= 10 ? { label: "Medium", cls: "bg-amber-500/15 text-amber-600 border-amber-500/30" }
+                        : { label: "Low", cls: "bg-red-500/15 text-red-500 border-red-500/30" };
+                      return (
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold ${conf.cls}`}>
+                          {conf.label}
+                        </span>
+                      );
+                    })()}
                     {showAsPlayed && predCorrect != null && (
                       <Badge
                         variant={predCorrect ? "default" : "destructive"}
@@ -448,6 +497,11 @@ export default function MatchDetailPage() {
         <>
           {/* View toggles */}
           <div className="flex items-center gap-3 flex-wrap">
+            <ExportButton
+              data={playerExportData}
+              filename={`match_${homeAbbr}_vs_${awayAbbr}_R${data!.round_number ?? ""}_${data!.year ?? ""}`}
+              columns={playerExportColumns}
+            />
             {/* Team grouping toggle */}
             <div className="flex items-center gap-1">
               <button
@@ -569,10 +623,10 @@ export default function MatchDetailPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Player</TableHead>
-                    <TableHead className="text-right">Pred GL</TableHead>
-                    <TableHead className="text-right">P(1+)</TableHead>
-                    <TableHead className="text-right">Pred DI</TableHead>
-                    <TableHead className="text-right">Pred MK</TableHead>
+                    <TableHead className="text-right">Goals</TableHead>
+                    <TableHead className="text-right">1+ Goal %</TableHead>
+                    <TableHead className="text-right">Disposals</TableHead>
+                    <TableHead className="text-right">Marks</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -613,10 +667,10 @@ export default function MatchDetailPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Player</TableHead>
-                    <TableHead className="text-right">Pred GL</TableHead>
-                    <TableHead className="text-right">P(1+)</TableHead>
-                    <TableHead className="text-right">Pred DI</TableHead>
-                    <TableHead className="text-right">Pred MK</TableHead>
+                    <TableHead className="text-right">Goals</TableHead>
+                    <TableHead className="text-right">1+ Goal %</TableHead>
+                    <TableHead className="text-right">Disposals</TableHead>
+                    <TableHead className="text-right">Marks</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -665,6 +719,27 @@ export default function MatchDetailPage() {
           awayColor={awayColor}
           homeWinProb={homeWinProb}
         />
+      )}
+
+      {/* Monte Carlo Simulation */}
+      {simulation && (
+        <MonteCarloCard
+          simulation={simulation}
+          homeTeam={homeTeam}
+          awayTeam={awayTeam}
+          homeColor={homeColor}
+          awayColor={awayColor}
+        />
+      )}
+      {simLoading && !simulation && (
+        <Card>
+          <CardContent className="pt-6 pb-6">
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              Running Monte Carlo simulation...
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Color Legend */}

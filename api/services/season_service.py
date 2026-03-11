@@ -13,6 +13,57 @@ from api.data_loader import DataCache
 logger = logging.getLogger(__name__)
 
 
+def _fallback_game_prediction_from_player_predictions(
+    predictions: pd.DataFrame,
+    home_team: str,
+    away_team: str,
+) -> dict:
+    """Infer a lightweight pregame match snapshot from player-level predictions.
+
+    This is only used when the dedicated game-winner prediction row is missing.
+    The probability is a heuristic based on relative predicted team scores, not
+    the calibrated game-winner model output.
+    """
+    if predictions.empty or not home_team or not away_team or "team" not in predictions.columns:
+        return {}
+
+    team_preds = predictions[predictions["team"].isin([home_team, away_team])].copy()
+    if team_preds.empty:
+        return {}
+
+    def _team_totals(team: str) -> tuple[float | None, float | None, float | None]:
+        grp = team_preds[team_preds["team"] == team]
+        if grp.empty:
+            return None, None, None
+        goals = float(grp["predicted_goals"].sum()) if "predicted_goals" in grp.columns else None
+        behinds = float(grp["predicted_behinds"].sum()) if "predicted_behinds" in grp.columns else None
+        score = float(grp["predicted_score"].sum()) if "predicted_score" in grp.columns else None
+        if score is None and goals is not None:
+            score = goals * 6 + (behinds or 0.0)
+        return goals, behinds, score
+
+    _, _, home_score = _team_totals(home_team)
+    _, _, away_score = _team_totals(away_team)
+    if home_score is None or away_score is None:
+        return {}
+
+    margin = home_score - away_score
+    total_score = home_score + away_score
+    if total_score <= 0:
+        home_win_prob = 0.5
+    else:
+        # Relative expected scoring edge -> pseudo win probability fallback.
+        margin_ratio = margin / total_score
+        home_win_prob = 1.0 / (1.0 + np.exp(-4.0 * margin_ratio))
+
+    predicted_winner = home_team if margin > 0 else away_team if margin < 0 else "Draw"
+    return {
+        "home_win_prob": round(float(np.clip(home_win_prob, 0.05, 0.95)), 3),
+        "predicted_margin": round(float(margin), 1),
+        "predicted_winner": predicted_winner,
+    }
+
+
 def _stat_summary(series: pd.Series) -> dict:
     """Return min/max/median for a numeric series."""
     clean = series.dropna()
@@ -717,8 +768,8 @@ def _compute_match_context(cache: DataCache, home_team: str, away_team: str,
     if year:
         context["home_team_season"] = _team_record(home_team, year)
         context["away_team_season"] = _team_record(away_team, year)
-        # Include last season if current is sparse
-        if context["home_team_season"]["played"] < 3 and year > 2015:
+        # Always include last season for context
+        if year > 2015:
             context["home_team_last_season"] = _team_record(home_team, year - 1)
             context["away_team_last_season"] = _team_record(away_team, year - 1)
 
@@ -825,11 +876,13 @@ def _compute_match_context(cache: DataCache, home_team: str, away_team: str,
         try:
             match_dt = pd.Timestamp(match_date)
             for side, team in [("home", home_team), ("away", away_team)]:
-                team_rows = tm[(tm["team"] == team) & (tm["date"] <= match_dt)].sort_values("date")
-                if not team_rows.empty and "rest_days" in team_rows.columns:
-                    last_row = team_rows.iloc[-1]
-                    if pd.notna(last_row.get("rest_days")):
-                        context[f"{side}_rest_days"] = int(last_row["rest_days"])
+                team_rows = tm[(tm["team"] == team) & (tm["date"] < match_dt)].sort_values("date")
+                if not team_rows.empty:
+                    last_game_date = team_rows.iloc[-1]["date"]
+                    if pd.notna(last_game_date):
+                        rest = (match_dt - pd.Timestamp(last_game_date)).days
+                        if rest >= 0:
+                            context[f"{side}_rest_days"] = int(rest)
         except Exception:
             logger.debug("Failed to compute match context", exc_info=True)
 
@@ -948,7 +1001,13 @@ def _compute_match_context(cache: DataCache, home_team: str, away_team: str,
                         season_pg = season_pg[season_pg["date"] < pd.Timestamp(match_date)]
                     except Exception:
                         logger.debug("Unexpected error", exc_info=True)
-                if season_pg.empty:
+                # Fall back to last season if no data or quarter columns are all zeros
+                has_quarter_data = (
+                    not season_pg.empty
+                    and "q1_goals" in season_pg.columns
+                    and season_pg[["q1_goals", "q2_goals", "q3_goals", "q4_goals"]].sum().sum() > 0
+                )
+                if not has_quarter_data:
                     season_pg = pg[(pg["team"] == team) & (pg["year"] == year - 1)]
                 if not season_pg.empty and "q1_goals" in season_pg.columns:
                     # Aggregate by match_id to get team totals per quarter
@@ -958,18 +1017,19 @@ def _compute_match_context(cache: DataCache, home_team: str, away_team: str,
                         q1_bh=("q1_behinds", "sum"), q2_bh=("q2_behinds", "sum"),
                         q3_bh=("q3_behinds", "sum"), q4_bh=("q4_behinds", "sum"),
                     )
-                    quarters = {}
-                    for q in [1, 2, 3, 4]:
-                        gl = qdata[f"q{q}_gl"]
-                        bh = qdata[f"q{q}_bh"]
-                        pts = gl * 6 + bh
-                        quarters[f"q{q}"] = {
-                            "avg_goals": round(float(gl.mean()), 1),
-                            "avg_behinds": round(float(bh.mean()), 1),
-                            "avg_points": round(float(pts.mean()), 1),
-                            **{f"{k}_points": v for k, v in _stat_summary(pts).items()},
-                        }
-                    context[f"{side}_quarters"] = quarters
+                    if qdata[["q1_gl", "q2_gl", "q3_gl", "q4_gl"]].sum().sum() > 0:
+                        quarters = {}
+                        for q in [1, 2, 3, 4]:
+                            gl = qdata[f"q{q}_gl"]
+                            bh = qdata[f"q{q}_bh"]
+                            pts = gl * 6 + bh
+                            quarters[f"q{q}"] = {
+                                "avg_goals": round(float(gl.mean()), 1),
+                                "avg_behinds": round(float(bh.mean()), 1),
+                                "avg_points": round(float(pts.mean()), 1),
+                                **{f"{k}_points": v for k, v in _stat_summary(pts).items()},
+                            }
+                        context[f"{side}_quarters"] = quarters
         except Exception:
             logger.debug("Unexpected error", exc_info=True)
 
@@ -1364,6 +1424,22 @@ def get_match_comparison(match_id: int, year: int = None, round_number: int = No
                         game_pred["predicted_winner"] = str(gpr["predicted_winner"])
         except Exception:
             logger.debug("Failed to load data", exc_info=True)
+
+    if not game_pred and not predictions.empty and home_team and away_team:
+        game_pred = _fallback_game_prediction_from_player_predictions(
+            predictions,
+            home_team,
+            away_team,
+        )
+
+    if (
+        game_pred
+        and home_score is not None
+        and away_score is not None
+        and "predicted_winner" in game_pred
+    ):
+        actual_winner = home_team if home_score > away_score else away_team if away_score > home_score else "Draw"
+        game_pred["correct"] = game_pred["predicted_winner"] == actual_winner
 
     # Weather conditions for this match
     weather_data = {}
@@ -1857,6 +1933,22 @@ def get_season_schedule(year: int) -> dict:
                             pt_map[(teams[0], teams[1])] = team_totals
                             pt_map[(teams[1], teams[0])] = team_totals
                     pt_by_round[rnum] = pt_map
+
+                    if rnum not in gp_by_round:
+                        gp_by_round[rnum] = {}
+                    for team_key, team_totals in pt_map.items():
+                        if team_key in gp_by_round[rnum]:
+                            continue
+                        home_team_key, away_team_key = team_key
+                        if home_team_key == away_team_key:
+                            continue
+                        fallback_pred = _fallback_game_prediction_from_player_predictions(
+                            pp,
+                            home_team_key,
+                            away_team_key,
+                        )
+                        if fallback_pred:
+                            gp_by_round[rnum][team_key] = fallback_pred
             except Exception:
                 logger.debug("Failed to load data", exc_info=True)
 

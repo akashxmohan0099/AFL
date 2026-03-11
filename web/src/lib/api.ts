@@ -6,6 +6,7 @@ import type {
   PlayerPrediction,
   MatchResult,
   MatchDetail,
+  MatchSimulation,
   OddsComparison,
   PlayerOddsComparison,
   HealthStatus,
@@ -27,7 +28,7 @@ import type {
   TeamIntel,
 } from "./types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY || "";
 
 async function fetchApi<T>(path: string): Promise<T> {
@@ -83,6 +84,9 @@ export const getMatches = (year: number, round: number) =>
 
 export const getMatchDetail = (matchId: number) =>
   fetchApi<MatchDetail>(`/api/matches/detail/${matchId}`);
+
+export const getMatchSimulation = (matchId: number) =>
+  fetchApi<MatchSimulation>(`/api/matches/detail/${matchId}/simulation`);
 
 // Odds
 export const getGameOdds = (year: number, round: number) =>
@@ -165,3 +169,10 @@ export const getIntelSummary = () =>
 
 export const getTeamIntel = (team: string) =>
   fetchApi<TeamIntel>(`/api/news/intel/team/${encodeURIComponent(team)}`);
+
+// League
+export const getLadder = (year: number) =>
+  fetchApi<import("./types").LadderResponse>(`/api/league/ladder?year=${year}`);
+
+export const getTeamProfile = (team: string, year: number) =>
+  fetchApi<import("./types").TeamProfile>(`/api/league/team/${encodeURIComponent(team)}?year=${year}`);

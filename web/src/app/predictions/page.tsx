@@ -18,6 +18,7 @@ import { getUpcoming } from "@/lib/api";
 import type { UpcomingRound, PlayerPrediction } from "@/lib/types";
 import { TEAM_ABBREVS, TEAM_COLORS, CURRENT_YEAR } from "@/lib/constants";
 import { ArrowRight } from "lucide-react";
+import { ExportButton } from "@/components/ui/export-button";
 
 interface TeamAggregate {
   team: string;
@@ -171,6 +172,32 @@ export default function PredictionsPage() {
 
   const predictions = upcoming.predictions;
 
+  const exportData = predictions.map((p) => ({
+    Player: p.player,
+    Team: p.team,
+    Opponent: p.opponent,
+    "Pred Goals": p.predicted_goals?.toFixed(2) ?? "",
+    "P(1+)": p.p_scorer != null ? (p.p_scorer * 100).toFixed(0) + "%" : "",
+    "P(2+)": p.p_2plus_goals != null ? (p.p_2plus_goals * 100).toFixed(0) + "%" : "",
+    "Pred Disposals": p.predicted_disposals?.toFixed(1) ?? "",
+    "P(20+)": p.p_20plus_disp != null ? (p.p_20plus_disp * 100).toFixed(0) + "%" : "",
+    "P(25+)": p.p_25plus_disp != null ? (p.p_25plus_disp * 100).toFixed(0) + "%" : "",
+    "Pred Marks": p.predicted_marks?.toFixed(1) ?? "",
+  }));
+
+  const exportColumns = [
+    { key: "Player", header: "Player" },
+    { key: "Team", header: "Team" },
+    { key: "Opponent", header: "Opponent" },
+    { key: "Pred Goals", header: "Pred Goals" },
+    { key: "P(1+)", header: "P(1+)" },
+    { key: "P(2+)", header: "P(2+)" },
+    { key: "Pred Disposals", header: "Pred Disposals" },
+    { key: "P(20+)", header: "P(20+)" },
+    { key: "P(25+)", header: "P(25+)" },
+    { key: "Pred Marks", header: "Pred Marks" },
+  ];
+
   // Team aggregates
   const teamMap = new Map<string, TeamAggregate>();
   for (const p of predictions) {
@@ -205,18 +232,25 @@ export default function PredictionsPage() {
             {predictions.length} players
           </Badge>
         </div>
-        <Link
-          href="/predictions/history"
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-        >
-          View history <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
+        <div className="flex items-center gap-3">
+          <ExportButton
+            data={exportData}
+            filename={`predictions_R${upcoming.round_number}_${upcoming.year}`}
+            columns={exportColumns}
+          />
+          <Link
+            href="/predictions/history"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+          >
+            View history <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       </div>
 
       {/* Team Aggregates */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Team Predictions</CardTitle>
+          <CardTitle className="text-base">Predicted Team Totals</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -226,9 +260,9 @@ export default function PredictionsPage() {
                   <TableHead>Team</TableHead>
                   <TableHead>vs</TableHead>
                   <TableHead className="text-right">Players</TableHead>
-                  <TableHead className="text-right">Pred Goals</TableHead>
-                  <TableHead className="text-right">Pred Disposals</TableHead>
-                  <TableHead className="text-right">Pred Marks</TableHead>
+                  <TableHead className="text-right">Goals</TableHead>
+                  <TableHead className="text-right">Disposals</TableHead>
+                  <TableHead className="text-right">Marks</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -264,29 +298,29 @@ export default function PredictionsPage() {
           title="Top Goal Scorers"
           data={predictions}
           valueKey="predicted_goals"
-          valueLabel="Pred GL"
+          valueLabel="Predicted"
           decimals={2}
           extraCols={[
-            { key: "p_scorer", label: "P(1+)", format: (v) => `${(v * 100).toFixed(0)}%` },
-            { key: "p_2plus_goals", label: "P(2+)", format: (v) => `${(v * 100).toFixed(0)}%` },
+            { key: "p_scorer", label: "1+ Goals", format: (v) => `${(v * 100).toFixed(0)}%` },
+            { key: "p_2plus_goals", label: "2+ Goals", format: (v) => `${(v * 100).toFixed(0)}%` },
           ]}
         />
         <LeaderboardTable
           title="Top Disposal Getters"
           data={predictions}
           valueKey="predicted_disposals"
-          valueLabel="Pred DI"
+          valueLabel="Predicted"
           decimals={1}
           extraCols={[
-            { key: "p_20plus_disp", label: "P(20+)", format: (v) => `${(v * 100).toFixed(0)}%` },
-            { key: "p_25plus_disp", label: "P(25+)", format: (v) => `${(v * 100).toFixed(0)}%` },
+            { key: "p_20plus_disp", label: "20+ Disp", format: (v) => `${(v * 100).toFixed(0)}%` },
+            { key: "p_25plus_disp", label: "25+ Disp", format: (v) => `${(v * 100).toFixed(0)}%` },
           ]}
         />
         <LeaderboardTable
           title="Top Mark Takers"
           data={predictions}
           valueKey="predicted_marks"
-          valueLabel="Pred MK"
+          valueLabel="Predicted"
           decimals={1}
           extraCols={[
             { key: "player_role" as keyof PlayerPrediction, label: "Role", format: (v) => String(v) },

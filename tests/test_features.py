@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 import features
+import model
 
 
 class TestFeatures(unittest.TestCase):
@@ -36,6 +37,172 @@ class TestFeatures(unittest.TestCase):
         synth = out.sort_values("date").iloc[-1]
         self.assertIn("player_gl_avg_3", out.columns)
         self.assertAlmostEqual(float(synth["player_gl_avg_3"]), 1.0, places=6)
+
+    def test_select_model_feature_columns_excludes_ui_only_news_fields(self):
+        df = pd.DataFrame([
+            {
+                "match_id": 1,
+                "year": 2025,
+                "round_number": 1,
+                "date": pd.Timestamp("2025-03-01"),
+                "team": "Team A",
+                "opponent": "Team B",
+                "venue": "Venue",
+                "player": "Player A",
+                "GL": 1,
+                "BH": 0,
+                "DI": 20,
+                "sample_weight": 1.0,
+                "player_gl_avg_5": 1.2,
+                "player_di_avg_5": 18.5,
+                "team_n_ins": 2,
+                "team_injured_count": 5,
+                "is_debutant": 0,
+            }
+        ])
+
+        cols = features.select_model_feature_columns(df)
+
+        self.assertIn("player_gl_avg_5", cols)
+        self.assertIn("player_di_avg_5", cols)
+        self.assertNotIn("team_n_ins", cols)
+        self.assertNotIn("team_injured_count", cols)
+        self.assertNotIn("is_debutant", cols)
+
+    def test_prepare_training_feature_cols_filters_ui_only_news_fields(self):
+        cols = [
+            "player_gl_avg_5",
+            "team_n_ins",
+            "team_injured_count",
+            "player_di_avg_5",
+            "player_gl_avg_5",
+        ]
+
+        filtered = model._prepare_training_feature_cols(cols, context="test")
+
+        self.assertEqual(filtered, ["player_gl_avg_5", "player_di_avg_5"])
+
+    def test_game_winner_features_include_player_prediction_aggregates(self):
+        team_match_df = pd.DataFrame(
+            [
+                {
+                    "match_id": 1,
+                    "date": pd.Timestamp("2025-03-01"),
+                    "year": 2025,
+                    "round_number": 1,
+                    "team": "Team A",
+                    "opponent": "Team B",
+                    "venue": "Venue",
+                    "margin": 12,
+                    "is_home": True,
+                    "score": 90,
+                    "opp_score": 78,
+                    "rest_days": 7,
+                    "is_finals": False,
+                    "attendance": 40000,
+                },
+                {
+                    "match_id": 1,
+                    "date": pd.Timestamp("2025-03-01"),
+                    "year": 2025,
+                    "round_number": 1,
+                    "team": "Team B",
+                    "opponent": "Team A",
+                    "venue": "Venue",
+                    "margin": -12,
+                    "is_home": False,
+                    "score": 78,
+                    "opp_score": 90,
+                    "rest_days": 7,
+                    "is_finals": False,
+                    "attendance": 40000,
+                },
+            ]
+        )
+        elo_df = pd.DataFrame(
+            [
+                {
+                    "match_id": 1,
+                    "team": "Team A",
+                    "elo_pre": 1510.0,
+                    "opp_elo_pre": 1490.0,
+                    "elo_diff": 20.0,
+                    "expected_win_prob": 0.56,
+                },
+                {
+                    "match_id": 1,
+                    "team": "Team B",
+                    "elo_pre": 1490.0,
+                    "opp_elo_pre": 1510.0,
+                    "elo_diff": -20.0,
+                    "expected_win_prob": 0.44,
+                },
+            ]
+        )
+        player_predictions_df = pd.DataFrame(
+            [
+                {
+                    "match_id": 1,
+                    "team": "Team A",
+                    "predicted_goals": 3.5,
+                    "predicted_disposals": 24.0,
+                    "predicted_marks": 8.0,
+                },
+                {
+                    "match_id": 1,
+                    "team": "Team A",
+                    "predicted_goals": 2.0,
+                    "predicted_disposals": 18.0,
+                    "predicted_marks": 6.0,
+                },
+                {
+                    "match_id": 1,
+                    "team": "Team B",
+                    "predicted_goals": 2.5,
+                    "predicted_disposals": 20.0,
+                    "predicted_marks": 7.0,
+                },
+                {
+                    "match_id": 1,
+                    "team": "Team B",
+                    "predicted_goals": 1.5,
+                    "predicted_disposals": 15.0,
+                    "predicted_marks": 5.0,
+                },
+            ]
+        )
+
+        gw_model = model.AFLGameWinnerModel()
+        game_df, model_features = gw_model.build_game_features(
+            team_match_df,
+            elo_df=elo_df,
+            player_predictions_df=player_predictions_df,
+        )
+
+        self.assertEqual(len(game_df), 1)
+        expected_feature_names = {
+            "home_team_predicted_goals",
+            "away_team_predicted_goals",
+            "diff_team_predicted_goals",
+            "home_team_predicted_disposals",
+            "away_team_predicted_disposals",
+            "diff_team_predicted_disposals",
+            "home_team_predicted_marks",
+            "away_team_predicted_marks",
+            "diff_team_predicted_marks",
+        }
+        self.assertTrue(expected_feature_names.issubset(set(model_features)))
+
+        row = game_df.iloc[0]
+        self.assertAlmostEqual(float(row["home_team_predicted_goals"]), 5.5)
+        self.assertAlmostEqual(float(row["away_team_predicted_goals"]), 4.0)
+        self.assertAlmostEqual(float(row["diff_team_predicted_goals"]), 1.5)
+        self.assertAlmostEqual(float(row["home_team_predicted_disposals"]), 42.0)
+        self.assertAlmostEqual(float(row["away_team_predicted_disposals"]), 35.0)
+        self.assertAlmostEqual(float(row["diff_team_predicted_disposals"]), 7.0)
+        self.assertAlmostEqual(float(row["home_team_predicted_marks"]), 14.0)
+        self.assertAlmostEqual(float(row["away_team_predicted_marks"]), 12.0)
+        self.assertAlmostEqual(float(row["diff_team_predicted_marks"]), 2.0)
 
 
 if __name__ == "__main__":

@@ -1,12 +1,13 @@
 """
 AFL Prediction Pipeline — Model Training, Evaluation & Prediction
 ==================================================================
-Dual Poisson/GBT ensemble for goals and behinds prediction.
+Poisson/GBT/XGBoost ensemble for goals, behinds, disposals, and marks prediction.
 
 Architecture:
-  - Goals model:  80% PoissonRegressor + 20% HistGradientBoostingRegressor
+  - Goals model:  Poisson + HistGBT + XGBoost ensemble (3-way when XGB_ENABLED)
   - Behinds model: same architecture (behinds are more stochastic)
-  - Disposal model: separate Poisson/GBT ensemble with own tuned params
+  - Disposal model: separate Poisson/GBT/XGBoost ensemble with own tuned params
+  - Marks model: Poisson/GBT/XGBoost ensemble with soft two-stage mark-taker clf
   - Game winner model: Elo + HistGBT with hybrid market prior
 
 Training:
@@ -41,6 +42,13 @@ import config
 from prediction_math import reconcile_goal_distribution
 
 warnings.filterwarnings("ignore")
+
+# XGBoost is optional — graceful fallback to 2-way ensemble if unavailable
+try:
+    from xgboost import XGBRegressor
+    _XGB_AVAILABLE = True
+except (ImportError, Exception):
+    _XGB_AVAILABLE = False
 
 
 # ---------------------------------------------------------------------------
@@ -115,6 +123,36 @@ def _prepare_features(df, feature_cols, scaler=None, fit_scaler=False):
     return X_raw, X_clean, X_scaled
 
 
+def _prepare_training_feature_cols(feature_cols, context="training"):
+    """Drop UI-only features from training even if a stale feature list is passed."""
+    excluded = set(getattr(config, "MODEL_EXCLUDED_FEATURES", set()))
+    if not feature_cols or not excluded:
+        return feature_cols
+
+    filtered = []
+    seen = set()
+    removed = []
+    for col in feature_cols:
+        if col in excluded:
+            removed.append(col)
+            continue
+        if col in seen:
+            continue
+        seen.add(col)
+        filtered.append(col)
+
+    if removed:
+        removed_unique = sorted(set(removed))
+        sample = ", ".join(removed_unique[:5])
+        suffix = "..." if len(removed_unique) > 5 else ""
+        print(
+            f"  Excluding {len(removed_unique)} UI-only features from {context}: "
+            f"{sample}{suffix}"
+        )
+
+    return filtered
+
+
 def _model_supports_nan(model):
     """Return True when estimator supports NaN inputs natively."""
     try:
@@ -186,8 +224,10 @@ class AFLScoringModel:
         self.scorer_clf = None  # Stage 1: binary classifier
         self.goals_poisson = None
         self.goals_gbt = None
+        self.goals_xgb = None       # XGBoost ensemble component (Phase 1)
         self.behinds_poisson = None
         self.behinds_gbt = None
+        self.behinds_xgb = None     # XGBoost ensemble component (Phase 1)
         self.scaler = None
         self.feature_cols = []
         self.eval_metrics = {}
@@ -254,6 +294,7 @@ class AFLScoringModel:
             else:
                 raise ValueError("No feature_cols provided and no feature_columns.json found")
 
+        feature_cols = _prepare_training_feature_cols(feature_cols, context="scoring model")
         self.feature_cols = feature_cols
 
         # Filter to players with enough matches (relax for small datasets)
@@ -347,6 +388,17 @@ class AFLScoringModel:
         self.goals_gbt.fit(X_train_scorers, y_train_goals_scorers,
                            sample_weight=weights_train_scorers)
 
+        # XGBoost regressor (Phase 1)
+        if getattr(config, "XGB_ENABLED", False) and _XGB_AVAILABLE:
+            xgb_params = getattr(config, "XGB_PARAMS", {})
+            print("  Training XGBoost regressor for goals...")
+            X_train_raw_scorers = X_train_raw[scorer_mask_train]
+            self.goals_xgb = XGBRegressor(**xgb_params)
+            self.goals_xgb.fit(
+                X_train_raw_scorers.values if hasattr(X_train_raw_scorers, 'values') else X_train_raw_scorers,
+                y_train_goals_scorers, sample_weight=weights_train_scorers,
+            )
+
         # --- Train Behinds Models (on all data — behinds are more diffuse) ---
         print("\n--- Training Behinds Models ---")
 
@@ -360,6 +412,16 @@ class AFLScoringModel:
         print("  Training GBT regressor for behinds...")
         self.behinds_gbt = GradientBoostingRegressor(**config.GBT_PARAMS)
         self.behinds_gbt.fit(X_train_clean, y_train_behinds, sample_weight=weights_train)
+
+        # XGBoost regressor for behinds (Phase 1)
+        if getattr(config, "XGB_ENABLED", False) and _XGB_AVAILABLE:
+            xgb_params = getattr(config, "XGB_PARAMS", {})
+            print("  Training XGBoost regressor for behinds...")
+            self.behinds_xgb = XGBRegressor(**xgb_params)
+            self.behinds_xgb.fit(
+                X_train_raw.values if hasattr(X_train_raw, 'values') else X_train_raw,
+                y_train_behinds, sample_weight=weights_train,
+            )
 
         # --- Evaluate on validation set ---
         print("\n--- Evaluating on validation set ---")
@@ -383,6 +445,7 @@ class AFLScoringModel:
         Used by the backtest loop to quickly fit on a training subset.
         Uses HistGradientBoosting for 10-50x faster training than standard GBT.
         """
+        feature_cols = _prepare_training_feature_cols(feature_cols, context="scoring backtest")
         self.feature_cols = feature_cols
         hist_params = self.gbt_params
 
@@ -425,6 +488,20 @@ class AFLScoringModel:
 
         self.behinds_gbt = HistGradientBoostingRegressor(**hist_params)
         self.behinds_gbt.fit(X_raw, y_behinds, sample_weight=weights)
+
+        # --- XGBoost components (Phase 1) ---
+        if getattr(config, "XGB_ENABLED", False) and _XGB_AVAILABLE:
+            xgb_params = getattr(config, "XGB_PARAMS_BACKTEST", {})
+            self.goals_xgb = XGBRegressor(**xgb_params)
+            self.goals_xgb.fit(
+                X_raw_scorers.values if hasattr(X_raw_scorers, 'values') else X_raw_scorers,
+                y_goals_scorers, sample_weight=weights_scorers,
+            )
+            self.behinds_xgb = XGBRegressor(**xgb_params)
+            self.behinds_xgb.fit(
+                X_raw.values if hasattr(X_raw, 'values') else X_raw,
+                y_behinds, sample_weight=weights,
+            )
 
     def _ensemble_predict(self, X_raw, X_scaled, target="goals", df=None, X_clean=None):
         """Generate ensemble prediction (two-stage for goals, standard for behinds).
@@ -471,7 +548,17 @@ class AFLScoringModel:
                 )
 
             pred_gbt = _predict_with_compatible_input(self.goals_gbt, X_raw, X_clean)
-            raw_pred = np.clip(w_poi * pred_poi + w_gbt * pred_gbt, 0, None)
+
+            # XGBoost 3-way ensemble (Phase 1)
+            if self.goals_xgb is not None:
+                w_3way = getattr(config, "ENSEMBLE_WEIGHTS_3WAY", {"poisson": 0.5, "gbt": 0.2, "xgb": 0.3})
+                pred_xgb = self.goals_xgb.predict(X_raw.values if hasattr(X_raw, 'values') else X_raw)
+                raw_pred = np.clip(
+                    w_3way["poisson"] * pred_poi + w_3way["gbt"] * pred_gbt + w_3way["xgb"] * pred_xgb,
+                    0, None,
+                )
+            else:
+                raw_pred = np.clip(w_poi * pred_poi + w_gbt * pred_gbt, 0, None)
 
             # Two-stage: pred = P(scorer) * E[goals | scorer]
             if self.scorer_clf is not None:
@@ -488,7 +575,17 @@ class AFLScoringModel:
             pred_poi = self.behinds_poisson.predict(X_scaled)
 
             pred_gbt = _predict_with_compatible_input(self.behinds_gbt, X_raw, X_clean)
-            pred = np.clip(w_poi * pred_poi + w_gbt * pred_gbt, 0, None)
+
+            # XGBoost 3-way ensemble (Phase 1)
+            if self.behinds_xgb is not None:
+                w_3way = getattr(config, "ENSEMBLE_WEIGHTS_3WAY", {"poisson": 0.5, "gbt": 0.2, "xgb": 0.3})
+                pred_xgb = self.behinds_xgb.predict(X_raw.values if hasattr(X_raw, 'values') else X_raw)
+                pred = np.clip(
+                    w_3way["poisson"] * pred_poi + w_3way["gbt"] * pred_gbt + w_3way["xgb"] * pred_xgb,
+                    0, None,
+                )
+            else:
+                pred = np.clip(w_poi * pred_poi + w_gbt * pred_gbt, 0, None)
             return pred, None, None
 
     def _evaluate(self, X_val, X_val_scaled, y_val_goals, y_val_behinds, val_df):
@@ -822,11 +919,18 @@ class AFLScoringModel:
         with open(models_dir / "scaler.pkl", "wb") as f:
             pickle.dump(self.scaler, f)
 
+        # XGBoost models (Phase 1) — use native save_model for portability
+        if self.goals_xgb is not None:
+            self.goals_xgb.save_model(str(models_dir / "goals_xgb.json"))
+        if self.behinds_xgb is not None:
+            self.behinds_xgb.save_model(str(models_dir / "behinds_xgb.json"))
+
         metadata = {
             "feature_cols": self.feature_cols,
             "eval_metrics": self.eval_metrics,
             "training_info": self.training_info,
             "ensemble_weights": config.ENSEMBLE_WEIGHTS,
+            "xgb_enabled": self.goals_xgb is not None,
         }
         with open(models_dir / "model_metadata.json", "w") as f:
             json.dump(metadata, f, indent=2, default=str)
@@ -856,6 +960,20 @@ class AFLScoringModel:
         with open(models_dir / "scaler.pkl", "rb") as f:
             self.scaler = pickle.load(f)
 
+        # XGBoost models (Phase 1)
+        goals_xgb_path = models_dir / "goals_xgb.json"
+        if goals_xgb_path.exists() and _XGB_AVAILABLE:
+            self.goals_xgb = XGBRegressor()
+            self.goals_xgb.load_model(str(goals_xgb_path))
+        else:
+            self.goals_xgb = None
+        behinds_xgb_path = models_dir / "behinds_xgb.json"
+        if behinds_xgb_path.exists() and _XGB_AVAILABLE:
+            self.behinds_xgb = XGBRegressor()
+            self.behinds_xgb.load_model(str(behinds_xgb_path))
+        else:
+            self.behinds_xgb = None
+
         with open(models_dir / "model_metadata.json") as f:
             metadata = json.load(f)
         self.feature_cols = metadata["feature_cols"]
@@ -864,6 +982,8 @@ class AFLScoringModel:
 
         print(f"Models loaded from {models_dir}")
         print(f"  Features: {len(self.feature_cols)}")
+        if self.goals_xgb is not None:
+            print(f"  XGBoost: enabled (3-way ensemble)")
         if self.eval_metrics:
             print(f"  Goals MAE: {self.eval_metrics.get('goals_mae', 'N/A')}")
 
@@ -1155,8 +1275,9 @@ class AFLGameWinnerModel:
             team_match_df: One row per (team, match).
             elo_df: Pre-computed Elo ratings (optional).
             player_predictions_df: Player-level predictions with columns
-                [match_id, team, predicted_goals, predicted_disposals].
-                If provided, aggregated per team as game-level features.
+                [match_id, team, predicted_goals, predicted_disposals,
+                 predicted_marks]. If provided, aggregated per team as
+                game-level features.
 
         Returns one row per match (not per team) with columns for both
         home and away team stats.
@@ -1285,6 +1406,8 @@ class AFLGameWinnerModel:
                 agg_cols["predicted_goals"] = "sum"
             if "predicted_disposals" in pp.columns:
                 agg_cols["predicted_disposals"] = "sum"
+            if "predicted_marks" in pp.columns:
+                agg_cols["predicted_marks"] = "sum"
 
             if agg_cols:
                 team_preds = (
@@ -1511,9 +1634,10 @@ class AFLGameWinnerModel:
         )
 
         # Apply isotonic calibration to hybrid prob if available
+        skip_targets = getattr(config, "ISOTONIC_SKIP_TARGETS", set())
         if store is not None and getattr(config, "CALIBRATION_METHOD", "bucket") == "isotonic":
             calibrator = store.load_isotonic_calibrator() if hasattr(store, "load_isotonic_calibrator") else None
-            if calibrator is not None and calibrator.has_calibrator("game_winner"):
+            if calibrator is not None and calibrator.has_calibrator("game_winner") and "game_winner" not in skip_targets:
                 hybrid_prob = calibrator.transform("game_winner", hybrid_prob)
 
         result = pred_df[["match_id", "team", "opponent", "venue"]].copy()
@@ -1581,9 +1705,10 @@ class AFLGameWinnerModel:
         )
 
         # Apply isotonic calibration to hybrid prob if available
+        skip_targets = getattr(config, "ISOTONIC_SKIP_TARGETS", set())
         if store is not None and getattr(config, "CALIBRATION_METHOD", "bucket") == "isotonic":
             calibrator = store.load_isotonic_calibrator() if hasattr(store, "load_isotonic_calibrator") else None
-            if calibrator is not None and calibrator.has_calibrator("game_winner"):
+            if calibrator is not None and calibrator.has_calibrator("game_winner") and "game_winner" not in skip_targets:
                 hybrid_prob = calibrator.transform("game_winner", hybrid_prob)
         X = game_df[self.feature_cols].fillna(0)
 
@@ -1690,6 +1815,7 @@ class AFLDisposalModel:
         self.distribution = distribution  # 'poisson', 'gaussian', 'negbin'
         self.disp_poisson = None
         self.disp_gbt = None
+        self.disp_xgb = None        # XGBoost ensemble component (Phase 1)
         self.scaler = None
         self.feature_cols = []
         self.eval_metrics = {}
@@ -1713,6 +1839,7 @@ class AFLDisposalModel:
             else:
                 raise ValueError("No feature_cols provided and no feature_columns.json found")
 
+        feature_cols = _prepare_training_feature_cols(feature_cols, context="disposal model")
         self.feature_cols = feature_cols
 
         # Time-based split
@@ -1752,6 +1879,16 @@ class AFLDisposalModel:
         self.disp_gbt = HistGradientBoostingRegressor(**self.gbt_params)
         self.disp_gbt.fit(X_train_raw, y_train, sample_weight=weights_train)
 
+        # XGBoost regressor (Phase 1)
+        if getattr(config, "XGB_ENABLED", False) and _XGB_AVAILABLE:
+            xgb_params = getattr(config, "XGB_PARAMS", {})
+            print("  Training XGBoost regressor for disposals...")
+            self.disp_xgb = XGBRegressor(**xgb_params)
+            self.disp_xgb.fit(
+                X_train_raw.values if hasattr(X_train_raw, 'values') else X_train_raw,
+                y_train, sample_weight=weights_train,
+            )
+
         # Estimate distribution-specific parameters from training data
         if self.distribution != "poisson":
             self._estimate_distribution_params(X_train_raw, X_train_scaled, y_train)
@@ -1788,6 +1925,7 @@ class AFLDisposalModel:
 
     def train_backtest(self, df, feature_cols):
         """Fast training for backtest loop."""
+        feature_cols = _prepare_training_feature_cols(feature_cols, context="disposal backtest")
         self.feature_cols = feature_cols
         hist_params = self.gbt_params
 
@@ -1809,6 +1947,15 @@ class AFLDisposalModel:
         # Single-model GBT
         self.disp_gbt = HistGradientBoostingRegressor(**hist_params)
         self.disp_gbt.fit(X_raw, y, sample_weight=weights)
+
+        # XGBoost component (Phase 1)
+        if getattr(config, "XGB_ENABLED", False) and _XGB_AVAILABLE:
+            xgb_params = getattr(config, "XGB_PARAMS_BACKTEST", {})
+            self.disp_xgb = XGBRegressor(**xgb_params)
+            self.disp_xgb.fit(
+                X_raw.values if hasattr(X_raw, 'values') else X_raw,
+                y, sample_weight=weights,
+            )
 
         # Estimate distribution-specific parameters
         if self.distribution != "poisson":
@@ -1968,6 +2115,15 @@ class AFLDisposalModel:
 
         X_clean = X_raw.fillna(0) if hasattr(X_raw, "fillna") else X_raw
         pred_gbt = _predict_with_compatible_input(self.disp_gbt, X_raw, X_clean)
+
+        # XGBoost 3-way ensemble (Phase 1)
+        if self.disp_xgb is not None:
+            w_3way = getattr(config, "ENSEMBLE_WEIGHTS_3WAY", {"poisson": 0.5, "gbt": 0.2, "xgb": 0.3})
+            pred_xgb = self.disp_xgb.predict(X_raw.values if hasattr(X_raw, 'values') else X_raw)
+            return np.clip(
+                w_3way["poisson"] * pred_poi + w_3way["gbt"] * pred_gbt + w_3way["xgb"] * pred_xgb,
+                0, None,
+            )
         return np.clip(w_poi * pred_poi + w_gbt * pred_gbt, 0, None)
 
     def predict(self, df, feature_cols=None, store=None):
@@ -2101,6 +2257,10 @@ class AFLDisposalModel:
         with open(models_dir / "disp_scaler.pkl", "wb") as f:
             pickle.dump(self.scaler, f)
 
+        # XGBoost model (Phase 1) — use native save_model for portability
+        if self.disp_xgb is not None:
+            self.disp_xgb.save_model(str(models_dir / "disp_xgb.json"))
+
         metadata = {
             "feature_cols": self.feature_cols,
             "eval_metrics": self.eval_metrics,
@@ -2109,6 +2269,7 @@ class AFLDisposalModel:
             "residual_std": self._residual_std,
             "std_params": self._std_params if hasattr(self, '_std_params') else None,
             "negbin_r": self._negbin_r,
+            "xgb_enabled": self.disp_xgb is not None,
         }
         with open(models_dir / "disp_model_metadata.json", "w") as f:
             json.dump(metadata, f, indent=2, default=str)
@@ -2126,6 +2287,14 @@ class AFLDisposalModel:
         with open(models_dir / "disp_scaler.pkl", "rb") as f:
             self.scaler = pickle.load(f)
 
+        # XGBoost model (Phase 1)
+        disp_xgb_path = models_dir / "disp_xgb.json"
+        if disp_xgb_path.exists() and _XGB_AVAILABLE:
+            self.disp_xgb = XGBRegressor()
+            self.disp_xgb.load_model(str(disp_xgb_path))
+        else:
+            self.disp_xgb = None
+
         with open(models_dir / "disp_model_metadata.json") as f:
             metadata = json.load(f)
         self.feature_cols = metadata["feature_cols"]
@@ -2137,6 +2306,8 @@ class AFLDisposalModel:
         self._negbin_r = metadata.get("negbin_r")
 
         print(f"Disposal models loaded from {models_dir}")
+        if self.disp_xgb is not None:
+            print(f"  XGBoost: enabled (3-way ensemble)")
 
 
 class AFLMarksModel:
@@ -2159,6 +2330,7 @@ class AFLMarksModel:
         self.distribution = distribution
         self.marks_poisson = None
         self.marks_gbt = None
+        self.marks_xgb = None       # XGBoost ensemble component (Phase 1)
         self.mark_taker_clf = None
         self._mark_taker_threshold = getattr(config, "MARKS_TAKER_THRESHOLD", 5)
         self._mark_taker_blend = getattr(config, "MARKS_TAKER_BLEND", 0.3)
@@ -2183,6 +2355,7 @@ class AFLMarksModel:
             else:
                 raise ValueError("No feature_cols provided and no feature_columns.json found")
 
+        feature_cols = _prepare_training_feature_cols(feature_cols, context="marks model")
         self.feature_cols = feature_cols
 
         train_df = df[df["year"] < config.VALIDATION_YEAR].copy()
@@ -2217,6 +2390,16 @@ class AFLMarksModel:
         print("  Training GBT regressor for marks...")
         self.marks_gbt = HistGradientBoostingRegressor(**self.gbt_params)
         self.marks_gbt.fit(X_train_raw, y_train, sample_weight=weights_train)
+
+        # XGBoost regressor (Phase 1)
+        if getattr(config, "XGB_ENABLED", False) and _XGB_AVAILABLE:
+            xgb_params = getattr(config, "XGB_PARAMS", {})
+            print("  Training XGBoost regressor for marks...")
+            self.marks_xgb = XGBRegressor(**xgb_params)
+            self.marks_xgb.fit(
+                X_train_raw.values if hasattr(X_train_raw, 'values') else X_train_raw,
+                y_train, sample_weight=weights_train,
+            )
 
         # Train mark-taker classifier (soft two-stage)
         if self._mark_taker_blend > 0:
@@ -2273,6 +2456,7 @@ class AFLMarksModel:
 
     def train_backtest(self, df, feature_cols):
         """Fast training for backtest loop."""
+        feature_cols = _prepare_training_feature_cols(feature_cols, context="marks backtest")
         self.feature_cols = feature_cols
         hist_params = self.gbt_params
 
@@ -2292,6 +2476,15 @@ class AFLMarksModel:
 
         self.marks_gbt = HistGradientBoostingRegressor(**hist_params)
         self.marks_gbt.fit(X_raw, y, sample_weight=weights)
+
+        # XGBoost component (Phase 1)
+        if getattr(config, "XGB_ENABLED", False) and _XGB_AVAILABLE:
+            xgb_params = getattr(config, "XGB_PARAMS_BACKTEST", {})
+            self.marks_xgb = XGBRegressor(**xgb_params)
+            self.marks_xgb.fit(
+                X_raw.values if hasattr(X_raw, 'values') else X_raw,
+                y, sample_weight=weights,
+            )
 
         # Train mark-taker classifier (soft two-stage)
         if self._mark_taker_blend > 0:
@@ -2401,7 +2594,17 @@ class AFLMarksModel:
         pred_poi = self.marks_poisson.predict(X_scaled)
         X_clean = X_raw.fillna(0) if hasattr(X_raw, "fillna") else X_raw
         pred_gbt = _predict_with_compatible_input(self.marks_gbt, X_raw, X_clean)
-        base_pred = np.clip(w_poi * pred_poi + w_gbt * pred_gbt, 0, None)
+
+        # XGBoost 3-way ensemble (Phase 1)
+        if self.marks_xgb is not None:
+            w_3way = getattr(config, "ENSEMBLE_WEIGHTS_3WAY", {"poisson": 0.5, "gbt": 0.2, "xgb": 0.3})
+            pred_xgb = self.marks_xgb.predict(X_raw.values if hasattr(X_raw, 'values') else X_raw)
+            base_pred = np.clip(
+                w_3way["poisson"] * pred_poi + w_3way["gbt"] * pred_gbt + w_3way["xgb"] * pred_xgb,
+                0, None,
+            )
+        else:
+            base_pred = np.clip(w_poi * pred_poi + w_gbt * pred_gbt, 0, None)
 
         # Soft two-stage: adjust predictions based on mark-taker probability
         if self.mark_taker_clf is not None and self._mark_taker_blend > 0:
@@ -2538,6 +2741,10 @@ class AFLMarksModel:
             with open(models_dir / "marks_taker_clf.pkl", "wb") as f:
                 pickle.dump(self.mark_taker_clf, f)
 
+        # XGBoost model (Phase 1) — use native save_model for portability
+        if self.marks_xgb is not None:
+            self.marks_xgb.save_model(str(models_dir / "marks_xgb.json"))
+
         metadata = {
             "feature_cols": self.feature_cols,
             "eval_metrics": self.eval_metrics,
@@ -2548,6 +2755,7 @@ class AFLMarksModel:
             "negbin_r": self._negbin_r,
             "mark_taker_threshold": self._mark_taker_threshold,
             "mark_taker_blend": self._mark_taker_blend,
+            "xgb_enabled": self.marks_xgb is not None,
         }
         with open(models_dir / "marks_model_metadata.json", "w") as f:
             json.dump(metadata, f, indent=2, default=str)
@@ -2569,6 +2777,14 @@ class AFLMarksModel:
             with open(mt_path, "rb") as f:
                 self.mark_taker_clf = pickle.load(f)
 
+        # XGBoost model (Phase 1)
+        marks_xgb_path = models_dir / "marks_xgb.json"
+        if marks_xgb_path.exists() and _XGB_AVAILABLE:
+            self.marks_xgb = XGBRegressor()
+            self.marks_xgb.load_model(str(marks_xgb_path))
+        else:
+            self.marks_xgb = None
+
         with open(models_dir / "marks_model_metadata.json") as f:
             metadata = json.load(f)
         self.feature_cols = metadata["feature_cols"]
@@ -2582,6 +2798,8 @@ class AFLMarksModel:
         self._mark_taker_blend = metadata.get("mark_taker_blend", 0.3)
 
         print(f"Marks models loaded from {models_dir}")
+        if self.marks_xgb is not None:
+            print(f"  XGBoost: enabled (3-way ensemble)")
 
 
 # ---------------------------------------------------------------------------

@@ -804,6 +804,102 @@ export interface AccuracyBreakdown {
   by_stage: BreakdownEntry[];
 }
 
+// --- Monte Carlo Simulation ---
+
+export interface SimPercentiles {
+  p10: number;
+  p25: number;
+  p50: number;
+  p75: number;
+  p90: number;
+}
+
+export interface SimTotalBracket {
+  threshold: number;
+  p_over: number;
+}
+
+export interface SimMatchOutcomes {
+  home_win_pct: number;
+  away_win_pct: number;
+  draw_pct: number;
+  avg_home_score: number;
+  avg_away_score: number;
+  avg_total: number;
+  avg_margin: number;
+  score_distribution: {
+    home: SimPercentiles;
+    away: SimPercentiles;
+    total: SimPercentiles;
+    margin: SimPercentiles;
+  };
+  total_brackets: SimTotalBracket[];
+}
+
+export interface SimPlayerGoals {
+  avg: number;
+  p_1plus: number;
+  p_2plus: number;
+  p_3plus: number;
+  distribution: number[];
+}
+
+export interface SimPlayerDisposals {
+  avg: number;
+  p_10plus: number;
+  p_15plus: number;
+  p_20plus: number;
+  p_25plus: number;
+  p_30plus: number;
+  percentiles: SimPercentiles;
+}
+
+export interface SimPlayerMarks {
+  avg: number;
+  p_3plus: number;
+  p_5plus: number;
+  p_7plus: number;
+  p_10plus: number;
+  percentiles: SimPercentiles;
+}
+
+export interface SimPlayer {
+  player: string;
+  team: string;
+  is_home: boolean;
+  goals: SimPlayerGoals;
+  disposals: SimPlayerDisposals;
+  marks: SimPlayerMarks;
+}
+
+export interface SimMultiLeg {
+  player: string;
+  team: string;
+  type: string;
+  threshold: number;
+  label: string;
+  solo_prob: number;
+  book_implied_prob: number;
+}
+
+export interface SimMultiSuggestion {
+  legs: SimMultiLeg[];
+  n_legs: number;
+  joint_prob: number;
+  indep_prob: number;
+  correlation_lift: number;
+}
+
+export interface MatchSimulation {
+  match_id: number;
+  home_team: string;
+  away_team: string;
+  n_sims: number;
+  match_outcomes: SimMatchOutcomes;
+  players: SimPlayer[];
+  suggested_multis: SimMultiSuggestion[];
+}
+
 // --- Multi-Bet Backtest ---
 
 export interface MultiLeg {
@@ -967,6 +1063,94 @@ export interface VenueDetail {
     avg_disposals: number;
   }[];
   recent_matches: SeasonMatch[];
+}
+
+// ---------------------------------------------------------------------------
+// Ladder
+// ---------------------------------------------------------------------------
+
+export interface LadderEntry {
+  position: number;
+  team: string;
+  played: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  points: number;
+  points_for: number;
+  points_against: number;
+  percentage: number;
+  form: string[];
+  avg_margin: number;
+}
+
+export interface LadderResponse {
+  year: number;
+  ladder: LadderEntry[];
+}
+
+// ---------------------------------------------------------------------------
+// Team Profile
+// ---------------------------------------------------------------------------
+
+export interface TeamProfileRecord {
+  played: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  points: number;
+  points_for: number;
+  points_against: number;
+  percentage: number;
+  ladder_position?: number | null;
+}
+
+export interface TeamProfileFormGame {
+  opponent: string;
+  result: string;
+  score: number;
+  opp_score: number;
+  margin: number;
+  venue: string;
+  round_number: number;
+  is_home?: boolean;
+}
+
+export interface TeamProfileSeasonAverages {
+  avg_score: number;
+  avg_conceded: number;
+  avg_margin: number;
+  avg_rest_days?: number | null;
+}
+
+export interface TeamProfileHomeAwaySplit {
+  played: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  avg_score: number | null;
+  avg_conceded: number | null;
+  avg_margin: number | null;
+}
+
+export interface TeamProfileTopPlayer {
+  name: string;
+  player_id: string;
+  games: number;
+  total: number;
+  avg: number;
+}
+
+export interface TeamProfile {
+  team: string;
+  year: number;
+  record: TeamProfileRecord | null;
+  recent_form: TeamProfileFormGame[];
+  season_averages: TeamProfileSeasonAverages | null;
+  home_away: { home: TeamProfileHomeAwaySplit; away: TeamProfileHomeAwaySplit } | null;
+  top_goals: TeamProfileTopPlayer[];
+  top_disposals: TeamProfileTopPlayer[];
+  top_marks: TeamProfileTopPlayer[];
 }
 
 // ---------------------------------------------------------------------------

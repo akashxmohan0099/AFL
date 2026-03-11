@@ -96,6 +96,26 @@ CAREER_SPLIT_FEATURES_ENABLED = False  # snapshot career splits are leaky for hi
 # Injury list
 INJURY_LOOKBACK_MONTHS = 12
 
+# UI-only/news intel features that should not be used for model training
+# until we have properly versioned historical snapshots in a remote store.
+MODEL_EXCLUDED_FEATURES = {
+    "team_n_ins",
+    "team_n_outs",
+    "team_n_debutants",
+    "team_stability",
+    "team_churn_3r",
+    "opp_n_ins",
+    "opp_n_outs",
+    "opp_n_debutants",
+    "opp_stability",
+    "opp_churn_3r",
+    "is_debutant",
+    "team_injured_count",
+    "team_injury_severity",
+    "opp_injured_count",
+    "opp_injury_severity",
+}
+
 # Career disposal cold-start fallback (used when no prior match history exists)
 CAREER_DISP_AVG_FALLBACK = 15.0
 
@@ -123,6 +143,91 @@ MIDFIELDER_CL_THRESHOLD = 2
 # ---------------------------------------------------------------------------
 RANDOM_SEED = 42
 ENSEMBLE_WEIGHTS = {"poisson": 0.8, "gbt": 0.2}
+
+# ---------------------------------------------------------------------------
+# XGBoost parameters (Phase 1 deep learning upgrade)
+# ---------------------------------------------------------------------------
+XGB_ENABLED = True
+XGB_PARAMS = {
+    "n_estimators": 300,
+    "max_depth": 5,
+    "learning_rate": 0.05,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "min_child_weight": 10,
+    "reg_alpha": 0.1,
+    "reg_lambda": 1.0,
+    "tree_method": "hist",
+    "random_state": RANDOM_SEED,
+    "verbosity": 0,
+}
+XGB_PARAMS_BACKTEST = {
+    "n_estimators": 150,
+    "max_depth": 4,
+    "learning_rate": 0.08,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "min_child_weight": 15,
+    "reg_alpha": 0.1,
+    "reg_lambda": 1.0,
+    "tree_method": "hist",
+    "random_state": RANDOM_SEED,
+    "verbosity": 0,
+}
+ENSEMBLE_WEIGHTS_3WAY = {"poisson": 0.5, "gbt": 0.2, "xgb": 0.3}
+
+# LightGBM parameters (Phase 3 stacking)
+LGBM_PARAMS_BACKTEST = {
+    "n_estimators": 200,
+    "max_depth": 5,
+    "learning_rate": 0.05,
+    "num_leaves": 31,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "min_child_samples": 20,
+    "reg_alpha": 0.1,
+    "reg_lambda": 1.0,
+    "random_state": RANDOM_SEED,
+    "verbose": -1,
+}
+
+# Stacking meta-ensemble (Phase 3)
+STACKING_ENABLED = False
+STACKING_N_FOLDS = 4
+STACKING_META_ALPHA = 1.0
+STACKING_META_ALPHA_BACKTEST = 10.0
+
+# Entity embeddings (Phase 2)
+EMBEDDINGS_DIR = DATA_DIR / "embeddings"
+EMBEDDING_ENABLED = False  # v5.0 test: no improvement over baseline
+EMBEDDING_DIMS = {"player_id": 32, "team": 8, "opponent": 8, "venue": 8, "archetype": 4}
+EMBEDDING_HIDDEN_DIM = 128
+EMBEDDING_EPOCHS = 30
+EMBEDDING_BATCH_SIZE = 2048
+EMBEDDING_LR = 1e-3
+
+# Sequence model (Phase 4)
+SEQUENCE_DIR = DATA_DIR / "sequence"
+SEQUENCE_ENABLED = False  # v5.0 test: no improvement over baseline
+SEQUENCE_LOOKBACK = 20
+SEQUENCE_HIDDEN_DIM = 64
+SEQUENCE_OUTPUT_DIM = 32
+SEQUENCE_N_LAYERS = 2
+SEQUENCE_EPOCHS = 20
+SEQUENCE_BATCH_SIZE = 512
+SEQUENCE_LR = 5e-4
+
+# Optuna tuning ranges for XGBoost
+TUNE_XGB_RANGES = {
+    "n_estimators": (100, 600),
+    "max_depth": (3, 8),
+    "learning_rate": (0.01, 0.2),
+    "subsample": (0.6, 1.0),
+    "colsample_bytree": (0.5, 1.0),
+    "min_child_weight": (5, 50),
+    "reg_alpha": (0.0, 2.0),
+    "reg_lambda": (0.5, 5.0),
+}
 DISPOSAL_DISTRIBUTION = "gaussian"  # 'poisson', 'gaussian', or 'negbin' — Gaussian wins at all thresholds (2025 backtest)
 
 # Upper-tail correction for Gaussian disposal probabilities.
@@ -184,19 +289,19 @@ DISPOSAL_POISSON_PARAMS = {
 # Marks-specific params (separate from scoring/disposals)
 MARKS_DISTRIBUTION = "negbin"
 MARKS_GBT_PARAMS_BACKTEST = {
-    "max_iter": 217,
+    "max_iter": 250,
     "max_depth": 5,
-    "learning_rate": 0.052,
-    "min_samples_leaf": 10,
+    "learning_rate": 0.06,
+    "min_samples_leaf": 15,
     "random_state": RANDOM_SEED,
 }
 MARKS_POISSON_PARAMS = {
-    "alpha": 0.015,
+    "alpha": 0.02,
     "max_iter": 1000,
 }
 MARKS_THRESHOLDS = [2, 3, 4, 5, 6, 7, 8, 9, 10]
-MARKS_TAKER_THRESHOLD = 3     # binary classifier: P(marks >= 3)
-MARKS_TAKER_BLEND = 0.4       # adjustment weight for mark-taker prob
+MARKS_TAKER_THRESHOLD = 4     # binary classifier: P(marks >= 4) — cleaner 50/50 split than threshold 3
+MARKS_TAKER_BLEND = 0.55      # adjustment weight for mark-taker prob — stronger separation for threshold 4
 
 # ---------------------------------------------------------------------------
 # Market / odds features
@@ -243,9 +348,9 @@ GAME_WINNER_PARAMS_BACKTEST = {
 
 # Hybrid winner mode: market prior + residual ML logit
 WINNER_HYBRID_ENABLED = True
-WINNER_HYBRID_ALPHA = 0.3
-WINNER_HYBRID_BETA = 0.6
-WINNER_HYBRID_BIAS = -0.01
+WINNER_HYBRID_ALPHA = 0.5
+WINNER_HYBRID_BETA = 0.5
+WINNER_HYBRID_BIAS = 0.0
 WINNER_MARKET_EPS = 1e-6
 WINNER_MIN_MARKET_COVERAGE = 0.30
 
@@ -276,9 +381,10 @@ ISOTONIC_MIN_SAMPLES = 100         # min predictions before fitting isotonic cal
 ISOTONIC_REFIT_INTERVAL = 5        # refit every N rounds in sequential mode
 ISOTONIC_SKIP_TARGETS = {
     "1plus_goals", "2plus_goals", "3plus_goals",  # two-stage scorer already calibrates well
-    "10plus_disp", "15plus_disp", "20plus_disp", "25plus_disp", "30plus_disp",  # Gaussian CDF well-calibrated; isotonic collapses variance
-    "2plus_mk", "3plus_mk", "4plus_mk", "5plus_mk", "6plus_mk",  # NegBin CDF well-calibrated; isotonic collapses variance
-    "7plus_mk", "8plus_mk", "9plus_mk", "10plus_mk",
+    "game_winner",  # hybrid blend already calibrated; isotonic creates feedback loop in sequential
+    # Disposals + marks: isotonic ENABLED — raw Gaussian/NegBin CDFs compress predictions
+    # into a narrow band (~0.28-0.32). Isotonic calibration spreads them to full [0,1] range
+    # and dramatically improves BSS (3% → 40%+ for disposals).
 }
 CALIBRATION_N_BUCKETS = 10
 CALIBRATION_MIN_BUCKET_SIZE = 5
@@ -489,6 +595,36 @@ TEAM_HOME_GROUNDS = {
 }
 
 # ---------------------------------------------------------------------------
+# Multi-bet correlation engine
+# ---------------------------------------------------------------------------
+MULTI_N_SIMS = 10_000
+MULTI_MAX_LEGS = 4
+MULTI_MIN_EDGE = 0.03
+MULTI_MIN_LEG_PROB = 0.30
+MULTI_DIR = DATA_DIR / "multi"
+
+# Market-type-aware overround margins (from bet365 analysis)
+# These are the bookmaker's built-in margins that inflate implied probabilities.
+# Our edge = model_prob - (book_implied_prob / (1 + overround))
+# Note: _book_implied() in multi.py uses model_prob * (1 + overround) as a
+# pessimistic placeholder when real odds are unavailable, ensuring no false edges.
+# Only overlay_real_odds() with actual Betfair data produces meaningful edge signals.
+# Lower overround = harder to find edge; higher = more margin baked in.
+BOOK_OVERROUND = {
+    "h2h":              0.047,   # Head-to-head / match winner (~4.7%)
+    "line":             0.047,   # Line / handicap (~4.7%)
+    "totals":           0.047,   # Over/under total score (~4.7%)
+    "player_goals":     0.10,    # Anytime goalscorer (~10%)
+    "player_disposals": 0.08,    # Player disposal milestones (~8%)
+    "player_marks":     0.08,    # Player marks milestones (~8%)
+    "first_goal":       0.15,    # First goalscorer (~15%)
+    "margin_bands":     0.12,    # Margin band markets (~12%)
+    "ht_ft":            0.11,    # Half-time/full-time (~11%)
+    "total_5way":       0.14,    # Total 5-way (~14%)
+    "sgm":              0.20,    # Same-game multi (~15-25%)
+}
+
+# ---------------------------------------------------------------------------
 # Ensure directories exist
 # ---------------------------------------------------------------------------
 def ensure_dirs():
@@ -497,7 +633,8 @@ def ensure_dirs():
               MODELS_DIR, PREDICTIONS_DIR, FIXTURES_DIR, BACKTEST_DIR,
               LEARNING_DIR, SEQUENTIAL_DIR, TUNING_DIR, EXPERIMENTS_DIR,
               UMPIRES_DIR, COACHES_DIR, PLAYER_PROFILES_DIR, FOOTYWIRE_DIR,
-              SUPERCOACH_DIR, NEWS_DIR]:
+              SUPERCOACH_DIR, NEWS_DIR, EMBEDDINGS_DIR, SEQUENCE_DIR,
+              MULTI_DIR]:
         d.mkdir(parents=True, exist_ok=True)
     # Sequential learning subdirectories
     for subdir in ["predictions", "outcomes", "diagnostics", "analysis",

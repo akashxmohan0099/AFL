@@ -62,10 +62,12 @@ export function MatchContextCard({
   const [showAllTeamBrackets, setShowAllTeamBrackets] = useState(false);
   const [contextView, setContextView] = useState<"default" | "advanced">("default");
 
-  // Use current season record, falling back to last season
-  const homeRec = (context.home_team_season?.played ?? 0) > 0 ? context.home_team_season : context.home_team_last_season;
-  const awayRec = (context.away_team_season?.played ?? 0) > 0 ? context.away_team_season : context.away_team_last_season;
-  const isLastSeason = homeRec === context.home_team_last_season;
+  // Season records — show both current and last season
+  const homeSeason = context.home_team_season;
+  const awaySeason = context.away_team_season;
+  const homeLastSeason = context.home_team_last_season;
+  const awayLastSeason = context.away_team_last_season;
+  const hasAnySeasonData = (homeSeason?.played ?? 0) > 0 || (awaySeason?.played ?? 0) > 0 || (homeLastSeason?.played ?? 0) > 0 || (awayLastSeason?.played ?? 0) > 0;
 
   const homeVenue = context.home_team_venue;
   const awayVenue = context.away_team_venue;
@@ -237,79 +239,93 @@ export function MatchContextCard({
           </div>
         )}
 
-        {/* Section: Season Records */}
-        {(homeRec || awayRec) && (
+        {/* Section: Season Records — both current + last season per team */}
+        {hasAnySeasonData && (
           <div className="border-t border-border/30 pt-4">
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-3">
-              {isLastSeason ? `${CURRENT_YEAR - 1} Season Record` : "Season Record"}
+              Season Record
             </p>
             <div className="grid grid-cols-2 gap-4">
-              {/* Home team record */}
-              {homeRec && homeRec.played > 0 && (
-                <div className="px-3 py-2.5 rounded-lg border border-border/30 bg-card/30">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: homeColor }} />
-                    <span className="text-xs font-semibold font-mono">{homeAbbr}</span>
-                    <RecordBadge wins={homeRec.wins} losses={homeRec.losses} draws={homeRec.draws} />
+              {/* Home team */}
+              {[
+                { abbr: homeAbbr, color: homeColor, season: homeSeason, lastSeason: homeLastSeason },
+                { abbr: awayAbbr, color: awayColor, season: awaySeason, lastSeason: awayLastSeason },
+              ].map(({ abbr, color, season, lastSeason }) => (
+                <div key={abbr} className="px-3 py-2.5 rounded-lg border border-border/30 bg-card/30 space-y-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+                    <span className="text-xs font-semibold font-mono">{abbr}</span>
                   </div>
-                  <div className="flex gap-4 text-[11px] flex-wrap">
-                    {homeRec.home_record && (
-                      <div>
-                        <span className="text-muted-foreground">Home: </span>
-                        <span className="font-mono font-semibold">{homeRec.home_record}</span>
-                      </div>
-                    )}
-                    {homeRec.away_record && (
-                      <div>
-                        <span className="text-muted-foreground">Away: </span>
-                        <span className="font-mono font-semibold">{homeRec.away_record}</span>
-                      </div>
-                    )}
-                    {homeRec.avg_score != null && (
-                      <div>
-                        <span className="text-muted-foreground">Avg: </span>
-                        <span className="font-mono font-semibold">{homeRec.avg_score}</span>
-                        <span className="text-muted-foreground">-</span>
-                        <span className="font-mono font-semibold">{homeRec.avg_conceded}</span>
-                      </div>
+                  {/* Current season */}
+                  <div>
+                    <p className="text-[9px] font-mono text-muted-foreground/50 uppercase mb-1">{CURRENT_YEAR}</p>
+                    {(season?.played ?? 0) > 0 ? (
+                      <>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <RecordBadge wins={season!.wins} losses={season!.losses} draws={season!.draws} />
+                        </div>
+                        <div className="flex gap-4 text-[11px] flex-wrap">
+                          {season!.home_record && (
+                            <div>
+                              <span className="text-muted-foreground">Home: </span>
+                              <span className="font-mono font-semibold">{season!.home_record}</span>
+                            </div>
+                          )}
+                          {season!.away_record && (
+                            <div>
+                              <span className="text-muted-foreground">Away: </span>
+                              <span className="font-mono font-semibold">{season!.away_record}</span>
+                            </div>
+                          )}
+                          {season!.avg_score != null && (
+                            <div>
+                              <span className="text-muted-foreground">Avg: </span>
+                              <span className="font-mono font-semibold">{season!.avg_score}</span>
+                              <span className="text-muted-foreground">-</span>
+                              <span className="font-mono font-semibold">{season!.avg_conceded}</span>
+                            </div>
+                          )}
+                        </div>
+                        <StatRange min={season!.min_score} median={season!.median_score} max={season!.max_score} />
+                      </>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground/40 italic">No games yet</p>
                     )}
                   </div>
-                  <StatRange min={homeRec.min_score} median={homeRec.median_score} max={homeRec.max_score} />
+                  {/* Last season */}
+                  {lastSeason && (lastSeason.played ?? 0) > 0 && (
+                    <div className="border-t border-border/20 pt-2">
+                      <p className="text-[9px] font-mono text-muted-foreground/50 uppercase mb-1">{CURRENT_YEAR - 1}</p>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <RecordBadge wins={lastSeason.wins} losses={lastSeason.losses} draws={lastSeason.draws} />
+                      </div>
+                      <div className="flex gap-4 text-[11px] flex-wrap">
+                        {lastSeason.home_record && (
+                          <div>
+                            <span className="text-muted-foreground">Home: </span>
+                            <span className="font-mono font-semibold">{lastSeason.home_record}</span>
+                          </div>
+                        )}
+                        {lastSeason.away_record && (
+                          <div>
+                            <span className="text-muted-foreground">Away: </span>
+                            <span className="font-mono font-semibold">{lastSeason.away_record}</span>
+                          </div>
+                        )}
+                        {lastSeason.avg_score != null && (
+                          <div>
+                            <span className="text-muted-foreground">Avg: </span>
+                            <span className="font-mono font-semibold">{lastSeason.avg_score}</span>
+                            <span className="text-muted-foreground">-</span>
+                            <span className="font-mono font-semibold">{lastSeason.avg_conceded}</span>
+                          </div>
+                        )}
+                      </div>
+                      <StatRange min={lastSeason.min_score} median={lastSeason.median_score} max={lastSeason.max_score} />
+                    </div>
+                  )}
                 </div>
-              )}
-              {/* Away team record */}
-              {awayRec && awayRec.played > 0 && (
-                <div className="px-3 py-2.5 rounded-lg border border-border/30 bg-card/30">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: awayColor }} />
-                    <span className="text-xs font-semibold font-mono">{awayAbbr}</span>
-                    <RecordBadge wins={awayRec.wins} losses={awayRec.losses} draws={awayRec.draws} />
-                  </div>
-                  <div className="flex gap-4 text-[11px] flex-wrap">
-                    {awayRec.home_record && (
-                      <div>
-                        <span className="text-muted-foreground">Home: </span>
-                        <span className="font-mono font-semibold">{awayRec.home_record}</span>
-                      </div>
-                    )}
-                    {awayRec.away_record && (
-                      <div>
-                        <span className="text-muted-foreground">Away: </span>
-                        <span className="font-mono font-semibold">{awayRec.away_record}</span>
-                      </div>
-                    )}
-                    {awayRec.avg_score != null && (
-                      <div>
-                        <span className="text-muted-foreground">Avg: </span>
-                        <span className="font-mono font-semibold">{awayRec.avg_score}</span>
-                        <span className="text-muted-foreground">-</span>
-                        <span className="font-mono font-semibold">{awayRec.avg_conceded}</span>
-                      </div>
-                    )}
-                  </div>
-                  <StatRange min={awayRec.min_score} median={awayRec.median_score} max={awayRec.max_score} />
-                </div>
-              )}
+              ))}
             </div>
           </div>
         )}

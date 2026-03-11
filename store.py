@@ -76,6 +76,17 @@ class LearningStore:
         rid = self._normalise_run_id(run_id)
         return self.base_dir / subdir / f"{int(year)}" / f"run_{rid}"
 
+    @staticmethod
+    def _path_mtime_ns(path):
+        try:
+            return path.stat().st_mtime_ns
+        except OSError:
+            return -1
+
+    @classmethod
+    def _sort_paths_by_mtime(cls, paths):
+        return sorted(paths, key=lambda p: (cls._path_mtime_ns(p), p.name))
+
     def _latest_run(self, subdir="predictions", year=None):
         runs = self.list_runs(year=year, subdir=subdir)
         return runs[-1] if runs else None
@@ -86,23 +97,24 @@ class LearningStore:
         if not root.exists():
             return []
 
-        run_ids = set()
+        run_mtimes = {}
 
         if year is not None:
             y_dir = root / f"{int(year)}"
             if y_dir.exists():
-                for d in y_dir.glob("run_*"):
-                    if d.is_dir():
-                        run_ids.add(d.name.replace("run_", "", 1))
+                for d in self._sort_paths_by_mtime(p for p in y_dir.glob("run_*") if p.is_dir()):
+                    rid = d.name.replace("run_", "", 1)
+                    run_mtimes[rid] = max(run_mtimes.get(rid, -1), self._path_mtime_ns(d))
         else:
             for y_dir in root.iterdir():
                 if not y_dir.is_dir() or not y_dir.name.isdigit():
                     continue
-                for d in y_dir.glob("run_*"):
-                    if d.is_dir():
-                        run_ids.add(d.name.replace("run_", "", 1))
+                for d in self._sort_paths_by_mtime(p for p in y_dir.glob("run_*") if p.is_dir()):
+                    rid = d.name.replace("run_", "", 1)
+                    run_mtimes[rid] = max(run_mtimes.get(rid, -1), self._path_mtime_ns(d))
 
-        return sorted(run_ids)
+        ordered = sorted(run_mtimes.items(), key=lambda item: (item[1], item[0]))
+        return [rid for rid, _ in ordered]
 
     def _resolve_write_run_id(self, run_id=None):
         rid = self._normalise_run_id(run_id) or self._active_run_id
@@ -118,11 +130,6 @@ class LearningStore:
             self._active_run_id = rid
             return rid
 
-        if self._active_run_id is not None:
-            active_dir = self._run_dir(subdir, year, self._active_run_id)
-            if active_dir.exists():
-                return self._active_run_id
-
         if self.run_id is not None:
             cfg_dir = self._run_dir(subdir, year, self.run_id)
             if cfg_dir.exists():
@@ -134,6 +141,11 @@ class LearningStore:
             if rid is not None:
                 self._active_run_id = rid
                 return rid
+
+        if self._active_run_id is not None:
+            active_dir = self._run_dir(subdir, year, self._active_run_id)
+            if active_dir.exists():
+                return self._active_run_id
 
         return None
 
@@ -172,12 +184,10 @@ class LearningStore:
         cal_dir = self.base_dir / "calibration"
         if not cal_dir.exists():
             return None
-        runs = sorted(
-            d.name.replace("run_", "", 1)
-            for d in cal_dir.glob("run_*")
-            if d.is_dir()
-        )
-        return runs[-1] if runs else None
+        run_dirs = self._sort_paths_by_mtime(d for d in cal_dir.glob("run_*") if d.is_dir())
+        if not run_dirs:
+            return None
+        return run_dirs[-1].name.replace("run_", "", 1)
 
     def _calibration_path(self, run_id=None, for_write=False, latest=True, year=None):
         """Resolve calibration state path, preferring run-specific state."""
@@ -186,16 +196,30 @@ class LearningStore:
             return self.base_dir / "calibration" / f"run_{rid}" / "calibration_state.parquet"
 
         rid = self._normalise_run_id(run_id)
-        if rid is None and year is not None:
-            rid = self._resolve_read_run_id("predictions", year, run_id=None, latest=latest)
-        if rid is None and self._active_run_id is not None:
-            rid = self._active_run_id
-        if rid is None and latest:
-            rid = self._latest_calibration_run()
-
         if rid is not None:
             self._active_run_id = rid
             return self.base_dir / "calibration" / f"run_{rid}" / "calibration_state.parquet"
+
+        if year is not None:
+            rid = self._resolve_read_run_id("predictions", year, run_id=None, latest=latest)
+            if rid is not None:
+                self._active_run_id = rid
+                return self.base_dir / "calibration" / f"run_{rid}" / "calibration_state.parquet"
+
+        if self.run_id is not None:
+            cfg_path = self.base_dir / "calibration" / f"run_{self.run_id}" / "calibration_state.parquet"
+            if cfg_path.exists():
+                self._active_run_id = self.run_id
+                return cfg_path
+
+        if latest:
+            rid = self._latest_calibration_run()
+            if rid is not None:
+                self._active_run_id = rid
+                return self.base_dir / "calibration" / f"run_{rid}" / "calibration_state.parquet"
+
+        if self._active_run_id is not None:
+            return self.base_dir / "calibration" / f"run_{self._active_run_id}" / "calibration_state.parquet"
 
         return self._legacy_calibration_path()
 
@@ -505,6 +529,35 @@ class LearningStore:
 
         return None
 
+    def save_isotonic_accum(self, accum, run_id=None):
+        """Save isotonic accumulation data (preds/actuals per target) to disk.
+
+        Saved to a GLOBAL location (not run-specific) so cross-year sequential
+        runs can accumulate isotonic training data across all years.
+        """
+        import pickle
+        cal_dir = self.base_dir / "calibration"
+        cal_dir.mkdir(parents=True, exist_ok=True)
+        path = cal_dir / "isotonic_accum.pkl"
+        with open(path, "wb") as f:
+            pickle.dump(accum, f)
+        return path
+
+    def load_isotonic_accum(self, run_id=None):
+        """Load isotonic accumulation data from the global calibration directory.
+
+        Returns empty dict if no accumulation data exists.
+        """
+        import pickle
+        path = self.base_dir / "calibration" / "isotonic_accum.pkl"
+        if path.exists():
+            try:
+                with open(path, "rb") as f:
+                    return pickle.load(f)
+            except Exception:
+                pass
+        return {}
+
     # ------------------------------------------------------------------
     # Archetypes
     # ------------------------------------------------------------------
@@ -677,7 +730,9 @@ class LearningStore:
                 else:
                     year_dir = d / f"{year}"
                     if year_dir.exists():
-                        for run_dir in sorted(year_dir.glob("run_*")):
+                        for run_dir in self._sort_paths_by_mtime(
+                            p for p in year_dir.glob("run_*") if p.is_dir()
+                        ):
                             files.extend(sorted(run_dir.glob("R*.parquet")))
 
             if include_legacy:

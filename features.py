@@ -685,6 +685,41 @@ def add_rolling_features(df):
         index=df_real.index,
     ).clip(0, 5.0)
 
+    # --- High-disposal prediction features ---
+    # Max disposals in last 5 games (ceiling indicator for upside potential)
+    rolling_feature_updates["player_di_max_5"] = grouped["DI"].transform(
+        lambda s: s.shift(1).rolling(5, min_periods=2).max()
+    ).fillna(0)
+
+    # Percentage of last 10 games with 25+ disposals
+    _di_above_25 = shifted_di.ge(25).astype(float)
+    rolling_feature_updates["player_di_pct_above_25_10"] = _di_above_25.groupby(
+        [df_real["player"], df_real["team"]], observed=True
+    ).rolling(10, min_periods=3).mean().reset_index(level=[0, 1], drop=True).fillna(0)
+
+    # Percentage of last 10 games with 30+ disposals
+    _di_above_30 = shifted_di.ge(30).astype(float)
+    rolling_feature_updates["player_di_pct_above_30_10"] = _di_above_30.groupby(
+        [df_real["player"], df_real["team"]], observed=True
+    ).rolling(10, min_periods=3).mean().reset_index(level=[0, 1], drop=True).fillna(0)
+
+    # Disposal volatility over last 10 games (high volatility = more upside variance)
+    _di_avg_10 = grouped["DI"].transform(
+        lambda s: s.shift(1).rolling(10, min_periods=3).mean()
+    )
+    _di_std_10 = grouped["DI"].transform(
+        lambda s: s.shift(1).rolling(10, min_periods=3).std()
+    ).fillna(0)
+    rolling_feature_updates["player_di_volatility_10"] = pd.Series(
+        np.where(_di_avg_10 > 0, _di_std_10 / _di_avg_10, 0),
+        index=df_real.index,
+    ).clip(0, 2.0).fillna(0)
+
+    # Disposal trend over last 5 games (positive slope = trending upward)
+    rolling_feature_updates["player_di_trend_5"] = _grouped_shifted_slope_5(
+        grouped, "DI"
+    ).fillna(0)
+
     if rolling_feature_updates:
         overlap = [col for col in rolling_feature_updates if col in df_real.columns]
         if overlap:
@@ -888,6 +923,41 @@ def add_opponent_features(df):
         "disp_conceded_avg_10": "opp_disp_conceded_avg_10",
     })
     df = df.drop(columns=["conceding_team"], errors="ignore")
+
+    # Step 3a: opponent 30+ disposal concession rate
+    # Count how many individual players got 30+ disposals against each team per match
+    player_30plus = (
+        df.groupby(["match_id", "team", "opponent"], observed=True)["DI"]
+        .apply(lambda x: (x >= 30).sum())
+        .reset_index()
+        .rename(columns={"DI": "n_30plus_players"})
+    )
+    # The conceding team is the opponent column
+    conceded_30plus = player_30plus.rename(columns={
+        "opponent": "conceding_team",
+    })[["match_id", "conceding_team", "n_30plus_players"]]
+    # Binary: did the opponent allow ANY 30+ disposal player in this match?
+    conceded_30plus["allowed_30plus"] = (conceded_30plus["n_30plus_players"] > 0).astype(float)
+    conceded_30plus = conceded_30plus.merge(match_dates, on="match_id", how="left")
+    conceded_30plus = conceded_30plus.sort_values("date")
+
+    # Rolling rate of allowing 30+ disposal games (shifted to avoid leakage)
+    conceded_30plus["opp_di_conceded_30plus_rate"] = _group_shifted_rolling_mean(
+        conceded_30plus, ["conceding_team"], "allowed_30plus", 10, min_periods=3
+    )
+
+    opp_30plus_defense = conceded_30plus[
+        ["match_id", "conceding_team", "opp_di_conceded_30plus_rate"]
+    ].drop_duplicates()
+
+    df = df.merge(
+        opp_30plus_defense,
+        left_on=["match_id", "opponent"],
+        right_on=["match_id", "conceding_team"],
+        how="left",
+    )
+    df = df.drop(columns=["conceding_team"], errors="ignore")
+    df["opp_di_conceded_30plus_rate"] = df["opp_di_conceded_30plus_rate"].fillna(0)
 
     # Step 3b: opponent marks concession (for marks prediction)
     team_match_mk = (
@@ -3041,6 +3111,12 @@ def add_player_odds_features(df):
 
     Loads player_odds.parquet and left-joins on (match_id, player).
     Gracefully skips if player_odds.parquet is missing.
+
+    After merging raw market columns, derives disposal-specific features:
+      - market_implied_expected_disp: line adjusted by over/under probability
+      - market_disp_line_vs_avg5: market line / player's 5-game rolling avg
+      - market_disp_line_vs_ewm: market line / player's EWM form
+      - market_is_high_disp_volume: binary flag for disposal line >= 25
     """
     odds_path = config.BASE_STORE_DIR / "player_odds.parquet"
     if not odds_path.exists():
@@ -3072,7 +3148,11 @@ def add_player_odds_features(df):
         return df
 
     # Drop existing columns if re-running (idempotent)
-    existing = [c for c in feature_cols if c in df.columns]
+    _derived_disp_cols = [
+        "market_implied_expected_disp", "market_disp_line_vs_avg5",
+        "market_disp_line_vs_ewm", "market_is_high_disp_volume",
+    ]
+    existing = [c for c in feature_cols + _derived_disp_cols if c in df.columns]
     if existing:
         df = df.drop(columns=existing)
 
@@ -3101,6 +3181,55 @@ def add_player_odds_features(df):
 
     print(f"    Player market features: {len(feature_cols)} columns, "
           f"{n_with}/{len(df)} rows with data")
+
+    # --- Derived market disposal features ---
+    # These use only pre-game market data + historical rolling averages (no leakage).
+    derived_count = 0
+
+    has_line = "market_disposal_line" in df.columns
+    has_implied = "market_disposal_implied_over" in df.columns
+
+    if has_line:
+        line = pd.to_numeric(df["market_disposal_line"], errors="coerce")
+
+        # 1. Market-implied expected disposals: adjust line by over/under probability.
+        #    If implied_over > 0.5 the market expects OVER the line, so expected > line.
+        #    Adjustment magnitude scales with the line itself (bigger lines = bigger shifts).
+        if has_implied:
+            implied_over = pd.to_numeric(df["market_disposal_implied_over"], errors="coerce")
+            # Shift: at implied_over=0.55 with line=25 → +0.5 disposals above line
+            # At implied_over=0.45 with line=25 → -0.5 disposals below line
+            df["market_implied_expected_disp"] = (
+                line + (implied_over - 0.5) * line * 0.4
+            ).astype(np.float32)
+            derived_count += 1
+
+        # 2. Market disposal line vs player's recent rolling average (5-game).
+        #    Ratio > 1 means the market expects MORE than the player's recent average.
+        if "player_di_avg_5" in df.columns:
+            avg5 = pd.to_numeric(df["player_di_avg_5"], errors="coerce")
+            safe_avg5 = avg5.where(avg5 > 0, np.nan)
+            df["market_disp_line_vs_avg5"] = (line / safe_avg5).astype(np.float32)
+            derived_count += 1
+
+        # 3. Market disposal line vs player's EWM form (more recent-weighted).
+        #    Captures market vs momentum — divergence signals value/correction.
+        if "player_di_ewm_5" in df.columns:
+            ewm5 = pd.to_numeric(df["player_di_ewm_5"], errors="coerce")
+            safe_ewm5 = ewm5.where(ewm5 > 0, np.nan)
+            df["market_disp_line_vs_ewm"] = (line / safe_ewm5).astype(np.float32)
+            derived_count += 1
+
+        # 4. High-volume flag: disposal line >= 25.
+        #    Helps the model distinguish high-volume midfielders for 25+/30+ thresholds.
+        df["market_is_high_disp_volume"] = (
+            line.ge(25).where(line.notna(), np.nan).astype(np.float32)
+        )
+        derived_count += 1
+
+    if derived_count > 0:
+        print(f"    Derived market disposal features: {derived_count} columns added")
+
     return df
 
 
@@ -3452,6 +3581,69 @@ def add_cba_features(df):
 # Feature columns that the model will train on (assembled after all features added)
 FEATURE_COLS = None  # Set dynamically after build
 
+
+def select_model_feature_columns(df):
+    """Return the numeric feature columns that are allowed into the model.
+
+    Raw UI/news intel columns can remain in the DataFrame for display or
+    analysis, but they are excluded from the saved model feature list.
+    """
+    # Raw stat columns (current-match values — leaky for prediction)
+    # GL and BH are targets but also stats; including them ensures GL_rate/BH_rate get excluded too
+    _stat_cols = {
+        "KI", "MK", "HB", "DI", "GL", "BH", "HO", "TK", "RB", "IF", "CL", "CG",
+        "FF", "FA", "BR", "CP", "UP", "CM", "MI", "one_pct", "BO", "GA",
+    }
+    # Rate-normalised versions are also leaky (current-match / pct_played)
+    _rate_cols = {f"{c}_rate" for c in _stat_cols}
+
+    exclude_cols = {
+        # Identifiers
+        "match_id", "year", "round_number", "round_label", "venue", "date",
+        "team", "opponent", "jumper", "player", "player_role", "player_id",
+        # Targets
+        "GL", "BH", "DI",
+        # Raw + rate current-match stats (leaky — current match values)
+        *_stat_cols, "pct_played", *_rate_cols,
+        # Quarter scoring (raw — we use the derived features instead)
+        "q1_goals", "q1_behinds", "q2_goals", "q2_behinds",
+        "q3_goals", "q3_behinds", "q4_goals", "q4_behinds",
+        # Weight
+        "sample_weight",
+        # Raw pre-game career avg (the capped version is the feature)
+        "career_goal_avg_pre",
+        # Flags
+        "did_not_play",
+        # Archetype label (probabilities are features, label is identifier)
+        "archetype",
+        # Era label (one-hot era_1..era_6 are features, raw int is identifier)
+        "season_era",
+        # UI-only news / injury intel
+        *getattr(config, "MODEL_EXCLUDED_FEATURES", set()),
+        # ── Pruned features (SHAP + permutation importance ≈ 0 across all 3 models) ──
+        "is_roofed", "role_forward", "is_returning_from_break", "venue_is_indoor",
+        "player_is_hot", "is_heavy_rain", "player_is_cold", "is_overcast",
+        "player_streak_just_broke", "role_other", "role_midfielder",
+        "era_1", "precipitation_total", "temperature_category", "is_wet",
+        "era_5", "player_bh_avg_3", "player_bh_avg_5",
+        "humidity_discomfort",
+        # ── Redundant features (r=±1.0 with era_4, keep era_4 as representative) ──
+        "is_covid_season", "quarter_length_ratio",
+        # Legacy column names (may not exist but harmless to exclude)
+        "round", "date_iso", "home_away", "sub_status",
+        "team_goal_avg", "team_goals_total", "team_games_total",
+        "Age", "Career Games (W-D-L W%)", "Career Goals (Ave.)",
+        "team_games", "team_goals",
+        # Physical feature intermediates (dob used to derive age_at_match)
+        "dob",
+    }
+
+    return [
+        c for c in df.columns
+        if c not in exclude_cols and df[c].dtype.kind in ("f", "i", "u", "b")
+    ]
+
+
 def build_features(df=None, data_dir=None, save=True):
     """Main entry point. Takes cleaned player_games DataFrame
     and returns it with all features added.
@@ -3671,61 +3863,17 @@ def build_features(df=None, data_dir=None, save=True):
     df = add_cba_features(df)
 
     # Assemble feature column list
-
-    # Raw stat columns (current-match values — leaky for prediction)
-    # GL and BH are targets but also stats; including them ensures GL_rate/BH_rate get excluded too
-    _stat_cols = {
-        "KI", "MK", "HB", "DI", "GL", "BH", "HO", "TK", "RB", "IF", "CL", "CG",
-        "FF", "FA", "BR", "CP", "UP", "CM", "MI", "one_pct", "BO", "GA",
-    }
-    # Rate-normalised versions are also leaky (current-match / pct_played)
-    _rate_cols = {f"{c}_rate" for c in _stat_cols}
-
-    exclude_cols = {
-        # Identifiers
-        "match_id", "year", "round_number", "round_label", "venue", "date",
-        "team", "opponent", "jumper", "player", "player_role", "player_id",
-        # Targets
-        "GL", "BH", "DI",
-        # Raw + rate current-match stats (leaky — current match values)
-        *_stat_cols, "pct_played", *_rate_cols,
-        # Quarter scoring (raw — we use the derived features instead)
-        "q1_goals", "q1_behinds", "q2_goals", "q2_behinds",
-        "q3_goals", "q3_behinds", "q4_goals", "q4_behinds",
-        # Weight
-        "sample_weight",
-        # Raw pre-game career avg (the capped version is the feature)
-        "career_goal_avg_pre",
-        # Flags
-        "did_not_play",
-        # Archetype label (probabilities are features, label is identifier)
-        "archetype",
-        # Era label (one-hot era_1..era_6 are features, raw int is identifier)
-        "season_era",
-        # ── Pruned features (SHAP + permutation importance ≈ 0 across all 3 models) ──
-        "is_roofed", "role_forward", "is_returning_from_break", "venue_is_indoor",
-        "player_is_hot", "is_heavy_rain", "player_is_cold", "is_overcast",
-        "player_streak_just_broke", "role_other", "role_midfielder",
-        "era_1", "precipitation_total", "temperature_category", "is_wet",
-        "era_5", "player_bh_avg_3", "player_bh_avg_5",
-        "humidity_discomfort",
-        # ── Redundant features (r=±1.0 with era_4, keep era_4 as representative) ──
-        "is_covid_season", "quarter_length_ratio",
-        # Legacy column names (may not exist but harmless to exclude)
-        "round", "date_iso", "home_away", "sub_status",
-        "team_goal_avg", "team_goals_total", "team_games_total",
-        "Age", "Career Games (W-D-L W%)", "Career Goals (Ave.)",
-        "team_games", "team_goals",
-        # Physical feature intermediates (dob used to derive age_at_match)
-        "dob",
-    }
-
-    # Accept any numeric/bool dtype (int8/16/32/64, float32/64, uint8, bool)
-    FEATURE_COLS = [c for c in df.columns if c not in exclude_cols
-                    and df[c].dtype.kind in ("f", "i", "u", "b")]
+    FEATURE_COLS = select_model_feature_columns(df)
+    excluded_ui_cols = sorted(
+        set(getattr(config, "MODEL_EXCLUDED_FEATURES", set())).intersection(df.columns)
+    )
 
     print(f"\n  Total features: {len(FEATURE_COLS)}")
     print(f"  Dataset shape: {df.shape}")
+    if excluded_ui_cols:
+        print(
+            f"  Excluded {len(excluded_ui_cols)} UI-only news features from model list"
+        )
 
     # Validate feature matrix
     from validate import validate_features, validate_temporal_integrity

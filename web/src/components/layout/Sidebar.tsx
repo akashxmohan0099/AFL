@@ -85,6 +85,15 @@ function IconOdds({ className }: { className?: string }) {
   );
 }
 
+function IconLadder({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 3v14M16 3v14" />
+      <path d="M4 6h12M4 10h12M4 14h12" />
+    </svg>
+  );
+}
+
 function IconSchedule({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -96,8 +105,20 @@ function IconSchedule({ className }: { className?: string }) {
   );
 }
 
+function IconRecap({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3h14v14H3z" />
+      <path d="M7 7h6M7 10h4M7 13h5" />
+      <circle cx="15" cy="15" r="3" fill="currentColor" stroke="none" opacity="0.3" />
+      <path d="M14 15l1 1 2-2" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: IconDashboard },
+  { href: "/ladder", label: "Ladder", icon: IconLadder },
   { href: "/matches", label: "Matches", icon: IconMatch },
   {
     href: "/predictions",
@@ -107,6 +128,7 @@ const NAV_ITEMS = [
   },
   { href: "/players", label: "Players", icon: IconPlayers },
   { href: "/venues", label: "Venues", icon: IconVenue },
+  { href: "/recap", label: "Round Recap", icon: IconRecap },
   { href: "/schedule", label: "Schedule", icon: IconSchedule },
   { href: "/multis", label: "Multis", icon: IconMulti },
   { href: "/odds", label: "Odds", icon: IconOdds },
@@ -118,15 +140,10 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <>
       <div className="px-4 py-[14px] border-b border-border/60">
-        <h1 className="text-sm font-semibold tracking-tight text-foreground">AFL Predict</h1>
-        <p className="text-[9px] text-muted-foreground/60 font-mono tracking-[0.18em] uppercase mt-0.5">Pro Analytics</p>
+        <h1 className="text-sm font-semibold tracking-tight text-foreground">AFL Predictions</h1>
+        <p className="text-[10px] text-muted-foreground/60 font-mono mt-0.5">Player & Match Analytics</p>
       </div>
       <nav className="flex-1 px-2 py-3 space-y-px overflow-y-auto">
-        <div className="px-3 pb-2 pt-1">
-          <span className="text-[9px] font-semibold text-muted-foreground/40 uppercase tracking-[0.18em]">
-            Navigation
-          </span>
-        </div>
         {NAV_ITEMS.map((item) => {
           const isActive =
             item.href === "/"
@@ -180,10 +197,9 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
         })}
       </nav>
       <div className="px-4 py-3 border-t border-border/60">
-        <div className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-[10px] text-muted-foreground/70 font-mono">System Online</span>
-        </div>
+        <p className="text-[10px] text-muted-foreground/50">
+          Predictions for goals, disposals, marks & match winners
+        </p>
       </div>
     </>
   );

@@ -82,7 +82,7 @@ def ensure_date_iso(df):
     """Ensure a 'date_iso' column exists by parsing the 'date' column."""
     if "date_iso" not in df.columns:
         df["date_iso"] = df["date"].apply(_parse_afl_date)
-    df["date_iso"] = pd.to_datetime(df["date_iso"], errors="coerce")
+    df["date_iso"] = pd.to_datetime(df["date_iso"], errors="coerce", format="mixed")
     return df
 
 

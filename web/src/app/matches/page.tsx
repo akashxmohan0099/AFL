@@ -145,9 +145,9 @@ function UnifiedMatchCard({ match }: { match: UnifiedMatch }) {
           <div className="border-t border-border/30 pt-2">
             <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 gap-y-1 items-center">
               <div />
-              <p className="text-[8px] font-mono text-muted-foreground/50 text-center uppercase">Goals</p>
-              <p className="text-[8px] font-mono text-muted-foreground/50 text-center uppercase">Disp</p>
-              <p className="text-[8px] font-mono text-muted-foreground/50 text-center uppercase">Marks</p>
+              <p className="text-[9px] font-mono text-muted-foreground/60 text-center uppercase">Goals</p>
+              <p className="text-[9px] font-mono text-muted-foreground/60 text-center uppercase">Disposals</p>
+              <p className="text-[9px] font-mono text-muted-foreground/60 text-center uppercase">Marks</p>
 
               {/* Home row */}
               <span className="text-[10px] font-mono font-medium">{homeAbbr}</span>
@@ -166,11 +166,11 @@ function UnifiedMatchCard({ match }: { match: UnifiedMatch }) {
                 Margin: {Math.abs(match.predicted_margin).toFixed(0)} pts ({TEAM_ABBREVS[match.predicted_winner ?? ""] || match.predicted_winner})
               </p>
             )}
-            <p className="text-[7px] font-mono text-muted-foreground/30 mt-1 text-right">
+            <p className="text-[9px] font-mono text-muted-foreground/40 mt-1 text-right">
               {isPlayed ? (
-                <><span className="font-bold text-foreground/40">Actual</span> / <span className="text-muted-foreground/40">Predicted</span></>
+                <><span className="font-bold text-foreground/50">Actual</span> / <span className="text-muted-foreground/50">Predicted</span></>
               ) : (
-                <span className="text-muted-foreground/40">Predicted</span>
+                <span className="text-muted-foreground/50">Predicted team totals</span>
               )}
             </p>
           </div>
@@ -219,8 +219,8 @@ function UnifiedMatchCard({ match }: { match: UnifiedMatch }) {
               <span className={cn(
                 "text-[9px] font-mono font-bold px-1.5 py-0.5 rounded",
                 correct ? "text-emerald-400 bg-emerald-400/10" : "text-red-400 bg-red-400/10"
-              )}>
-                {correct ? "HIT" : "MISS"}
+              )} title={correct ? "Winner prediction correct" : "Winner prediction wrong"}>
+                {correct ? "Correct" : "Wrong"}
               </span>
             )}
           </div>

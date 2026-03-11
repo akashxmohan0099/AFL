@@ -26,7 +26,7 @@ export function predColor(actual: number, predicted: number): string {
 
 const STAT_KEYS = ["gl", "bh", "di", "mk", "ki", "hb", "tk", "ho", "cp", "up", "if", "cl", "cg", "ff", "fa"] as const;
 const STAT_LABELS: Record<string, string> = {
-  gl: "GL", bh: "BH", di: "DI", mk: "MK", ki: "KI", hb: "HB", tk: "TK",
+  gl: "Goals", bh: "Behinds", di: "Disp", mk: "Marks", ki: "Kicks", hb: "HB", tk: "Tackles",
   ho: "HO", cp: "CP", up: "UP", if: "IF", cl: "CL", cg: "CG", ff: "FF", fa: "FA",
 };
 
@@ -270,9 +270,9 @@ function PlayerAdvancedRow({ p, teamColor, teamColors, isPlayed }: {
                 <div className="space-y-2">
                   <p className="text-xs font-mono text-muted-foreground uppercase font-semibold tracking-wide">Last {adv.streak_gl?.length ?? adv.streak_di?.length} Games</p>
                   {adv.streak_gl && <StreakBar label="Goals" values={adv.streak_gl} color="#10b981" />}
-                  {adv.streak_di && <StreakBar label="Disp" values={adv.streak_di} color="#6366f1" />}
+                  {adv.streak_di && <StreakBar label="Disposals" values={adv.streak_di} color="#6366f1" />}
                   {adv.streak_mk && <StreakBar label="Marks" values={adv.streak_mk} color="#f59e0b" />}
-                  {adv.streak_tk && <StreakBar label="Tckl" values={adv.streak_tk} color="#ef4444" />}
+                  {adv.streak_tk && <StreakBar label="Tackles" values={adv.streak_tk} color="#ef4444" />}
                 </div>
               )}
 
@@ -397,12 +397,12 @@ export function PlayerAdvancedTable({
                   Goals{sortIcon("predicted_gl")}
                 </TableHead>
                 <TableHead className={thCls} onClick={() => handleSort("predicted_di")}>
-                  Disp{sortIcon("predicted_di")}
+                  Disposals{sortIcon("predicted_di")}
                 </TableHead>
                 <TableHead className={thCls} onClick={() => handleSort("predicted_mk")}>
                   Marks{sortIcon("predicted_mk")}
                 </TableHead>
-                <TableHead className="text-right text-[11px]">TK</TableHead>
+                <TableHead className="text-right text-[11px]">Tackles</TableHead>
                 <TableHead className="text-right text-[11px] w-8" />
               </TableRow>
             </TableHeader>
@@ -483,7 +483,7 @@ export function PlayerComparisonTable({
         </CardTitle>
         {isPlayed && (
           <p className="text-[10px] text-muted-foreground/50 font-mono mt-1">
-            Format: <span className="font-bold text-foreground/70">Actual</span> <span className="text-muted-foreground/40">/</span> <span className="text-muted-foreground/60">Pred</span> <span className="text-muted-foreground/30">[CI]</span>
+            Format: <span className="font-bold text-foreground/70">Actual</span> <span className="text-muted-foreground/40">/</span> <span className="text-muted-foreground/60">Predicted</span>
           </p>
         )}
       </CardHeader>
@@ -499,16 +499,16 @@ export function PlayerComparisonTable({
                   Goals{sortIcon("predicted_gl")}
                 </TableHead>
                 <TableHead className={thCls} onClick={() => handleSort("p_scorer")}>
-                  P(1+){sortIcon("p_scorer")}
+                  1+ Goal %{sortIcon("p_scorer")}
                 </TableHead>
                 <TableHead className={thCls} onClick={() => handleSort("predicted_di")}>
-                  Disp{sortIcon("predicted_di")}
+                  Disposals{sortIcon("predicted_di")}
                 </TableHead>
                 <TableHead className={thCls} onClick={() => handleSort("predicted_mk")}>
                   Marks{sortIcon("predicted_mk")}
                 </TableHead>
                 <TableHead className="text-right text-[11px]">
-                  Key Probs
+                  Probabilities
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -525,11 +525,11 @@ export function PlayerComparisonTable({
                 const p5mk = p.p_5plus_mk;
 
                 const probs: string[] = [];
-                if (p2gl != null && p2gl >= 0.1) probs.push(`2+GL ${(p2gl * 100).toFixed(0)}%`);
-                if (p3gl != null && p3gl >= 0.05) probs.push(`3+GL ${(p3gl * 100).toFixed(0)}%`);
-                if (p20di != null && p20di >= 0.2) probs.push(`20+DI ${(p20di * 100).toFixed(0)}%`);
-                if (p25di != null && p25di >= 0.1) probs.push(`25+DI ${(p25di * 100).toFixed(0)}%`);
-                if (p5mk != null && p5mk >= 0.1) probs.push(`5+MK ${(p5mk * 100).toFixed(0)}%`);
+                if (p2gl != null && p2gl >= 0.1) probs.push(`2+ Goals ${(p2gl * 100).toFixed(0)}%`);
+                if (p3gl != null && p3gl >= 0.05) probs.push(`3+ Goals ${(p3gl * 100).toFixed(0)}%`);
+                if (p20di != null && p20di >= 0.2) probs.push(`20+ Disp ${(p20di * 100).toFixed(0)}%`);
+                if (p25di != null && p25di >= 0.1) probs.push(`25+ Disp ${(p25di * 100).toFixed(0)}%`);
+                if (p5mk != null && p5mk >= 0.1) probs.push(`5+ Marks ${(p5mk * 100).toFixed(0)}%`);
 
                 return (
                   <TableRow key={i}>

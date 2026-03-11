@@ -11,6 +11,7 @@ import {
   getUpcoming,
   getRoundAccuracy,
   getHealth,
+  API_BASE,
 } from "@/lib/api";
 import type {
   SeasonSummary,
@@ -34,13 +35,14 @@ import {
 } from "recharts";
 import { ArrowRight, ChevronRight } from "lucide-react";
 
-function StatTicker({ label, value, color, suffix = "", tip }: { label: string; value: string; color: string; suffix?: string; tip?: string }) {
+function StatTicker({ label, value, color, suffix = "", tip, subtitle }: { label: string; value: string; color: string; suffix?: string; tip?: string; subtitle?: string }) {
   return (
     <div className="flex items-center gap-3 px-4 py-3 border border-border/50 rounded-lg bg-card/50 cursor-help" title={tip}>
       <div className="w-1 h-8 rounded-full" style={{ backgroundColor: color }} />
       <div>
-        <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
+        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
         <p className="text-xl font-bold tabular-nums font-mono" style={{ color }}>{value}{suffix}</p>
+        {subtitle && <p className="text-[10px] text-muted-foreground/60 mt-0.5">{subtitle}</p>}
       </div>
     </div>
   );
@@ -74,8 +76,8 @@ function MatchTicker({ match }: { match: SeasonMatch }) {
         {correct != null && (
           <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded ${
             correct ? "text-emerald-400 bg-emerald-400/10" : "text-red-400 bg-red-400/10"
-          }`}>
-            {correct ? "HIT" : "MISS"}
+          }`} title={correct ? "We predicted the correct winner" : "We predicted the wrong winner"}>
+            {correct ? "Correct" : "Wrong"}
           </span>
         )}
         <ChevronRight className="w-3 h-3 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" />
@@ -120,7 +122,7 @@ export default function DashboardPage() {
         <div className="border border-red-500/30 bg-red-500/5 rounded-lg p-4">
           <p className="text-red-400 text-sm font-medium">{error}</p>
           <p className="text-xs text-muted-foreground mt-2">
-            Run: <code className="bg-muted px-1.5 py-0.5 rounded text-[11px] font-mono">python3 -m uvicorn api.main:app --port 8000</code>
+            API base: <code className="bg-muted px-1.5 py-0.5 rounded text-[11px] font-mono">{API_BASE}</code>
           </p>
         </div>
       </div>
@@ -195,29 +197,33 @@ export default function DashboardPage() {
       {/* Stat Ticker Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatTicker
-          label="Goals MAE"
-          value={acc?.goals_mae != null ? acc.goals_mae.toFixed(3) : "--"}
+          label="Goal Accuracy"
+          value={acc?.goals_mae != null ? acc.goals_mae.toFixed(2) : "--"}
           color={CHART_COLORS.goals}
+          subtitle="Avg error per player (goals)"
           tip="Mean Absolute Error for goal predictions. Lower is better — 0.5 means we're off by half a goal per player on average."
         />
         <StatTicker
-          label="Disposals MAE"
-          value={acc?.disposals_mae != null ? acc.disposals_mae.toFixed(2) : "--"}
+          label="Disposal Accuracy"
+          value={acc?.disposals_mae != null ? acc.disposals_mae.toFixed(1) : "--"}
           color={CHART_COLORS.disposals}
+          subtitle="Avg error per player (disposals)"
           tip="Mean Absolute Error for disposal predictions. Lower is better — measures average prediction error per player."
         />
         <StatTicker
-          label="Scorer Accuracy"
+          label="Goal Scorer Calls"
           value={acc?.scorer_accuracy != null ? acc.scorer_accuracy.toFixed(1) : "--"}
           color={CHART_COLORS.marks}
           suffix="%"
+          subtitle="Correct 1+ goal predictions"
           tip="How often we correctly predict whether a player will kick at least 1 goal. Higher is better."
         />
         <StatTicker
-          label="Game Winner"
+          label="Match Winner"
           value={played.length > 0 ? winRate.toFixed(1) : acc?.game_winner_accuracy != null ? acc.game_winner_accuracy.toFixed(1) : "--"}
           color={CHART_COLORS.behinds}
           suffix="%"
+          subtitle="Correct winner predictions"
           tip="Percentage of matches where we correctly predicted the winning team. Higher is better."
         />
       </div>
@@ -228,10 +234,13 @@ export default function DashboardPage() {
         <Card className="lg:col-span-3 border-border/50">
           <CardHeader className="pb-2 pt-4 px-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium cursor-help" title="Mean Absolute Error (MAE) per round for goals, disposals, and marks. Lower is better — shows how our model accuracy changes across the season.">Model Performance</CardTitle>
+              <div>
+                <CardTitle className="text-sm font-medium">Prediction Error by Round</CardTitle>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Lower = more accurate predictions</p>
+              </div>
               <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground">
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS.goals }} /> Goals</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS.disposals }} /> Disp</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS.disposals }} /> Disposals</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS.marks }} /> Marks</span>
               </div>
             </div>
@@ -271,7 +280,7 @@ export default function DashboardPage() {
         <Card className="lg:col-span-2 border-border/50">
           <CardHeader className="pb-2 pt-4 px-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium cursor-help" title="Most recent completed matches. HIT = we correctly predicted the winner, MISS = we got it wrong.">Recent Results</CardTitle>
+              <CardTitle className="text-sm font-medium">Recent Match Results</CardTitle>
               <Link href="/matches" className="text-[10px] text-muted-foreground hover:text-primary font-mono transition-colors flex items-center gap-0.5">
                 ALL <ArrowRight className="w-2.5 h-2.5" />
               </Link>

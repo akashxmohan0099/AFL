@@ -48,6 +48,62 @@ class TestLearningStoreLatestLoad(unittest.TestCase):
             self.assertEqual(len(loaded), 1)
             self.assertEqual(loaded.iloc[0]["player"], "Run Player")
 
+    def test_latest_read_switches_to_newest_run_even_if_name_sorts_earlier(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            writer = LearningStore(base_dir=tmpdir)
+            reader = LearningStore(base_dir=tmpdir)
+
+            old_df = pd.DataFrame([{"player": "Old Player", "team": "A", "match_id": 1}])
+            new_df = pd.DataFrame([{"player": "New Player", "team": "A", "match_id": 1}])
+
+            writer.save_predictions(2025, 1, old_df, run_id="zzz_old_run")
+
+            first = reader.load_predictions(year=2025, round_num=1)
+            self.assertEqual(first.iloc[0]["player"], "Old Player")
+            self.assertEqual(reader.list_runs(year=2025, subdir="predictions")[-1], "zzz_old_run")
+
+            writer.save_predictions(2025, 1, new_df, run_id="aaa_new_run")
+
+            second = reader.load_predictions(year=2025, round_num=1)
+            self.assertEqual(reader.list_runs(year=2025, subdir="predictions")[-1], "aaa_new_run")
+            self.assertEqual(second.iloc[0]["player"], "New Player")
+
+    def test_latest_calibration_state_uses_newest_run_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            writer = LearningStore(base_dir=tmpdir)
+            reader = LearningStore(base_dir=tmpdir)
+            cal_rows = pd.DataFrame(
+                [
+                    {
+                        "target": "1plus_goals",
+                        "probability_bucket": 0.55,
+                        "predicted": 2,
+                        "occurred": 1,
+                    }
+                ]
+            )
+
+            writer.update_calibration(cal_rows, run_id="zzz_old_run")
+            first = reader.get_calibration_state()
+            first_bucket = first[first["target"] == "1plus_goals"]["n_predictions"].max()
+            self.assertEqual(int(first_bucket), 2)
+
+            cal_rows_new = pd.DataFrame(
+                [
+                    {
+                        "target": "1plus_goals",
+                        "probability_bucket": 0.55,
+                        "predicted": 5,
+                        "occurred": 4,
+                    }
+                ]
+            )
+            writer.update_calibration(cal_rows_new, run_id="aaa_new_run")
+
+            latest = reader.get_calibration_state()
+            latest_bucket = latest[latest["target"] == "1plus_goals"]["n_predictions"].max()
+            self.assertEqual(int(latest_bucket), 5)
+
 
 class TestOddsService(unittest.TestCase):
     def test_first_goal_market_does_not_expose_anytime_scorer_probability(self):
@@ -426,6 +482,130 @@ class TestSeasonService(unittest.TestCase):
         self.assertEqual(len(schedule["rounds"][0]["matches"]), 2)
         self.assertEqual(schedule["rounds"][0]["matches"][0]["match_id"], 10)
         self.assertEqual(schedule["rounds"][0]["matches"][1]["match_id"], 11)
+
+    def test_match_comparison_falls_back_to_player_pregame_snapshot(self):
+        fake_cache = SimpleNamespace(
+            player_games=pd.DataFrame(
+                [
+                    {
+                        "match_id": 50,
+                        "year": 2026,
+                        "round_number": 0,
+                        "player": "Home, One",
+                        "team": "Team A",
+                        "is_home": True,
+                        "venue": "V1",
+                        "date": "2026-03-08",
+                        "GL": 3,
+                        "BH": 1,
+                        "DI": 12,
+                        "MK": 4,
+                        "KI": 8,
+                        "HB": 4,
+                        "TK": 2,
+                        "HO": 0,
+                        "CP": 5,
+                        "UP": 7,
+                        "IF": 2,
+                        "CL": 1,
+                        "CG": 0,
+                        "FF": 1,
+                        "FA": 0,
+                    },
+                    {
+                        "match_id": 50,
+                        "year": 2026,
+                        "round_number": 0,
+                        "player": "Away, One",
+                        "team": "Team B",
+                        "is_home": False,
+                        "venue": "V1",
+                        "date": "2026-03-08",
+                        "GL": 1,
+                        "BH": 0,
+                        "DI": 10,
+                        "MK": 3,
+                        "KI": 6,
+                        "HB": 4,
+                        "TK": 1,
+                        "HO": 0,
+                        "CP": 4,
+                        "UP": 6,
+                        "IF": 1,
+                        "CL": 1,
+                        "CG": 0,
+                        "FF": 0,
+                        "FA": 1,
+                    },
+                ]
+            ),
+            matches=pd.DataFrame(
+                [
+                    {
+                        "match_id": 50,
+                        "year": 2026,
+                        "round_number": 0,
+                        "home_team": "Team A",
+                        "away_team": "Team B",
+                        "venue": "V1",
+                        "date": "2026-03-08",
+                        "home_score": 100,
+                        "away_score": 80,
+                    }
+                ]
+            ),
+            weather=pd.DataFrame(),
+            umpires=pd.DataFrame(),
+            coaches=pd.DataFrame(),
+            odds=pd.DataFrame(),
+            footywire=pd.DataFrame(),
+            team_matches=pd.DataFrame(),
+            sequential_store=_FakeStore(
+                predictions={
+                    (2026, 0): pd.DataFrame(
+                        [
+                            {
+                                "player": "Home, One",
+                                "team": "Team A",
+                                "opponent": "Team B",
+                                "match_id": -1,
+                                "predicted_goals": 3.0,
+                                "predicted_behinds": 2.0,
+                                "predicted_score": 20.0,
+                            },
+                            {
+                                "player": "Away, One",
+                                "team": "Team B",
+                                "opponent": "Team A",
+                                "match_id": -1,
+                                "predicted_goals": 1.0,
+                                "predicted_behinds": 1.0,
+                                "predicted_score": 7.0,
+                            },
+                        ]
+                    )
+                },
+                game_predictions={(2026, 0): pd.DataFrame()},
+            ),
+            store=None,
+        )
+
+        with patch("api.services.season_service.DataCache.get", return_value=fake_cache), \
+             patch("api.services.season_service._enrich_players_advanced", return_value=None), \
+             patch("api.services.season_service._compute_match_context", return_value={"day_of_week": "Sunday"}):
+            comparison = season_service.get_match_comparison(
+                50,
+                year=2026,
+                round_number=0,
+                home_team="Team A",
+                away_team="Team B",
+            )
+
+        self.assertIsNotNone(comparison)
+        self.assertEqual(comparison["game_prediction"]["predicted_winner"], "Team A")
+        self.assertAlmostEqual(comparison["game_prediction"]["predicted_margin"], 13.0)
+        self.assertIn("home_win_prob", comparison["game_prediction"])
+        self.assertTrue(comparison["game_prediction"]["correct"])
 
 
 class TestReportingLogic(unittest.TestCase):

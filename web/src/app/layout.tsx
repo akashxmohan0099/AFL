@@ -42,16 +42,11 @@ export default function RootLayout({
               <div className="flex items-center gap-3">
                 <MobileSidebar />
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
-                  AFL Predict Pro
-                </span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono">
-                  LIVE
+                  AFL Predictions
                 </span>
               </div>
               <div className="flex items-center gap-4 text-[11px] text-muted-foreground font-mono">
                 <span>Season <span className="text-foreground font-semibold">2026</span></span>
-                <span className="w-px h-3 bg-border" />
-                <span>v4.2</span>
                 <ThemeToggle />
                 <span className="w-px h-3 bg-border" />
                 <NewsToggleButton />
