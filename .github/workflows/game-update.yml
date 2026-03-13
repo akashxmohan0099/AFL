@@ -1,37 +1,35 @@
 name: Game Update
 
-# Runs during AFL game windows to detect newly completed games and update
-# the database. If the round is complete, also generates predictions for
-# the next round.
+# Two-phase workflow:
+#   Phase 1 (ingest): After ANY new game — scrape results, update DB (fast, ~2 min)
+#   Phase 2 (predict): After LAST game of round — full pipeline: learn, predict,
+#                       simulate next week's games (heavy, ~5 min)
 #
-# AFL typical schedule (AEDT, UTC+11 during season):
-#   Thursday  7:20 PM → ends ~10:00 PM AEDT (11:00 UTC)
-#   Friday    7:50 PM → ends ~10:30 PM AEDT (11:30 UTC)
-#   Saturday  1:45 PM → last game ends ~10:00 PM AEDT (03:00-11:00 UTC)
-#   Sunday    1:10 PM → last game ends ~7:30 PM AEDT (02:00-08:30 UTC)
+# AFL typical schedule (AEST, UTC+10 during season):
+#   Thursday  7:20 PM → ends ~10:00 PM AEST (12:00 UTC)
+#   Friday    7:50 PM → ends ~10:30 PM AEST (12:30 UTC)
+#   Saturday  1:45 PM → last game ends ~10:00 PM AEST (03:00-12:00 UTC)
+#   Sunday    1:10 PM → last game ends ~7:30 PM AEST (02:00-09:30 UTC)
 #
-# After daylight saving ends (April): add 1 hour to UTC times.
+# During daylight saving (AEDT, UTC+11): subtract 1 hour from above.
 
 on:
   schedule:
-    # Hourly checks during game windows (Thu-Mon, 04:00-13:00 UTC)
-    # Covers both AEDT and AEST afternoon/evening games
-    - cron: "0 4-13 * * 0,1,4,5,6"
+    # Hourly checks during game windows (Thu-Mon, 02:00-14:00 UTC)
+    - cron: "0 2-14 * * 0,1,4,5,6"
   workflow_dispatch:
     inputs:
       year:
         description: "Season year"
         default: "2026"
       force_run:
-        description: "Skip game check and run pipeline regardless"
+        description: "Run full pipeline regardless of game check"
         type: boolean
         default: false
 
 env:
   YEAR: ${{ github.event.inputs.year || '2026' }}
 
-# Prevent concurrent runs — if a new run triggers while one is active,
-# cancel the older one (new data supersedes old)
 concurrency:
   group: game-update-${{ github.ref }}
   cancel-in-progress: true
@@ -39,12 +37,10 @@ concurrency:
 jobs:
   # ────────────────────────────────────────────
   # Job 1: Quick check — are there new games?
-  # Runs in ~30 seconds. No ML dependencies.
   # ────────────────────────────────────────────
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 3
-    # Skip check on manual dispatch with force_run
     if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.force_run != 'true' }}
     outputs:
       has_new_games: ${{ steps.check.outputs.has_new_games }}
@@ -69,15 +65,101 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
 
   # ────────────────────────────────────────────
-  # Job 2: Full pipeline — scrape, learn, predict
-  # Only runs when new games are detected.
+  # Job 2: Ingest — scrape + seed results only
+  # Runs after ANY new game (fast, ~2 min).
+  # Just gets the scores into the DB so the
+  # website shows live results.
   # ────────────────────────────────────────────
-  update:
+  ingest:
     needs: check
-    # Run if: new games found OR manual dispatch with force_run
+    if: ${{ needs.check.outputs.has_new_games == 'true' && needs.check.outputs.round_complete != 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install supabase
+
+      - name: Restore data cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            data/base
+            data/features
+            data/models
+            data/sequential
+            data/fixtures
+            data/footywire
+            data/learning
+            data/news
+            data/forecasts
+            data/umpires
+          key: pipeline-data-${{ env.YEAR }}-${{ github.run_number }}
+          restore-keys: |
+            pipeline-data-${{ env.YEAR }}-
+
+      - name: Scrape new results
+        run: |
+          python -c "
+          from scrape_footywire_live import scrape_season
+          from clean import build_player_games
+          result = scrape_season(${{ env.YEAR }}, incremental=True)
+          print(f'Scraped: {result}')
+          cleaned = build_player_games(save=True)
+          print(f'Cleaned: {cleaned.shape[0]} rows')
+          "
+        env:
+          PYTHONUNBUFFERED: "1"
+
+      - name: Save data cache
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: |
+            data/base
+            data/features
+            data/models
+            data/sequential
+            data/fixtures
+            data/footywire
+            data/learning
+            data/news
+            data/forecasts
+            data/umpires
+          key: pipeline-data-${{ env.YEAR }}-${{ github.run_number }}
+
+      - name: Seed results to Supabase
+        run: |
+          for table in matches player_games team_matches; do
+            echo "--- Seeding $table ---"
+            python supabase/seed.py --table "$table" || echo "Warning: $table seed failed, continuing..."
+          done
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+  # ────────────────────────────────────────────
+  # Job 3: Full pipeline — learn + predict + simulate
+  # Only runs when the round is COMPLETE (all games
+  # played), OR on manual dispatch with force_run.
+  # This is when we train on the round's results and
+  # generate predictions for next week.
+  # ────────────────────────────────────────────
+  predict:
+    needs: check
     if: |
       always() && (
-        needs.check.outputs.has_new_games == 'true' ||
+        needs.check.outputs.round_complete == 'true' ||
         (github.event_name == 'workflow_dispatch' && github.event.inputs.force_run == 'true')
       )
     runs-on: ubuntu-latest
@@ -115,7 +197,7 @@ jobs:
           restore-keys: |
             pipeline-data-${{ env.YEAR }}-
 
-      - name: Run pipeline
+      - name: Run full pipeline (learn + predict + simulate)
         run: python pipeline.py --daily --year ${{ env.YEAR }}
         env:
           PYTHONUNBUFFERED: "1"
@@ -137,7 +219,7 @@ jobs:
             data/umpires
           key: pipeline-data-${{ env.YEAR }}-${{ github.run_number }}
 
-      - name: Seed results to Supabase
+      - name: Seed all data to Supabase
         run: |
           for table in matches player_games team_matches predictions outcomes game_predictions weather news mc_simulations fixtures umpires coaches experiments; do
             echo "--- Seeding $table ---"
