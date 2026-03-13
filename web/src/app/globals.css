@@ -7,8 +7,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-ibm-sans);
-  --font-mono: var(--font-ibm-mono);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -47,103 +47,106 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
-/* ─── Light Mode ─────────────────────────────────────────── */
+/* ─── Base (dark by default — Bet365-inspired) ───────────── */
 :root {
-  --radius: 0.375rem;
+  --radius: 0.25rem;
 
-  --background: oklch(0.965 0.008 252);
-  --foreground: oklch(0.11 0.012 252);
+  /* Dark grey body — Bet365 uses neutral dark, not green body */
+  --background: oklch(0.16 0.008 240);
+  --foreground: oklch(0.88 0.005 240);
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.11 0.012 252);
+  --card: oklch(0.20 0.008 240);
+  --card-foreground: oklch(0.88 0.005 240);
 
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.11 0.012 252);
+  --popover: oklch(0.20 0.008 240);
+  --popover-foreground: oklch(0.88 0.005 240);
 
-  --primary: oklch(0.50 0.26 252);
-  --primary-foreground: oklch(0.99 0 0);
+  /* Yellow primary — Bet365's signature highlight */
+  --primary: oklch(0.88 0.15 95);
+  --primary-foreground: oklch(0.15 0.03 170);
 
-  --secondary: oklch(0.935 0.008 252);
-  --secondary-foreground: oklch(0.11 0.012 252);
+  --secondary: oklch(0.23 0.008 240);
+  --secondary-foreground: oklch(0.82 0.005 240);
 
-  --muted: oklch(0.935 0.008 252);
-  --muted-foreground: oklch(0.50 0.008 252);
+  --muted: oklch(0.23 0.008 240);
+  --muted-foreground: oklch(0.56 0.008 240);
 
-  --accent: oklch(0.935 0.008 252);
-  --accent-foreground: oklch(0.11 0.012 252);
+  /* Teal-green accent — Bet365's brand green */
+  --accent: oklch(0.52 0.10 170);
+  --accent-foreground: oklch(0.98 0 0);
 
-  --destructive: oklch(0.59 0.22 27);
+  --destructive: oklch(0.60 0.22 27);
 
-  --border: oklch(0.88 0.008 252);
-  --input: oklch(0.88 0.008 252);
-  --ring: oklch(0.50 0.26 252);
+  --border: oklch(0.25 0.008 240);
+  --input: oklch(0.25 0.008 240);
+  --ring: oklch(0.88 0.15 95);
 
-  /* Semantic chart palette — same hues in both modes, brightness shifts */
-  --chart-1: oklch(0.60 0.16 162);   /* emerald (positive) */
-  --chart-2: oklch(0.50 0.26 252);   /* blue (primary) */
-  --chart-3: oklch(0.72 0.17 70);    /* amber (warning) */
-  --chart-4: oklch(0.59 0.22 27);    /* red (negative) */
-  --chart-5: oklch(0.60 0.18 295);   /* purple (neutral) */
+  --chart-1: oklch(0.58 0.12 170);        /* teal-green (positive) */
+  --chart-2: oklch(0.88 0.15 95);          /* yellow (primary) */
+  --chart-3: oklch(0.78 0.14 70);          /* amber (warning) */
+  --chart-4: oklch(0.63 0.22 27);          /* red (negative) */
+  --chart-5: oklch(0.58 0.10 200);         /* cyan (neutral) */
 
-  --sidebar: oklch(0.99 0.004 252);
-  --sidebar-foreground: oklch(0.11 0.012 252);
-  --sidebar-primary: oklch(0.50 0.26 252);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.935 0.008 252);
-  --sidebar-accent-foreground: oklch(0.11 0.012 252);
-  --sidebar-border: oklch(0.88 0.008 252);
-  --sidebar-ring: oklch(0.50 0.26 252);
+  /* Sidebar — dark green (Bet365 nav) */
+  --sidebar: oklch(0.13 0.03 170);
+  --sidebar-foreground: oklch(0.78 0.01 170);
+  --sidebar-primary: oklch(0.88 0.15 95);
+  --sidebar-primary-foreground: oklch(0.13 0.04 170);
+  --sidebar-accent: oklch(0.20 0.03 170);
+  --sidebar-accent-foreground: oklch(0.88 0.15 95);
+  --sidebar-border: oklch(0.20 0.025 170);
+  --sidebar-ring: oklch(0.88 0.15 95);
 
-  --scrollbar-thumb: oklch(0.76 0.004 252);
-  --scrollbar-thumb-hover: oklch(0.65 0.008 252);
+  --scrollbar-thumb: oklch(0.30 0.008 240);
+  --scrollbar-thumb-hover: oklch(0.38 0.008 240);
 }
 
-/* ─── Dark Mode (TradingView charcoal) ───────────────────── */
+/* ─── Dark Mode (deeper variant) ─────────────────────────── */
 .dark {
-  --background: oklch(0.113 0.012 252);   /* #131722 */
-  --foreground: oklch(0.855 0.006 252);   /* #d1d4dc */
+  --background: oklch(0.13 0.008 240);
+  --foreground: oklch(0.88 0.005 240);
 
-  --card: oklch(0.152 0.012 252);         /* #1e222d */
-  --card-foreground: oklch(0.855 0.006 252);
+  --card: oklch(0.17 0.008 240);
+  --card-foreground: oklch(0.88 0.005 240);
 
-  --popover: oklch(0.152 0.012 252);
-  --popover-foreground: oklch(0.855 0.006 252);
+  --popover: oklch(0.17 0.008 240);
+  --popover-foreground: oklch(0.88 0.005 240);
 
-  --primary: oklch(0.57 0.26 252);
-  --primary-foreground: oklch(0.99 0 0);
+  --primary: oklch(0.88 0.15 95);
+  --primary-foreground: oklch(0.15 0.03 170);
 
-  --secondary: oklch(0.21 0.012 252);     /* #2a2e39 */
-  --secondary-foreground: oklch(0.80 0.006 252);
+  --secondary: oklch(0.21 0.008 240);
+  --secondary-foreground: oklch(0.82 0.005 240);
 
-  --muted: oklch(0.21 0.012 252);
-  --muted-foreground: oklch(0.54 0.008 252);  /* #787b86 */
+  --muted: oklch(0.21 0.008 240);
+  --muted-foreground: oklch(0.56 0.008 240);
 
-  --accent: oklch(0.21 0.012 252);
-  --accent-foreground: oklch(0.855 0.006 252);
+  --accent: oklch(0.52 0.10 170);
+  --accent-foreground: oklch(0.98 0 0);
 
   --destructive: oklch(0.63 0.22 27);
 
-  --border: oklch(0.22 0.012 252);        /* #2a2e39 */
-  --input: oklch(0.22 0.012 252);
-  --ring: oklch(0.57 0.26 252);
+  --border: oklch(0.23 0.008 240);
+  --input: oklch(0.23 0.008 240);
+  --ring: oklch(0.88 0.15 95);
 
-  --chart-1: oklch(0.66 0.15 162);        /* emerald */
-  --chart-2: oklch(0.57 0.26 252);        /* blue */
-  --chart-3: oklch(0.78 0.17 70);         /* amber */
-  --chart-4: oklch(0.63 0.22 27);         /* red */
-  --chart-5: oklch(0.65 0.18 295);        /* purple */
+  --chart-1: oklch(0.60 0.12 170);
+  --chart-2: oklch(0.88 0.15 95);
+  --chart-3: oklch(0.78 0.14 70);
+  --chart-4: oklch(0.63 0.22 27);
+  --chart-5: oklch(0.60 0.10 200);
 
-  --sidebar: oklch(0.13 0.012 252);
-  --sidebar-foreground: oklch(0.80 0.006 252);
-  --sidebar-primary: oklch(0.57 0.26 252);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.21 0.012 252);
-  --sidebar-accent-foreground: oklch(0.855 0.006 252);
-  --sidebar-border: oklch(0.22 0.012 252);
-  --sidebar-ring: oklch(0.57 0.26 252);
+  --sidebar: oklch(0.10 0.03 170);
+  --sidebar-foreground: oklch(0.78 0.01 170);
+  --sidebar-primary: oklch(0.88 0.15 95);
+  --sidebar-primary-foreground: oklch(0.10 0.04 170);
+  --sidebar-accent: oklch(0.17 0.03 170);
+  --sidebar-accent-foreground: oklch(0.88 0.15 95);
+  --sidebar-border: oklch(0.17 0.025 170);
+  --sidebar-ring: oklch(0.88 0.15 95);
 
-  --scrollbar-thumb: oklch(0.28 0.008 252);
-  --scrollbar-thumb-hover: oklch(0.38 0.008 252);
+  --scrollbar-thumb: oklch(0.26 0.008 240);
+  --scrollbar-thumb-hover: oklch(0.34 0.008 240);
 }
 
 @layer base {
@@ -173,9 +176,8 @@
 
 /* Table density */
 table { border-collapse: collapse; }
-.dark table { --tw-border-opacity: 0.6; }
 
-/* Glow effect for key metrics */
-.glow-green { text-shadow: 0 0 8px oklch(0.66 0.15 162 / 0.5); }
+/* Glow effects */
+.glow-green { text-shadow: 0 0 8px oklch(0.58 0.12 170 / 0.6); }
 .glow-red   { text-shadow: 0 0 8px oklch(0.63 0.22 27  / 0.5); }
-.glow-blue  { text-shadow: 0 0 8px oklch(0.57 0.26 252 / 0.5); }
+.glow-blue  { text-shadow: 0 0 8px oklch(0.88 0.15 95  / 0.5); }

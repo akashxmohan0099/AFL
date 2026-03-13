@@ -15,22 +15,9 @@ import {
 } from "@/components/ui/table";
 import { getPredictionHistory } from "@/lib/api";
 import type { PredictionHistorySummary } from "@/lib/types";
-import { TEAM_ABBREVS, TEAM_COLORS, CHART_COLORS, CURRENT_YEAR, AVAILABLE_YEARS } from "@/lib/constants";
+import { TEAM_ABBREVS, TEAM_COLORS, CURRENT_YEAR, AVAILABLE_YEARS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import {
-  ScatterChart,
-  Scatter,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ZAxis,
-  ReferenceLine,
-} from "recharts";
 
 function predColor(actual: number, predicted: number, threshold: number): string {
   return Math.abs(actual - predicted) <= threshold ? "text-emerald-400" : "text-red-400";
@@ -101,42 +88,6 @@ export default function PredictionHistoryPage() {
     if (va > vb) return sortAsc ? 1 : -1;
     return 0;
   });
-
-  // Scatter data
-  const goalsScatter = filtered.map((e) => ({
-    predicted: Number(e.predicted_goals.toFixed(2)),
-    actual: e.actual_goals,
-    player: e.player,
-  }));
-  const dispScatter = filtered.map((e) => ({
-    predicted: Number(e.predicted_disposals.toFixed(1)),
-    actual: e.actual_disposals,
-    player: e.player,
-  }));
-  const marksScatter = filtered.map((e) => ({
-    predicted: Number(e.predicted_marks.toFixed(1)),
-    actual: e.actual_marks,
-    player: e.player,
-  }));
-
-  // Error distribution for goals
-  const goalsErrors = filtered.map((e) => e.actual_goals - e.predicted_goals);
-  const errorBins: Record<string, number> = {};
-  for (const err of goalsErrors) {
-    const bin = Math.round(err);
-    const key = bin.toString();
-    errorBins[key] = (errorBins[key] || 0) + 1;
-  }
-  const errorDistData = Object.entries(errorBins)
-    .map(([bin, count]) => ({ bin: Number(bin), count }))
-    .sort((a, b) => a.bin - b.bin);
-
-  const tooltipStyle = {
-    backgroundColor: "hsl(var(--card))",
-    border: "1px solid hsl(var(--border))",
-    borderRadius: 8,
-    fontSize: 12,
-  };
 
   return (
     <div className="space-y-6">
@@ -221,129 +172,6 @@ export default function PredictionHistoryPage() {
             </CardContent>
           </Card>
         </div>
-      )}
-
-      {/* Scatter Charts */}
-      {filtered.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm cursor-help" title="Each dot is a player-game. X-axis = our prediction, Y-axis = what happened. Points on the dashed diagonal = perfect prediction.">Goals: Predicted vs Actual</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={280}>
-                <ScatterChart>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" dataKey="predicted" name="Predicted" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis type="number" dataKey="actual" name="Actual" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                  <ZAxis range={[20, 20]} />
-                  <ReferenceLine
-                    segment={[{ x: 0, y: 0 }, { x: 6, y: 6 }]}
-                    stroke="hsl(var(--muted-foreground))"
-                    strokeDasharray="5 5"
-                    strokeOpacity={0.5}
-                  />
-                  <Tooltip
-                    contentStyle={tooltipStyle}
-                    formatter={(value: number | undefined, name: string | undefined) => [value ?? 0, name ?? ""]}
-                    labelFormatter={(_, payload) => payload?.[0]?.payload?.player || ""}
-                  />
-                  <Scatter data={goalsScatter} fill={CHART_COLORS.goals} opacity={0.6} />
-                </ScatterChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm cursor-help" title="Each dot is a player-game. X-axis = our prediction, Y-axis = what happened. Points on the dashed diagonal = perfect prediction.">Disposals: Predicted vs Actual</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={280}>
-                <ScatterChart>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" dataKey="predicted" name="Predicted" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis type="number" dataKey="actual" name="Actual" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                  <ZAxis range={[20, 20]} />
-                  <ReferenceLine
-                    segment={[{ x: 0, y: 0 }, { x: 40, y: 40 }]}
-                    stroke="hsl(var(--muted-foreground))"
-                    strokeDasharray="5 5"
-                    strokeOpacity={0.5}
-                  />
-                  <Tooltip
-                    contentStyle={tooltipStyle}
-                    formatter={(value: number | undefined, name: string | undefined) => [value ?? 0, name ?? ""]}
-                    labelFormatter={(_, payload) => payload?.[0]?.payload?.player || ""}
-                  />
-                  <Scatter data={dispScatter} fill={CHART_COLORS.disposals} opacity={0.6} />
-                </ScatterChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm cursor-help" title="Each dot is a player-game. X-axis = our prediction, Y-axis = what happened. Points on the dashed diagonal = perfect prediction.">Marks: Predicted vs Actual</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={280}>
-                <ScatterChart>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" dataKey="predicted" name="Predicted" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                  <YAxis type="number" dataKey="actual" name="Actual" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                  <ZAxis range={[20, 20]} />
-                  <ReferenceLine
-                    segment={[{ x: 0, y: 0 }, { x: 12, y: 12 }]}
-                    stroke="hsl(var(--muted-foreground))"
-                    strokeDasharray="5 5"
-                    strokeOpacity={0.5}
-                  />
-                  <Tooltip
-                    contentStyle={tooltipStyle}
-                    formatter={(value: number | undefined, name: string | undefined) => [value ?? 0, name ?? ""]}
-                    labelFormatter={(_, payload) => payload?.[0]?.payload?.player || ""}
-                  />
-                  <Scatter data={marksScatter} fill={CHART_COLORS.marks} opacity={0.6} />
-                </ScatterChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Error Distribution */}
-      {errorDistData.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base cursor-help" title="Distribution of prediction errors (actual minus predicted). Centered around 0 = well-calibrated model. Wide spread = high variance.">Goal Prediction Error Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={errorDistData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="bin"
-                  tick={{ fontSize: 11 }}
-                  stroke="hsl(var(--muted-foreground))"
-                  label={{
-                    value: "Error (Actual - Predicted)",
-                    position: "insideBottom",
-                    offset: -5,
-                    style: { fontSize: 11, fill: "hsl(var(--muted-foreground))" },
-                  }}
-                />
-                <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                <Tooltip
-                  contentStyle={tooltipStyle}
-                  formatter={(val: number | undefined) => [val ?? 0, "Count"]}
-                  labelFormatter={(label) => `Error: ${label}`}
-                />
-                <Bar dataKey="count" fill={CHART_COLORS.accent} radius={[2, 2, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
       )}
 
       {/* Full table */}

@@ -65,26 +65,6 @@ function IconVenue({ className }: { className?: string }) {
   );
 }
 
-function IconMulti({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="5" height="5" rx="1" />
-      <rect x="12" y="3" width="5" height="5" rx="1" />
-      <rect x="3" y="12" width="5" height="5" rx="1" />
-      <rect x="12" y="12" width="5" height="5" rx="1" />
-      <path d="M8 5.5h4M8 14.5h4M5.5 8v4M14.5 8v4" />
-    </svg>
-  );
-}
-
-function IconOdds({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10 2v16M6 5h6.5a2.5 2.5 0 010 5H7M7 10h7a2.5 2.5 0 010 5H6" />
-    </svg>
-  );
-}
-
 function IconLadder({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -130,8 +110,6 @@ const NAV_ITEMS = [
   { href: "/venues", label: "Venues", icon: IconVenue },
   { href: "/recap", label: "Round Recap", icon: IconRecap },
   { href: "/schedule", label: "Schedule", icon: IconSchedule },
-  { href: "/multis", label: "Multis", icon: IconMulti },
-  { href: "/odds", label: "Odds", icon: IconOdds },
 ];
 
 function NavContent({ onNavigate }: { onNavigate?: () => void }) {
@@ -139,11 +117,11 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <>
-      <div className="px-4 py-[14px] border-b border-border/60">
-        <h1 className="text-sm font-semibold tracking-tight text-foreground">AFL Predictions</h1>
-        <p className="text-[10px] text-muted-foreground/60 font-mono mt-0.5">Player & Match Analytics</p>
+      <div className="px-4 py-4 border-b border-sidebar-border">
+        <h1 className="text-base font-extrabold tracking-tight text-[oklch(0.90_0.15_95)]">AFL Predict Pro</h1>
+        <p className="text-[11px] text-sidebar-foreground/50 font-mono mt-0.5">Player & Match Analytics</p>
       </div>
-      <nav className="flex-1 px-2 py-3 space-y-px overflow-y-auto">
+      <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map((item) => {
           const isActive =
             item.href === "/"
@@ -156,20 +134,20 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
                 href={item.href}
                 onClick={onNavigate}
                 className={cn(
-                  "flex items-center gap-2.5 px-3 py-[7px] rounded text-[13px] font-medium transition-colors duration-100",
+                  "flex items-center gap-2.5 px-3 py-2 rounded text-sm font-semibold transition-colors duration-100",
                   isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    ? "bg-sidebar-accent text-[oklch(0.90_0.15_95)]"
+                    : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
                 )}
               >
-                <Icon className={cn("w-[16px] h-[16px] shrink-0", isActive ? "text-primary" : "text-muted-foreground/70")} />
+                <Icon className={cn("w-[18px] h-[18px] shrink-0", isActive ? "text-[oklch(0.90_0.15_95)]" : "text-sidebar-foreground/50")} />
                 {item.label}
                 {isActive && (
-                  <span className="ml-auto w-1 h-4 rounded-full bg-primary/70" />
+                  <span className="ml-auto w-1 h-4 rounded-full bg-[oklch(0.90_0.15_95)]" />
                 )}
               </Link>
               {item.children && isActive && (
-                <div className="ml-5 mt-0.5 space-y-px border-l border-border/50 pl-2.5">
+                <div className="ml-5 mt-0.5 space-y-px border-l border-sidebar-border/50 pl-2.5">
                   {item.children.map((child) => {
                     const childActive = pathname === child.href;
                     const ChildIcon = child.icon;
@@ -179,13 +157,13 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
                         href={child.href}
                         onClick={onNavigate}
                         className={cn(
-                          "flex items-center gap-2 px-2.5 py-1.5 rounded text-[12px] font-medium transition-colors",
+                          "flex items-center gap-2 px-2.5 py-1.5 rounded text-[13px] font-semibold transition-colors",
                           childActive
-                            ? "text-primary bg-primary/5"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                            ? "text-[oklch(0.90_0.15_95)] bg-sidebar-accent/50"
+                            : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/30"
                         )}
                       >
-                        <ChildIcon className="w-3.5 h-3.5 shrink-0" />
+                        <ChildIcon className="w-4 h-4 shrink-0" />
                         {child.label}
                       </Link>
                     );
@@ -196,8 +174,8 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
           );
         })}
       </nav>
-      <div className="px-4 py-3 border-t border-border/60">
-        <p className="text-[10px] text-muted-foreground/50">
+      <div className="px-4 py-3 border-t border-sidebar-border">
+        <p className="text-[11px] text-sidebar-foreground/40">
           Predictions for goals, disposals, marks & match winners
         </p>
       </div>
@@ -207,7 +185,7 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
 
 export function Sidebar() {
   return (
-    <aside className="hidden md:flex w-52 border-r border-border/60 bg-sidebar flex-col h-screen sticky top-0 shrink-0">
+    <aside className="hidden md:flex w-56 border-r border-sidebar-border bg-sidebar flex-col h-screen sticky top-0 shrink-0">
       <NavContent />
     </aside>
   );
@@ -225,10 +203,10 @@ export function MobileSidebar() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="md:hidden p-1.5 -ml-1.5 rounded hover:bg-muted/50 transition-colors"
+        className="md:hidden p-1.5 -ml-1.5 rounded hover:bg-white/10 transition-colors"
         aria-label="Open menu"
       >
-        <svg className="w-5 h-5 text-muted-foreground" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <svg className="w-5 h-5 text-white/70" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
           <path d="M3 5h14M3 10h14M3 15h14" />
         </svg>
       </button>
@@ -239,7 +217,7 @@ export function MobileSidebar() {
             className="fixed inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           />
-          <aside className="relative w-52 bg-sidebar flex flex-col h-full border-r border-border/60 shadow-2xl">
+          <aside className="relative w-56 bg-sidebar flex flex-col h-full border-r border-sidebar-border shadow-2xl">
             <NavContent onNavigate={() => setOpen(false)} />
           </aside>
         </div>

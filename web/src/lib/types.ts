@@ -900,6 +900,23 @@ export interface MatchSimulation {
   suggested_multis: SimMultiSuggestion[];
 }
 
+export interface RoundSimSummary {
+  home_team: string;
+  away_team: string;
+  n_sims: number;
+  home_win_pct: number;
+  away_win_pct: number;
+  draw_pct: number;
+  avg_total: number;
+  avg_margin: number;
+  median_total: number;
+  score_range: {
+    home: SimPercentiles;
+    away: SimPercentiles;
+  };
+  top_scorers: { player: string; team: string; p_1plus: number; avg_goals: number }[];
+}
+
 // --- Multi-Bet Backtest ---
 
 export interface MultiLeg {

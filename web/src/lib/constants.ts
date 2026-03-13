@@ -91,15 +91,15 @@ export function displayVenue(venue?: string | null): string {
 
 export const CHART_COLORS = {
   goals: "#f43f5e",
-  disposals: "#6366f1",
-  marks: "#10b981",
+  disposals: "#FFD700",
+  marks: "#34D399",
   behinds: "#f59e0b",
   tackles: "#a78bfa",
   kicks: "#22d3ee",
   handballs: "#f472b6",
-  accent: "#6366f1",
-  muted: "#475569",
-  positive: "#10b981",
+  accent: "#FFD700",
+  muted: "#5a7066",
+  positive: "#34D399",
   negative: "#f43f5e",
-  neutral: "#6366f1",
+  neutral: "#FFD700",
 };

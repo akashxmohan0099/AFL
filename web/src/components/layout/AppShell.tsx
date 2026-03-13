@@ -47,7 +47,7 @@ export function NewsPanelProvider({ children }: { children: React.ReactNode }) {
             />
             <aside
               className={cn(
-                "border-l border-border/60 bg-sidebar flex flex-col shrink-0",
+                "border-l border-sidebar-border bg-sidebar flex flex-col shrink-0",
                 // Mobile: fixed overlay
                 "fixed right-0 top-0 h-screen w-80 z-50 shadow-2xl",
                 // Desktop: inline in flex layout
@@ -93,8 +93,8 @@ export function NewsToggleButton() {
       className={cn(
         "flex items-center gap-1.5 px-1.5 py-1 rounded transition-colors relative",
         open
-          ? "bg-primary/10 text-primary"
-          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+          ? "bg-white/15 text-[oklch(0.90_0.15_95)]"
+          : "text-white/60 hover:text-white hover:bg-white/10"
       )}
       aria-label="Toggle intel panel"
       title="Intel Feed"

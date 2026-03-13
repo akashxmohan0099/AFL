@@ -1,6 +1,290 @@
 {
   "signals": [
     {
+      "id": "3865e7867e1e",
+      "source_url": "https://www.afl.com.au/news/1476487/afl-launches-groundbreaking-industry-first-helpline-to-support-mental-health",
+      "headline": "AFL launches groundbreaking initiative to support mental health",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/03/12/1f05f249-93a7-4c16-a3b5-b0b0430db221/training-silhouette-shot.jpg?width=1000\" alt=\"Players run during a training session. Picture: AFL Photos\" /><p>Players and coaches will now have an additional resource for support and guidance</p>",
+      "signal_type": "general",
+      "teams": [
+        "Collingwood",
+        "Gold Coast",
+        "Geelong"
+      ],
+      "players": [],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.3,
+      "prediction_impact": "",
+      "published_at": "Thu, 12 Mar 2026 23:00:00 GMT",
+      "processed_at": "2026-03-13T13:13:26.271360"
+    },
+    {
+      "id": "bc35787e8b7f",
+      "source_url": "https://www.afl.com.au/news/1476959/afl-daily-listen-merrett-hawks-duo-face-the-music-another-blues-fade-out",
+      "headline": "LISTEN: Merrett, Hawks duo face the music, another Blues fade-out",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/03/12/448f4327-5d8b-4783-bd25-b1e8802b6f9d/01HaEs25QR057772547.jpg?width=1000\" alt=\"Connor Macdonald and Zach Merrett in action during Hawthorn's clash with Essendon in round one, 2025. Picture: AFL Photos\" /><p>Join Damian Barrett and Joel Peterson for AFL Daily</p>",
+      "signal_type": "general",
+      "teams": [
+        "Richmond",
+        "Carlton"
+      ],
+      "players": [],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.3,
+      "prediction_impact": "",
+      "published_at": "Thu, 12 Mar 2026 21:00:00 GMT",
+      "processed_at": "2026-03-13T13:13:26.271360"
+    },
+    {
+      "id": "f1c9c877e6a1",
+      "source_url": "https://www.afl.com.au/news/1474891/sliding-doors-if-damo-has-given-tom-lynch-a-heap-of-love-then",
+      "headline": "IF Damo has given Tom Lynch a heap of love \u2026 THEN",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/03/12/c67510fa-b19c-46a0-8182-8bfc9a28ab04/LynchSD.jpg?width=1000\" alt=\"IF Damo has given Tom Lynch a heap of love \u2026 THEN\" /><p>Sliding Doors is in full swing for 2026 .. and Damo's got plenty on his mind</p>",
+      "signal_type": "general",
+      "teams": [
+        "Hawthorn",
+        "Melbourne",
+        "St Kilda",
+        "Collingwood",
+        "Sydney",
+        "Gold Coast",
+        "Geelong"
+      ],
+      "players": [],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.3,
+      "prediction_impact": "",
+      "published_at": "Thu, 12 Mar 2026 19:00:00 GMT",
+      "processed_at": "2026-03-13T13:13:26.271360"
+    },
+    {
+      "id": "15b782cfc5a7",
+      "source_url": "https://www.afl.com.au/news/1474775/late-to-afl-fantasy-you-can-pick-this-team",
+      "headline": "Late to AFL Fantasy? You can pick this team",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/02/05/c825da1e-1dfd-4f6c-a888-43e39230dfd8/hf7pr0B9.jpg?width=1000\" alt=\"Luke Davies-Uniacke poses for a photo during North Melbourne's official team photo day on February 5, 2026. Picture: AFL Photos\" /><p>There are plenty of must-have players left to pick in AFL Fantasy Classic</p>",
+      "signal_type": "selection",
+      "teams": [
+        "Carlton"
+      ],
+      "players": [],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.3,
+      "prediction_impact": "",
+      "published_at": "Thu, 12 Mar 2026 19:00:00 GMT",
+      "processed_at": "2026-03-13T13:13:26.271360"
+    },
+    {
+      "id": "72a6737561b4",
+      "source_url": "https://www.afl.com.au/news/1469168/from-the-coachs-mouth-hear-from-your-clubs-coach-about-the-2026-season",
+      "headline": "From the coach's mouth: Hear from your club's coach about the 2026 season",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/03/12/bbd8450d-ea68-4aed-891b-dcca8610f150/Matthew-Nicks-Justin-Longmuir-Steven-King-and-Alastair-Clarkson.-Pictures-AFL-Photos.jpg?width=1000\" alt=\"Matthew Nicks, Justin Longmuir, Steven King and Alastair Clarkson. Pictures: AFL Photos\" /><p>The team at AFL.com.au sat down with your senior coach for an in-depth look at the year ahead</p>",
+      "signal_type": "general",
+      "teams": [
+        "Western Bulldogs",
+        "St Kilda",
+        "Collingwood",
+        "Essendon",
+        "Geelong"
+      ],
+      "players": [],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.3,
+      "prediction_impact": "",
+      "published_at": "Thu, 12 Mar 2026 19:00:00 GMT",
+      "processed_at": "2026-03-13T13:13:26.271360"
+    },
+    {
+      "id": "1e769f9c3634",
+      "source_url": "https://www.afl.com.au/news/1476136/this-one-was-for-our-club-michael-voss-pleased-for-carlton-blues-after-richmond-tigers-thriller",
+      "headline": "'This one was for our club': Voss pleased for Blues after Tigers thriller",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/03/12/793210d0-1bd1-4e7e-9c9d-4353e4999b2c/IWvu6iQ4.jpg?width=1000\" alt=\"Jagga Smith and Will Hayward celebrate Carlton's win over Richmond in round one, 2026. Picture: AFL Photos\" /><p>Blues coach Michael Voss was relieved after the hard-fought win over the Tigers</p>",
+      "signal_type": "general",
+      "teams": [
+        "Richmond",
+        "Carlton"
+      ],
+      "players": [],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.3,
+      "prediction_impact": "",
+      "published_at": "Thu, 12 Mar 2026 13:32:00 GMT",
+      "processed_at": "2026-03-13T13:13:26.271360"
+    },
+    {
+      "id": "3436771ca084",
+      "source_url": "https://www.afl.com.au/news/1476135/carlton-blues-hold-on-to-edge-richmond-tigers-in-thriller",
+      "headline": "Blues hold on to edge Tigers in thriller",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/03/12/bf536634-73a1-4a70-899a-48fe7b8a81e6/Ru0jtDxx.jpg?width=1000\" alt=\"Marc Pittonet celebrates a goal during Carlton's clash against Richmond in round one, 2026. Picture: Getty Images\" /><p>The Blues have held on to beat the Tigers</p>",
+      "signal_type": "general",
+      "teams": [
+        "Richmond",
+        "Carlton",
+        "Sydney"
+      ],
+      "players": [],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.3,
+      "prediction_impact": "",
+      "published_at": "Thu, 12 Mar 2026 11:12:00 GMT",
+      "processed_at": "2026-03-13T13:13:26.271360"
+    },
+    {
+      "id": "036b0083a5b8",
+      "source_url": "https://www.afl.com.au/news/1473188/listen-final-tips-best-r1-captains-more",
+      "headline": "LISTEN: Final tips, best R1 captains, more",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/02/11/c87ea84a-3fd1-4c8c-960a-16a3fa1e4ae2/HpPltyl4.jpg?width=1000\" alt=\"Max Gawn poses for a photo during Melbourne's official team photo day on January 28, 2026. Picture: AFL Photos\" /><p>Calvin, Roy and Warnie bring you the round one teams, latest Fantasy news, best captains and more</p>",
+      "signal_type": "form",
+      "teams": [
+        "Richmond",
+        "Carlton"
+      ],
+      "players": [],
+      "sentiment": "positive",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.3,
+      "prediction_impact": "",
+      "published_at": "Thu, 12 Mar 2026 07:58:00 GMT",
+      "processed_at": "2026-03-13T13:13:26.271360"
+    },
+    {
+      "id": "9e2064468c58",
+      "source_url": "https://www.afl.com.au/news/1474774/fantasy-ready-r1-rookies-must-haves-breakevens-more",
+      "headline": "Fantasy ready R1: Top five captains, must-haves, rookies, more",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/03/07/3764c02f-7497-4e7e-b5ab-dc7512b02aca/oALohGci.jpg?width=1000\" alt=\"Tim English and Darcy Fort compete in the ruck during the Western Bulldogs' clash against Brisbane in Opening Round, 2026. Picture: AFL Photos\" /><p>Everything you need to know as AFL Fantasy begins</p>",
+      "signal_type": "general",
+      "teams": [
+        "West Coast",
+        "Richmond",
+        "Melbourne",
+        "Collingwood",
+        "Essendon",
+        "Geelong"
+      ],
+      "players": [],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.3,
+      "prediction_impact": "",
+      "published_at": "Thu, 12 Mar 2026 07:41:00 GMT",
+      "processed_at": "2026-03-13T13:13:26.271360"
+    },
+    {
+      "id": "f36d46af9e21",
+      "source_url": "https://www.afl.com.au/news/1474782/follow-it-live-carlton-blues-v-richmond-tigers-round-one-2025-from-730pm-aedt",
+      "headline": "Blues look to bounce back in huge Tigers clash. LIVE from 7.30pm AEDT",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/03/12/f3b30808-d6a7-45f0-bbe1-8a131f697b2c/eZvLiRRM.jpg?width=1000\" alt=\"Mitch McGovern tackles Josh Gibcus during Carlton's clash against Richmond in round one, 2026. Picture: AFL Photos\" /><p>Follow all the action from Thursday night's clash between the Blues and Tigers</p>",
+      "signal_type": "injury",
+      "teams": [
+        "Richmond",
+        "Carlton",
+        "Sydney"
+      ],
+      "players": [],
+      "sentiment": "positive",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.6,
+      "prediction_impact": "",
+      "published_at": "Thu, 12 Mar 2026 07:30:00 GMT",
+      "processed_at": "2026-03-13T13:13:26.271360"
+    },
+    {
+      "id": "f3d42accc065",
+      "source_url": "https://www.afl.com.au/news/1476137/teams-big-boost-for-geelong-cats-key-fremantle-dockers-in-star-giant-finn-callaghan-named",
+      "headline": "TEAMS: Big boost for Cats, key Dockers in, star Giant named",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/03/12/df14bfbb-e201-438f-9b75-3d0d3493a9e1/1203_teams.jpg?width=1000\" alt=\"Jeremy Cameron, Hayden Young and Finn Callaghan. Picture: AFL Photos\" /><p>The teams for Friday and Saturday's round one matches are in, plus squads for Sunday's games</p>",
+      "signal_type": "form",
+      "teams": [],
+      "players": [],
+      "sentiment": "positive",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.3,
+      "prediction_impact": "",
+      "published_at": "Thu, 12 Mar 2026 07:20:00 GMT",
+      "processed_at": "2026-03-13T13:13:26.271360"
+    },
+    {
+      "id": "da4cbf0ff99a",
+      "source_url": "https://www.afl.com.au/news/1476557/listen-freos-big-challenge-crows-big-build-up",
+      "headline": "LISTEN: Freo's big challenge, Crows' big build-up",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2025/03/15/b5cb2a1b-ec36-446f-a4c6-e6be8da77355/CQYsa7rX.jpg?width=1000\" alt=\"Fremantle players look dejected after a loss during round one, 2025. Picture: AFL Photos\" /><p>Join Michael Whiting, Nathan Schmook and Bharat Sundaresan for a special 'State of Origin' episode of AFL Daily</p>",
+      "signal_type": "general",
+      "teams": [],
+      "players": [],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.3,
+      "prediction_impact": "",
+      "published_at": "Thu, 12 Mar 2026 05:57:00 GMT",
+      "processed_at": "2026-03-13T13:13:26.271360"
+    },
+    {
+      "id": "76e4c3cae970",
+      "source_url": "https://www.afl.com.au/aflw/news/1475446/how-the-gallia-cup-womens-footy-tournament-is-helping-to-spread-the-afl-gospel-in-europe",
+      "headline": "How women's footy is helping to spread the AFL gospel in Europe",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/03/13/b799820f-ac19-41fb-9278-aeb31cf42199/2025_Paris-Cockerelles.jpg?width=1000\" alt=\"Paris Cockerelles players in action during the 2025 Gallia Cup in France. Picture: Patrick Vielcanet / AFL Europe\" /><p>More than 150 players and officials gathered for the annual Gallia Cup in France last weekend, as women's footy continues to take hold in Europe</p>",
+      "signal_type": "general",
+      "teams": [],
+      "players": [],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.3,
+      "prediction_impact": "",
+      "published_at": "Thu, 12 Mar 2026 05:00:00 GMT",
+      "processed_at": "2026-03-13T16:09:27.958756"
+    },
+    {
+      "id": "23cf90a87d9a",
+      "source_url": "https://www.afl.com.au/news/1476540/greater-western-giants-star-finn-callaghan-in-doubt-for-grudge-match-against-the-western-bulldogs",
+      "headline": "Giants star in doubt for grudge match, young defender praised",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/03/07/d8408745-9b5d-4363-bbd7-e157f50d1793/jFGLMZ44.jpg?width=1000\" alt=\"Finn Callaghan in action during Opening Round, 2026. Picture: AFL Photos\" /><p>Finn Callaghan was an absentee from Giants training on Thursday ahead of Saturday's clash against the Western Bulldogs</p>",
+      "signal_type": "form",
+      "teams": [],
+      "players": [],
+      "sentiment": "positive",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.3,
+      "prediction_impact": "",
+      "published_at": "Thu, 12 Mar 2026 04:15:00 GMT",
+      "processed_at": "2026-03-13T13:13:26.271360"
+    },
+    {
+      "id": "30009650c2a6",
+      "source_url": "https://www.afl.com.au/news/1476145/mystery-injury-claims-another-eagle-elijah-hewett-tough-defender-reuben-ginbey-gets-green-light",
+      "headline": "Untimely injury claims another Eagle, tough defender gets green light",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2025/08/17/5fd0d3e2-8b5c-4a51-a448-c653e6d6f8e8/JyTcGAWs.jpg?width=1000\" alt=\"Elijah Hewett during the round 23 match between West Coast and Western Bulldogs at Marvel Stadium on August 17, 2025. Picture: AFL Photos\" /><p>West Coast could be in for some big pain in the season-opener against premiership fancies Gold Coast</p>",
+      "signal_type": "injury",
+      "teams": [],
+      "players": [],
+      "sentiment": "negative",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.6,
+      "prediction_impact": "",
+      "published_at": "Thu, 12 Mar 2026 03:20:00 GMT",
+      "processed_at": "2026-03-13T13:13:26.271360"
+    },
+    {
       "id": "aa46a3b898ee",
       "source_url": "https://www.afl.com.au/news/1473959/brisbane-lions-dealt-another-huge-blow-with-star-onballer-hugh-mccluggage-sidelined-with-calf-concern",
       "headline": "Lions dealt another huge blow with star onballer sidelined with calf concern",
@@ -311,6 +595,210 @@
       "processed_at": "2026-03-08T17:01:13.236896"
     },
     {
+      "id": "12b6381bde27",
+      "source_url": "https://www.afl.com.au/news/1474783/essendon-bombers-hawthorn-hawks-resume-rivalry-under-friday-night-lights-live-from-740pm-aedt",
+      "headline": "Bombers, Hawks resume rivalry under Friday night lights. LIVE from 7.40pm AEDT",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/03/12/389133ab-7f24-4f0d-871e-7c83871752cf/ZD4jQEBY.jpg?width=1000\" alt=\"Andrew McGrath and Jai Newcombe pose for a photo during AFL Captains' Day on February 23, 2026. Picture: AFL Photos\" /><p>Follow all the action from Friday night's clash between the Bombers and Hawks</p>",
+      "signal_type": "general",
+      "teams": [
+        "Essendon",
+        "Hawthorn"
+      ],
+      "players": [],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.3,
+      "prediction_impact": "",
+      "published_at": "Fri, 13 Mar 2026 06:40:00 GMT",
+      "processed_at": "2026-03-13T16:49:27.741102"
+    },
+    {
+      "id": "e603b6f21681",
+      "source_url": "https://www.afl.com.au/news/1476961/teams-star-west-coast-eagle-overlooked-port-adelaide-power-forward-to-miss-young-gold-coast-sun-left-out",
+      "headline": "TEAMS: Star Eagle snubbed, Power forward to miss, young Sun left out",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/03/13/eca7f08e-30ae-4530-8e67-76e81534d9ac/SunTeams.jpg?width=1000\" alt=\"Tim Kelly, Jack Lukosius and Jed Walter. Pictures: AFL Photos\" /><p>The teams are in for Sunday's games</p>",
+      "signal_type": "form",
+      "teams": [
+        "Geelong",
+        "Adelaide",
+        "Melbourne",
+        "North Melbourne",
+        "St Kilda",
+        "Gold Coast",
+        "Port Adelaide",
+        "West Coast"
+      ],
+      "players": [],
+      "sentiment": "positive",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.3,
+      "prediction_impact": "",
+      "published_at": "Fri, 13 Mar 2026 06:00:00 GMT",
+      "processed_at": "2026-03-13T16:09:27.958756"
+    },
+    {
+      "id": "5ccd3c6cad2b",
+      "source_url": "https://www.afl.com.au/news/1477001/classy-geelong-cat-tyson-stengles-return-sooner-rather-than-later-says-chris-scott",
+      "headline": "Classy Cat's return 'sooner rather than later', says Scott",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/03/13/ce903871-94ff-418d-91d6-8d7aaa0fd1ae/TR180925MH062888434.jpg?width=1000\" alt=\"Tyson Stengle during the captain's run at GMHBA Stadium, September 18, 2025. Picture: Getty Images\" /><p>After an extended break due to personal reasons, Tyson Stengle is progressing well towards AFL return</p>",
+      "signal_type": "injury",
+      "teams": [
+        "Geelong",
+        "Fremantle",
+        "Gold Coast"
+      ],
+      "players": [],
+      "sentiment": "positive",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.6,
+      "prediction_impact": "",
+      "published_at": "Fri, 13 Mar 2026 05:36:00 GMT",
+      "processed_at": "2026-03-13T16:09:27.958756"
+    },
+    {
+      "id": "92c258b00716",
+      "source_url": "https://www.afl.com.au/news/1476969/match-review-young-richmond-tiger-jonty-faull-cops-ban-for-gut-punch",
+      "headline": "MATCH REVIEW: Young Tiger cops ban for gut punch",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/03/12/0649473f-174d-4d22-a204-483edeb36577/ESP3LsZl.jpg?width=1000\" alt=\"Jonty Faull and Jacob Weitering clash during the match between Carlton and Richmond at the MCG in round one, 2026. Picture: AFL Photos\" /><p>The Match Review Officer's findings are in from Thursday night's round one game between Carlton and Richmond</p>",
+      "signal_type": "suspension",
+      "teams": [
+        "Carlton",
+        "Gold Coast",
+        "West Coast",
+        "Richmond"
+      ],
+      "players": [],
+      "sentiment": "negative",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.6,
+      "prediction_impact": "",
+      "published_at": "Fri, 13 Mar 2026 05:30:00 GMT",
+      "processed_at": "2026-03-13T16:09:27.958756"
+    },
+    {
+      "id": "8091052a5564",
+      "source_url": "https://www.afl.com.au/news/1476991/port-adelaide-power-defender-josh-sinn-set-to-miss-most-of-the-season-in-cruel-blow",
+      "headline": "Power defender set to miss most of the season in cruel blow",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2025/08/03/2147d6e2-3396-49e0-8aca-8041440ff062/wMZS1FXu.jpg?width=1000\" alt=\"Josh Sinn is seen during Port Adelaide's clash against Geelong in round 21, 2025. Picture: Getty Images\" /><p>Power defender Josh Sinn has undergone a shoulder reconstruction</p>",
+      "signal_type": "general",
+      "teams": [
+        "Adelaide",
+        "Port Adelaide"
+      ],
+      "players": [],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.3,
+      "prediction_impact": "",
+      "published_at": "Fri, 13 Mar 2026 05:14:00 GMT",
+      "processed_at": "2026-03-13T16:09:27.958756"
+    },
+    {
+      "id": "9cd5b5b3d25c",
+      "source_url": "https://www.afl.com.au/news/1474757/team-whispers-live-all-the-latest-selection-news-ahead-of-round-one",
+      "headline": "Team whispers: Livewire Demon to debut, Eagles confirm FOUR first-gamers",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/03/13/3ec93f10-d812-4494-8cb3-6af3f4c0a09c/6RZNN67g.jpg?width=1000\" alt=\"Latrelle Pickett in action during Melbourne's match sim clash with North Melbourne in February 2026. Picture: AFL Photos\" /><p>Stay up to date with all the latest teams news ahead of Round One</p>",
+      "signal_type": "selection",
+      "teams": [],
+      "players": [],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.3,
+      "prediction_impact": "",
+      "published_at": "Fri, 13 Mar 2026 03:48:00 GMT",
+      "processed_at": "2026-03-13T14:02:11.020644"
+    },
+    {
+      "id": "bb9ea2fe5514",
+      "source_url": "https://www.afl.com.au/news/1476974/hell-be-a-bit-frustrated-damien-hardwick-says-new-gold-coast-sun-jamara-ugle-hagans-time-will-come",
+      "headline": "'He'll be a bit frustrated': Hardwick says new Sun's time will come",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/03/13/c0e85305-4602-4051-9c42-d6d7fe5be5dd/TR270126CH065277269.jpg?width=1000\" alt=\"Jamarra Ugle-Hagan at Gold Coast training at People First Stadium, January 27, 2026. Picture: Getty Images\" /><p>Jamarra Ugle-Hagan has been overlooked again for Gold Coast, but his coach sees him as a 'long-term player'</p>",
+      "signal_type": "general",
+      "teams": [
+        "West Coast",
+        "Hawthorn",
+        "Port Adelaide",
+        "Essendon",
+        "Adelaide",
+        "Gold Coast",
+        "Geelong"
+      ],
+      "players": [],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.3,
+      "prediction_impact": "",
+      "published_at": "Fri, 13 Mar 2026 02:14:00 GMT",
+      "processed_at": "2026-03-13T13:13:26.271360"
+    },
+    {
+      "id": "ac84298f7b22",
+      "source_url": "https://www.afl.com.au/news/1476971/big-carlton-blue-jacob-weiterings-big-month-dealing-with-doc-doctors-and-charlie-curnow",
+      "headline": "Big Blue's big month dealing with Doc, doctors and Charlie",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/03/13/eb734fea-1b36-4678-a36e-393f10f433c7/20HaCa25RC060718858.jpg?width=1000\" alt=\"Jacob Weitering and Sam Docherty before the round 20 match between Hawthorn and Carlton at the MCG, July 24, 2025. Picture: Getty Images\" /><p>From an Origin injury to a club controversy with an old mate, Jacob Weitering's 2026 has been anything but quiet</p>",
+      "signal_type": "general",
+      "teams": [
+        "Richmond",
+        "Melbourne",
+        "Carlton",
+        "Sydney"
+      ],
+      "players": [],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.3,
+      "prediction_impact": "",
+      "published_at": "Fri, 13 Mar 2026 01:37:00 GMT",
+      "processed_at": "2026-03-13T13:13:26.271360"
+    },
+    {
+      "id": "7bf131d23b3f",
+      "source_url": "https://www.afl.com.au/news/1476970/sydney-swan-justin-mcinerney-hopes-to-keep-flying-under-the-radar-despite-stunning-start",
+      "headline": "Swan hopes to keep flying under the radar despite stunning start",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/03/11/4f398c77-07d4-4455-a449-b752b35d4507/Justin-McInerney-10.3.26-Phil-Hillyard-pictures-012.jpg?width=1000\" alt=\"Justin McInerney at the SCG on March 10, 2026. Picture: Phil Hillyard\" /><p>Justin McInerney hopes he can keep flying under the radar despite his strong start to the season for the Swans</p>",
+      "signal_type": "form",
+      "teams": [
+        "Carlton",
+        "Western Bulldogs",
+        "Sydney"
+      ],
+      "players": [],
+      "sentiment": "positive",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.3,
+      "prediction_impact": "",
+      "published_at": "Fri, 13 Mar 2026 01:34:00 GMT",
+      "processed_at": "2026-03-13T13:13:26.271360"
+    },
+    {
+      "id": "466f55983793",
+      "source_url": "https://www.afl.com.au/news/1476965/chris-fagan-says-decimated-brisbane-lions-need-to-get-innovative-against-red-hot-sydney-swans",
+      "headline": "Decimated Lions to get 'innovative' against red-hot Swans",
+      "summary": "<img width=\"60\" style=\"float:right;\" src=\"https://resources.afl.com.au/photo-resources/2026/03/13/a313038a-4112-4460-83a3-14f4d5477897/ORBrWB26RF-95.jpg?width=1000\" alt=\"Chris Fagan during the Opening Round match between Brisbane and Western Bulldogs at the Gabba, March 7, 2026. Picture: AFL Photos\" /><p>Injuries, suspensions set a challenge for reigning premier to get first win on the board</p>",
+      "signal_type": "general",
+      "teams": [
+        "Western Bulldogs",
+        "Sydney"
+      ],
+      "players": [],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [],
+      "relevance_score": 0.3,
+      "prediction_impact": "",
+      "published_at": "Fri, 13 Mar 2026 00:21:00 GMT",
+      "processed_at": "2026-03-13T13:13:26.271360"
+    },
+    {
       "id": "0fb50d398d0a",
       "source_url": "https://www.afl.com.au/news/1460795/afl-pre-season-2026-fantasy-news-injuries-matches-role-changes-fixture-more",
       "headline": "Fantasy news: Returning Cat praised, Suns happy with debutant",
@@ -343,6 +831,54 @@
       "processed_at": "2026-03-08T17:01:13.236896"
     },
     {
+      "id": "inj_04c30262",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Curtin, Dan \u2014 Knee",
+      "summary": "Curtin, Dan (Adelaide) is listed with Knee. Estimated return: 8-12 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "Adelaide"
+      ],
+      "players": [
+        "Curtin, Dan"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Adelaide": "bearish"
+      },
+      "key_facts": [
+        "Knee: Season"
+      ],
+      "relevance_score": 0.8999999999999999,
+      "prediction_impact": "Key availability concern for Adelaide",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747170"
+    },
+    {
+      "id": "inj_4f3e51cc",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Keane, Mark \u2014 Leg",
+      "summary": "Keane, Mark (Adelaide) is listed with Leg. Estimated return: 10-14 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "Adelaide"
+      ],
+      "players": [
+        "Keane, Mark"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Adelaide": "bearish"
+      },
+      "key_facts": [
+        "Leg: Season"
+      ],
+      "relevance_score": 0.8999999999999999,
+      "prediction_impact": "Key availability concern for Adelaide",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747186"
+    },
+    {
       "id": "inj_e2ef8d02",
       "source_url": "https://www.afl.com.au/matches/injury-list",
       "headline": "Motlop, Jesse \u2014 Knee",
@@ -363,8 +899,8 @@
       ],
       "relevance_score": 0.8999999999999999,
       "prediction_impact": "Key availability concern for Carlton",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278449"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747244"
     },
     {
       "id": "inj_8ddf3d8d",
@@ -387,8 +923,8 @@
       ],
       "relevance_score": 0.8999999999999999,
       "prediction_impact": "Key availability concern for Essendon",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278487"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747285"
     },
     {
       "id": "inj_6cffd9da",
@@ -411,32 +947,8 @@
       ],
       "relevance_score": 0.8999999999999999,
       "prediction_impact": "Key availability concern for Geelong",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278515"
-    },
-    {
-      "id": "inj_7991155a",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Molier, Jacob \u2014 Foot",
-      "summary": "Molier, Jacob (Geelong) is listed with Foot. Estimated return: 8-10 weeks.",
-      "signal_type": "injury",
-      "teams": [
-        "Geelong"
-      ],
-      "players": [
-        "Molier, Jacob"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Geelong": "bearish"
-      },
-      "key_facts": [
-        "Foot: Season"
-      ],
-      "relevance_score": 0.8999999999999999,
-      "prediction_impact": "Key availability concern for Geelong",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278533"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747314"
     },
     {
       "id": "inj_3b343969",
@@ -459,8 +971,32 @@
       ],
       "relevance_score": 0.8999999999999999,
       "prediction_impact": "Key availability concern for Greater Western Sydney",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278579"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747360"
+    },
+    {
+      "id": "inj_16616fb2",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Bowey, Jake \u2014 Foot",
+      "summary": "Bowey, Jake (Melbourne) is listed with Foot. Estimated return: 8-10 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "Melbourne"
+      ],
+      "players": [
+        "Bowey, Jake"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Melbourne": "bearish"
+      },
+      "key_facts": [
+        "Foot: Season"
+      ],
+      "relevance_score": 0.8999999999999999,
+      "prediction_impact": "Key availability concern for Melbourne",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747392"
     },
     {
       "id": "inj_d044e62d",
@@ -483,14 +1019,14 @@
       ],
       "relevance_score": 0.8999999999999999,
       "prediction_impact": "Key availability concern for North Melbourne",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278642"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747413"
     },
     {
       "id": "inj_e500399e",
       "source_url": "https://www.afl.com.au/matches/injury-list",
       "headline": "Powell-Pepper, Sam \u2014 Knee",
-      "summary": "Powell-Pepper, Sam (Port Adelaide) is listed with Knee. Estimated return: 12-14 weeks.",
+      "summary": "Powell-Pepper, Sam (Port Adelaide) is listed with Knee. Estimated return: 11-13 weeks.",
       "signal_type": "injury",
       "teams": [
         "Port Adelaide"
@@ -507,8 +1043,8 @@
       ],
       "relevance_score": 0.8999999999999999,
       "prediction_impact": "Key availability concern for Port Adelaide",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278671"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747436"
     },
     {
       "id": "inj_76ec8475",
@@ -531,8 +1067,8 @@
       ],
       "relevance_score": 0.8999999999999999,
       "prediction_impact": "Key availability concern for Port Adelaide",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278673"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747441"
     },
     {
       "id": "inj_4da0b483",
@@ -555,56 +1091,56 @@
       ],
       "relevance_score": 0.8999999999999999,
       "prediction_impact": "Key availability concern for West Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278800"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747577"
     },
     {
-      "id": "inj_a3dd3a8d",
+      "id": "inj_7ec7feec",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Evans, Koby \u2014 Ankle",
-      "summary": "Evans, Koby (Brisbane Lions) is listed with Ankle. Estimated return: 3-4 weeks.",
+      "headline": "Hinge, Mitch \u2014 Back",
+      "summary": "Hinge, Mitch (Adelaide) is listed with Back. Estimated return: 4-6 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "Adelaide"
+      ],
+      "players": [
+        "Hinge, Mitch"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Adelaide": "bearish"
+      },
+      "key_facts": [
+        "Back: 4-8 weeks"
+      ],
+      "relevance_score": 0.75,
+      "prediction_impact": "Key availability concern for Adelaide",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747182"
+    },
+    {
+      "id": "inj_1c5834a3",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "McKenna, Conor \u2014 Hamstring",
+      "summary": "McKenna, Conor (Brisbane Lions) is listed with Hamstring. Estimated return: 4-6 weeks.",
       "signal_type": "injury",
       "teams": [
         "Brisbane Lions"
       ],
       "players": [
-        "Evans, Koby"
+        "McKenna, Conor"
       ],
       "sentiment": "negative",
       "direction": {
         "Brisbane Lions": "bearish"
       },
       "key_facts": [
-        "Ankle: 4-8 weeks"
+        "Hamstring: 4-8 weeks"
       ],
       "relevance_score": 0.75,
       "prediction_impact": "Key availability concern for Brisbane Lions",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278417"
-    },
-    {
-      "id": "inj_0d3f145d",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Lloyd, Luke \u2014 Ankle",
-      "summary": "Lloyd, Luke (Brisbane Lions) is listed with Ankle. Estimated return: 3-4 weeks.",
-      "signal_type": "injury",
-      "teams": [
-        "Brisbane Lions"
-      ],
-      "players": [
-        "Lloyd, Luke"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Brisbane Lions": "bearish"
-      },
-      "key_facts": [
-        "Ankle: 4-8 weeks"
-      ],
-      "relevance_score": 0.75,
-      "prediction_impact": "Key availability concern for Brisbane Lions",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278423"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747223"
     },
     {
       "id": "inj_322c3e1b",
@@ -627,62 +1163,14 @@
       ],
       "relevance_score": 0.75,
       "prediction_impact": "Key availability concern for Brisbane Lions",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278435"
-    },
-    {
-      "id": "inj_eb444af0",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Cerra, Adam \u2014 Hamstring",
-      "summary": "Cerra, Adam (Carlton) is listed with Hamstring. Estimated return: 3-4 weeks.",
-      "signal_type": "injury",
-      "teams": [
-        "Carlton"
-      ],
-      "players": [
-        "Cerra, Adam"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Carlton": "bearish"
-      },
-      "key_facts": [
-        "Hamstring: 4-8 weeks"
-      ],
-      "relevance_score": 0.75,
-      "prediction_impact": "Key availability concern for Carlton",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278438"
-    },
-    {
-      "id": "inj_4b6ec038",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Cottrell, Matt \u2014 Knee",
-      "summary": "Cottrell, Matt (Carlton) is listed with Knee. Estimated return: 3-4 weeks.",
-      "signal_type": "injury",
-      "teams": [
-        "Carlton"
-      ],
-      "players": [
-        "Cottrell, Matt"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Carlton": "bearish"
-      },
-      "key_facts": [
-        "Knee: 4-8 weeks"
-      ],
-      "relevance_score": 0.75,
-      "prediction_impact": "Key availability concern for Carlton",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278441"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747232"
     },
     {
       "id": "inj_3d8ed805",
       "source_url": "https://www.afl.com.au/matches/injury-list",
       "headline": "McInnes, Reef \u2014 Knee",
-      "summary": "McInnes, Reef (Collingwood) is listed with Knee. Estimated return: 4-6 weeks.",
+      "summary": "McInnes, Reef (Collingwood) is listed with Knee. Estimated return: 3-5 weeks.",
       "signal_type": "injury",
       "teams": [
         "Collingwood"
@@ -699,32 +1187,152 @@
       ],
       "relevance_score": 0.75,
       "prediction_impact": "Key availability concern for Collingwood",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278467"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747262"
     },
     {
-      "id": "inj_46d6ad0c",
+      "id": "inj_c5ffd168",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Ridley, Jordan \u2014 Calf",
-      "summary": "Ridley, Jordan (Essendon) is listed with Calf. Estimated return: 4-5 weeks.",
+      "headline": "Bourke, Cillian \u2014 Hamstring",
+      "summary": "Bourke, Cillian (Essendon) is listed with Hamstring. Estimated return: 6-7 weeks.",
       "signal_type": "injury",
       "teams": [
         "Essendon"
       ],
       "players": [
-        "Ridley, Jordan"
+        "Bourke, Cillian"
       ],
       "sentiment": "negative",
       "direction": {
         "Essendon": "bearish"
       },
       "key_facts": [
-        "Calf: 4-8 weeks"
+        "Hamstring: 4-8 weeks"
       ],
       "relevance_score": 0.75,
       "prediction_impact": "Key availability concern for Essendon",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278490"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747268"
+    },
+    {
+      "id": "inj_683a3bb9",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Bryan, Nick \u2014 Knee",
+      "summary": "Bryan, Nick (Essendon) is listed with Knee. Estimated return: 4-5 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "Essendon"
+      ],
+      "players": [
+        "Bryan, Nick"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Essendon": "bearish"
+      },
+      "key_facts": [
+        "Knee: 4-8 weeks"
+      ],
+      "relevance_score": 0.75,
+      "prediction_impact": "Key availability concern for Essendon",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747271"
+    },
+    {
+      "id": "inj_bc48b155",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Clarke, Angus \u2014 Syndesmosis",
+      "summary": "Clarke, Angus (Essendon) is listed with Syndesmosis. Estimated return: 6-8 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "Essendon"
+      ],
+      "players": [
+        "Clarke, Angus"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Essendon": "bearish"
+      },
+      "key_facts": [
+        "Syndesmosis: 4-8 weeks"
+      ],
+      "relevance_score": 0.75,
+      "prediction_impact": "Key availability concern for Essendon",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747274"
+    },
+    {
+      "id": "inj_7410f259",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Setterfield, Will \u2014 Foot",
+      "summary": "Setterfield, Will (Essendon) is listed with Foot. Estimated return: 5-6 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "Essendon"
+      ],
+      "players": [
+        "Setterfield, Will"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Essendon": "bearish"
+      },
+      "key_facts": [
+        "Foot: 4-8 weeks"
+      ],
+      "relevance_score": 0.75,
+      "prediction_impact": "Key availability concern for Essendon",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747291"
+    },
+    {
+      "id": "inj_9a26365c",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Frederick, Michael \u2014 Ankle",
+      "summary": "Frederick, Michael (Fremantle) is listed with Ankle. Estimated return: 4-6 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "Fremantle"
+      ],
+      "players": [
+        "Frederick, Michael"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Fremantle": "bearish"
+      },
+      "key_facts": [
+        "Ankle: 4-8 weeks"
+      ],
+      "relevance_score": 0.75,
+      "prediction_impact": "Key availability concern for Fremantle",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747299"
+    },
+    {
+      "id": "inj_7991155a",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Molier, Jacob \u2014 Foot",
+      "summary": "Molier, Jacob (Geelong) is listed with Foot. Estimated return: 7-9 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "Geelong"
+      ],
+      "players": [
+        "Molier, Jacob"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Geelong": "bearish"
+      },
+      "key_facts": [
+        "Foot: 4-8 weeks"
+      ],
+      "relevance_score": 0.75,
+      "prediction_impact": "Key availability concern for Geelong",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747328"
     },
     {
       "id": "inj_0adfa3be",
@@ -747,38 +1355,38 @@
       ],
       "relevance_score": 0.75,
       "prediction_impact": "Key availability concern for Gold Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278539"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747334"
     },
     {
-      "id": "inj_1f81bb44",
+      "id": "inj_c3c80717",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Daniels, Brent \u2014 Hamstring",
-      "summary": "Daniels, Brent (Greater Western Sydney) is listed with Hamstring. Estimated return: 3-4 weeks.",
+      "headline": "Rowell, Matt \u2014 Finger",
+      "summary": "Rowell, Matt (Gold Coast) is listed with Finger. Estimated return: 4-6 weeks.",
       "signal_type": "injury",
       "teams": [
-        "Greater Western Sydney"
+        "Gold Coast"
       ],
       "players": [
-        "Daniels, Brent"
+        "Rowell, Matt"
       ],
       "sentiment": "negative",
       "direction": {
-        "Greater Western Sydney": "bearish"
+        "Gold Coast": "bearish"
       },
       "key_facts": [
-        "Hamstring: 4-8 weeks"
+        "Finger: 4-8 weeks"
       ],
       "relevance_score": 0.75,
-      "prediction_impact": "Key availability concern for Greater Western Sydney",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278576"
+      "prediction_impact": "Key availability concern for Gold Coast",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747346"
     },
     {
       "id": "inj_de32e730",
       "source_url": "https://www.afl.com.au/matches/injury-list",
       "headline": "Taylor, Sam \u2014 Hamstring",
-      "summary": "Taylor, Sam (Greater Western Sydney) is listed with Hamstring. Estimated return: 4-6 weeks.",
+      "summary": "Taylor, Sam (Greater Western Sydney) is listed with Hamstring. Estimated return: 6-8 weeks.",
       "signal_type": "injury",
       "teams": [
         "Greater Western Sydney"
@@ -795,14 +1403,38 @@
       ],
       "relevance_score": 0.75,
       "prediction_impact": "Key availability concern for Greater Western Sydney",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278590"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747369"
+    },
+    {
+      "id": "inj_2c87c7b3",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Jefferson, Matt \u2014 Foot",
+      "summary": "Jefferson, Matt (Melbourne) is listed with Foot. Estimated return: 4-6 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "Melbourne"
+      ],
+      "players": [
+        "Jefferson, Matt"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Melbourne": "bearish"
+      },
+      "key_facts": [
+        "Foot: 4-8 weeks"
+      ],
+      "relevance_score": 0.75,
+      "prediction_impact": "Key availability concern for Melbourne",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747398"
     },
     {
       "id": "inj_346f63c9",
       "source_url": "https://www.afl.com.au/matches/injury-list",
       "headline": "Kentfield, Luker \u2014 Knee",
-      "summary": "Kentfield, Luker (Melbourne) is listed with Knee. Estimated return: 6 weeks.",
+      "summary": "Kentfield, Luker (Melbourne) is listed with Knee. Estimated return: 4-6 weeks.",
       "signal_type": "injury",
       "teams": [
         "Melbourne"
@@ -819,80 +1451,56 @@
       ],
       "relevance_score": 0.75,
       "prediction_impact": "Key availability concern for Melbourne",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278625"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747401"
     },
     {
-      "id": "inj_fd362a07",
+      "id": "inj_9a670922",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Viney, Jack \u2014 Achilles",
-      "summary": "Viney, Jack (Melbourne) is listed with Achilles. Estimated return: 8 weeks.",
+      "headline": "White, Kalani \u2014 Glandular fever",
+      "summary": "White, Kalani (Melbourne) is listed with Glandular fever. Estimated return: 4-6 weeks.",
       "signal_type": "injury",
       "teams": [
         "Melbourne"
       ],
       "players": [
-        "Viney, Jack"
+        "White, Kalani"
       ],
       "sentiment": "negative",
       "direction": {
         "Melbourne": "bearish"
       },
       "key_facts": [
-        "Achilles: 4-8 weeks"
+        "Glandular fever: 4-8 weeks"
       ],
       "relevance_score": 0.75,
       "prediction_impact": "Key availability concern for Melbourne",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278636"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747410"
     },
     {
-      "id": "inj_ac98e3e3",
+      "id": "inj_d0e16b0e",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Cochrane, Tom \u2014 Hamstring",
-      "summary": "Cochrane, Tom (Port Adelaide) is listed with Hamstring. Estimated return: 3-4 weeks.",
+      "headline": "Goad, Taylor \u2014 Ankle",
+      "summary": "Goad, Taylor (North Melbourne) is listed with Ankle. Estimated return: 3-4 weeks.",
       "signal_type": "injury",
       "teams": [
-        "Port Adelaide"
+        "North Melbourne"
       ],
       "players": [
-        "Cochrane, Tom"
+        "Goad, Taylor"
       ],
       "sentiment": "negative",
       "direction": {
-        "Port Adelaide": "bearish"
+        "North Melbourne": "bearish"
       },
       "key_facts": [
-        "Hamstring: 4-8 weeks"
+        "Ankle: 4-8 weeks"
       ],
       "relevance_score": 0.75,
-      "prediction_impact": "Key availability concern for Port Adelaide",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278665"
-    },
-    {
-      "id": "inj_683fc9b3",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Cumming, Sam \u2014 Shoulder",
-      "summary": "Cumming, Sam (Richmond) is listed with Shoulder. Estimated return: 4 weeks.",
-      "signal_type": "injury",
-      "teams": [
-        "Richmond"
-      ],
-      "players": [
-        "Cumming, Sam"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Richmond": "bearish"
-      },
-      "key_facts": [
-        "Shoulder: 4-8 weeks"
-      ],
-      "relevance_score": 0.75,
-      "prediction_impact": "Key availability concern for Richmond",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278682"
+      "prediction_impact": "Key availability concern for North Melbourne",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747416"
     },
     {
       "id": "inj_2403e7d5",
@@ -915,8 +1523,8 @@
       ],
       "relevance_score": 0.75,
       "prediction_impact": "Key availability concern for Richmond",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278696"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747461"
     },
     {
       "id": "inj_d857781b",
@@ -939,14 +1547,62 @@
       ],
       "relevance_score": 0.75,
       "prediction_impact": "Key availability concern for Richmond",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278702"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747505"
+    },
+    {
+      "id": "inj_53364863",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Byrnes, Ryan \u2014 Foot",
+      "summary": "Byrnes, Ryan (St Kilda) is listed with Foot. Estimated return: 6-8 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "St Kilda"
+      ],
+      "players": [
+        "Byrnes, Ryan"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "St Kilda": "bearish"
+      },
+      "key_facts": [
+        "Foot: 4-8 weeks"
+      ],
+      "relevance_score": 0.75,
+      "prediction_impact": "Key availability concern for St Kilda",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747511"
+    },
+    {
+      "id": "inj_8c371008",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Dow, Paddy \u2014 Knee",
+      "summary": "Dow, Paddy (St Kilda) is listed with Knee. Estimated return: 3-4 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "St Kilda"
+      ],
+      "players": [
+        "Dow, Paddy"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "St Kilda": "bearish"
+      },
+      "key_facts": [
+        "Knee: 4-8 weeks"
+      ],
+      "relevance_score": 0.75,
+      "prediction_impact": "Key availability concern for St Kilda",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747517"
     },
     {
       "id": "inj_951c5eac",
       "source_url": "https://www.afl.com.au/matches/injury-list",
       "headline": "Henry, Liam \u2014 Hamstring",
-      "summary": "Henry, Liam (St Kilda) is listed with Hamstring. Estimated return: 6-7 weeks.",
+      "summary": "Henry, Liam (St Kilda) is listed with Hamstring. Estimated return: 5-6 weeks.",
       "signal_type": "injury",
       "teams": [
         "St Kilda"
@@ -963,14 +1619,38 @@
       ],
       "relevance_score": 0.75,
       "prediction_impact": "Key availability concern for St Kilda",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278711"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747520"
+    },
+    {
+      "id": "inj_d44f703c",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "O'Connell, Liam \u2014 Facial fractures",
+      "summary": "O'Connell, Liam (St Kilda) is listed with Facial fractures. Estimated return: 4-5 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "St Kilda"
+      ],
+      "players": [
+        "O'Connell, Liam"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "St Kilda": "bearish"
+      },
+      "key_facts": [
+        "Facial fractures: 4-8 weeks"
+      ],
+      "relevance_score": 0.75,
+      "prediction_impact": "Key availability concern for St Kilda",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747528"
     },
     {
       "id": "inj_a345e886",
       "source_url": "https://www.afl.com.au/matches/injury-list",
       "headline": "Bowman, Ned \u2014 Hamstring",
-      "summary": "Bowman, Ned (Sydney) is listed with Hamstring. Estimated return: 6 weeks.",
+      "summary": "Bowman, Ned (Sydney) is listed with Hamstring. Estimated return: 5-6 weeks.",
       "signal_type": "injury",
       "teams": [
         "Sydney"
@@ -987,38 +1667,14 @@
       ],
       "relevance_score": 0.75,
       "prediction_impact": "Key availability concern for Sydney",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278725"
-    },
-    {
-      "id": "inj_05765b2f",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Cootee, Billy \u2014 Thigh",
-      "summary": "Cootee, Billy (Sydney) is listed with Thigh. Estimated return: 3-4 weeks.",
-      "signal_type": "injury",
-      "teams": [
-        "Sydney"
-      ],
-      "players": [
-        "Cootee, Billy"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Sydney": "bearish"
-      },
-      "key_facts": [
-        "Thigh: 4-8 weeks"
-      ],
-      "relevance_score": 0.75,
-      "prediction_impact": "Key availability concern for Sydney",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278731"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747534"
     },
     {
       "id": "inj_21ca8b45",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Brockman, Tyler \u2014 ITB",
-      "summary": "Brockman, Tyler (West Coast) is listed with ITB. Estimated return: 5 weeks.",
+      "headline": "Brockman, Tyler \u2014 Knee",
+      "summary": "Brockman, Tyler (West Coast) is listed with Knee. Estimated return: 5 weeks.",
       "signal_type": "injury",
       "teams": [
         "West Coast"
@@ -1031,18 +1687,18 @@
         "West Coast": "bearish"
       },
       "key_facts": [
-        "ITB: 4-8 weeks"
+        "Knee: 4-8 weeks"
       ],
       "relevance_score": 0.75,
       "prediction_impact": "Key availability concern for West Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278777"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747563"
     },
     {
       "id": "inj_d05043da",
       "source_url": "https://www.afl.com.au/matches/injury-list",
       "headline": "Gross, Tom \u2014 Hamstring",
-      "summary": "Gross, Tom (West Coast) is listed with Hamstring. Estimated return: 5-7 weeks.",
+      "summary": "Gross, Tom (West Coast) is listed with Hamstring. Estimated return: 3-4 weeks.",
       "signal_type": "injury",
       "teams": [
         "West Coast"
@@ -1059,14 +1715,14 @@
       ],
       "relevance_score": 0.75,
       "prediction_impact": "Key availability concern for West Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278791"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747571"
     },
     {
       "id": "inj_1a95f051",
       "source_url": "https://www.afl.com.au/matches/injury-list",
       "headline": "Hutchinson, Jack \u2014 Ankle",
-      "summary": "Hutchinson, Jack (West Coast) is listed with Ankle. Estimated return: 7-9 weeks.",
+      "summary": "Hutchinson, Jack (West Coast) is listed with Ankle. Estimated return: 6-8 weeks.",
       "signal_type": "injury",
       "teams": [
         "West Coast"
@@ -1083,8 +1739,56 @@
       ],
       "relevance_score": 0.75,
       "prediction_impact": "Key availability concern for West Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278795"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747574"
+    },
+    {
+      "id": "inj_0d7e1882",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Rodriguez, Fred \u2014 Foot",
+      "summary": "Rodriguez, Fred (West Coast) is listed with Foot. Estimated return: 6-8 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "West Coast"
+      ],
+      "players": [
+        "Rodriguez, Fred"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "West Coast": "bearish"
+      },
+      "key_facts": [
+        "Foot: 4-8 weeks"
+      ],
+      "relevance_score": 0.75,
+      "prediction_impact": "Key availability concern for West Coast",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747580"
+    },
+    {
+      "id": "inj_a897e236",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Starcevich, Brandon \u2014 Calf",
+      "summary": "Starcevich, Brandon (West Coast) is listed with Calf. Estimated return: 3-4 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "West Coast"
+      ],
+      "players": [
+        "Starcevich, Brandon"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "West Coast": "bearish"
+      },
+      "key_facts": [
+        "Calf: 4-8 weeks"
+      ],
+      "relevance_score": 0.75,
+      "prediction_impact": "Key availability concern for West Coast",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747586"
     },
     {
       "id": "inj_3b460924",
@@ -1107,56 +1811,8 @@
       ],
       "relevance_score": 0.75,
       "prediction_impact": "Key availability concern for Western Bulldogs",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278831"
-    },
-    {
-      "id": "inj_04c30262",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Curtin, Dan \u2014 Knee",
-      "summary": "Curtin, Dan (Adelaide) is listed with Knee. Estimated return: TBC.",
-      "signal_type": "injury",
-      "teams": [
-        "Adelaide"
-      ],
-      "players": [
-        "Curtin, Dan"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Adelaide": "bearish"
-      },
-      "key_facts": [
-        "Knee: 2-3 weeks"
-      ],
-      "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for Adelaide",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278391"
-    },
-    {
-      "id": "inj_4f3e51cc",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Keane, Mark \u2014 Leg",
-      "summary": "Keane, Mark (Adelaide) is listed with Leg. Estimated return: TBC.",
-      "signal_type": "injury",
-      "teams": [
-        "Adelaide"
-      ],
-      "players": [
-        "Keane, Mark"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Adelaide": "bearish"
-      },
-      "key_facts": [
-        "Leg: 2-3 weeks"
-      ],
-      "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for Adelaide",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278399"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747612"
     },
     {
       "id": "inj_d816e3b6",
@@ -1179,8 +1835,56 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Adelaide",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278405"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747189"
+    },
+    {
+      "id": "inj_439e45f8",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Andrews, Harris \u2014 Suspension",
+      "summary": "Andrews, Harris (Brisbane Lions) is listed with Suspension. Estimated return: Round 5.",
+      "signal_type": "injury",
+      "teams": [
+        "Brisbane Lions"
+      ],
+      "players": [
+        "Andrews, Harris"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Brisbane Lions": "bearish"
+      },
+      "key_facts": [
+        "Suspension: 2-3 weeks"
+      ],
+      "relevance_score": 0.6,
+      "prediction_impact": "Potential availability concern for Brisbane Lions",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747196"
+    },
+    {
+      "id": "inj_343e6412",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Bailey, Zac \u2014 Suspension",
+      "summary": "Bailey, Zac (Brisbane Lions) is listed with Suspension. Estimated return: Round 3.",
+      "signal_type": "injury",
+      "teams": [
+        "Brisbane Lions"
+      ],
+      "players": [
+        "Bailey, Zac"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Brisbane Lions": "bearish"
+      },
+      "key_facts": [
+        "Suspension: 2-3 weeks"
+      ],
+      "relevance_score": 0.6,
+      "prediction_impact": "Potential availability concern for Brisbane Lions",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747199"
     },
     {
       "id": "inj_7d935d97",
@@ -1203,56 +1907,56 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Brisbane Lions",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278408"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747202"
     },
     {
-      "id": "inj_e7eae275",
+      "id": "inj_a3dd3a8d",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Doedee, Tom \u2014 Wrist",
-      "summary": "Doedee, Tom (Brisbane Lions) is listed with Wrist. Estimated return: 2 weeks.",
+      "headline": "Evans, Koby \u2014 Ankle",
+      "summary": "Evans, Koby (Brisbane Lions) is listed with Ankle. Estimated return: 2-3 weeks.",
       "signal_type": "injury",
       "teams": [
         "Brisbane Lions"
       ],
       "players": [
-        "Doedee, Tom"
+        "Evans, Koby"
       ],
       "sentiment": "negative",
       "direction": {
         "Brisbane Lions": "bearish"
       },
       "key_facts": [
-        "Wrist: 2-3 weeks"
+        "Ankle: 2-3 weeks"
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Brisbane Lions",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278411"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747208"
     },
     {
-      "id": "inj_48b41c2d",
+      "id": "inj_fb204d5f",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Draper, Sam \u2014 Foot",
-      "summary": "Draper, Sam (Brisbane Lions) is listed with Foot. Estimated return: 1-2 weeks.",
+      "headline": "Gardiner, Darcy \u2014 Suspension",
+      "summary": "Gardiner, Darcy (Brisbane Lions) is listed with Suspension. Estimated return: Round 3.",
       "signal_type": "injury",
       "teams": [
         "Brisbane Lions"
       ],
       "players": [
-        "Draper, Sam"
+        "Gardiner, Darcy"
       ],
       "sentiment": "negative",
       "direction": {
         "Brisbane Lions": "bearish"
       },
       "key_facts": [
-        "Foot: 2-3 weeks"
+        "Suspension: 2-3 weeks"
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Brisbane Lions",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278414"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747211"
     },
     {
       "id": "inj_4f0cc3a7",
@@ -1275,8 +1979,56 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Brisbane Lions",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278421"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747214"
+    },
+    {
+      "id": "inj_0d3f145d",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Lloyd, Luke \u2014 Ankle",
+      "summary": "Lloyd, Luke (Brisbane Lions) is listed with Ankle. Estimated return: 1-2 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "Brisbane Lions"
+      ],
+      "players": [
+        "Lloyd, Luke"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Brisbane Lions": "bearish"
+      },
+      "key_facts": [
+        "Ankle: 2-3 weeks"
+      ],
+      "relevance_score": 0.6,
+      "prediction_impact": "Potential availability concern for Brisbane Lions",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747217"
+    },
+    {
+      "id": "inj_a04e07ce",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "McCluggage, Hugh \u2014 Calf",
+      "summary": "McCluggage, Hugh (Brisbane Lions) is listed with Calf. Estimated return: 1-2 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "Brisbane Lions"
+      ],
+      "players": [
+        "McCluggage, Hugh"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Brisbane Lions": "bearish"
+      },
+      "key_facts": [
+        "Calf: 2-3 weeks"
+      ],
+      "relevance_score": 0.6,
+      "prediction_impact": "Potential availability concern for Brisbane Lions",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747220"
     },
     {
       "id": "inj_664cc260",
@@ -1299,8 +2051,8 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Brisbane Lions",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278426"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747226"
     },
     {
       "id": "inj_69fa8e0f",
@@ -1323,14 +2075,62 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Brisbane Lions",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278429"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747229"
+    },
+    {
+      "id": "inj_eb444af0",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Cerra, Adam \u2014 Hamstring",
+      "summary": "Cerra, Adam (Carlton) is listed with Hamstring. Estimated return: 2-3 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "Carlton"
+      ],
+      "players": [
+        "Cerra, Adam"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Carlton": "bearish"
+      },
+      "key_facts": [
+        "Hamstring: 2-3 weeks"
+      ],
+      "relevance_score": 0.6,
+      "prediction_impact": "Potential availability concern for Carlton",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747235"
+    },
+    {
+      "id": "inj_4b6ec038",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Cottrell, Matt \u2014 Knee",
+      "summary": "Cottrell, Matt (Carlton) is listed with Knee. Estimated return: 2-3 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "Carlton"
+      ],
+      "players": [
+        "Cottrell, Matt"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Carlton": "bearish"
+      },
+      "key_facts": [
+        "Knee: 2-3 weeks"
+      ],
+      "relevance_score": 0.6,
+      "prediction_impact": "Potential availability concern for Carlton",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747238"
     },
     {
       "id": "inj_e66d0c03",
       "source_url": "https://www.afl.com.au/matches/injury-list",
       "headline": "Evans, Francis \u2014 Knee",
-      "summary": "Evans, Francis (Carlton) is listed with Knee. Estimated return: 1-3 weeks.",
+      "summary": "Evans, Francis (Carlton) is listed with Knee. Estimated return: 2-3 weeks.",
       "signal_type": "injury",
       "teams": [
         "Carlton"
@@ -1347,32 +2147,8 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Carlton",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278444"
-    },
-    {
-      "id": "inj_0574b40d",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Haynes, Nick \u2014 Ankle",
-      "summary": "Haynes, Nick (Carlton) is listed with Ankle. Estimated return: 1-3 weeks.",
-      "signal_type": "injury",
-      "teams": [
-        "Carlton"
-      ],
-      "players": [
-        "Haynes, Nick"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Carlton": "bearish"
-      },
-      "key_facts": [
-        "Ankle: 2-3 weeks"
-      ],
-      "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for Carlton",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278446"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747241"
     },
     {
       "id": "inj_a5a13d07",
@@ -1395,8 +2171,8 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Carlton",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278452"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747247"
     },
     {
       "id": "inj_ced3f4e3",
@@ -1419,8 +2195,32 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Carlton",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278455"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747250"
+    },
+    {
+      "id": "inj_442213bb",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Saad, Adam \u2014 Hamstring",
+      "summary": "Saad, Adam (Carlton) is listed with Hamstring. Estimated return: 2-3 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "Carlton"
+      ],
+      "players": [
+        "Saad, Adam"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Carlton": "bearish"
+      },
+      "key_facts": [
+        "Hamstring: 2-3 weeks"
+      ],
+      "relevance_score": 0.6,
+      "prediction_impact": "Potential availability concern for Carlton",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747253"
     },
     {
       "id": "inj_ed9a57ef",
@@ -1443,110 +2243,14 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Carlton",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278458"
-    },
-    {
-      "id": "inj_737d7052",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Hill, Bobby \u2014 Unavailable",
-      "summary": "Hill, Bobby (Collingwood) is listed with Unavailable. Estimated return: TBC.",
-      "signal_type": "injury",
-      "teams": [
-        "Collingwood"
-      ],
-      "players": [
-        "Hill, Bobby"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Collingwood": "bearish"
-      },
-      "key_facts": [
-        "Unavailable: 2-3 weeks"
-      ],
-      "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for Collingwood",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278461"
-    },
-    {
-      "id": "inj_bcc7b75d",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Howe, Jeremy \u2014 Calf",
-      "summary": "Howe, Jeremy (Collingwood) is listed with Calf. Estimated return: 1-2 weeks.",
-      "signal_type": "injury",
-      "teams": [
-        "Collingwood"
-      ],
-      "players": [
-        "Howe, Jeremy"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Collingwood": "bearish"
-      },
-      "key_facts": [
-        "Calf: 2-3 weeks"
-      ],
-      "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for Collingwood",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278464"
-    },
-    {
-      "id": "inj_c5ffd168",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Bourke, Cillian \u2014 Hamstring",
-      "summary": "Bourke, Cillian (Essendon) is listed with Hamstring. Estimated return: TBC.",
-      "signal_type": "injury",
-      "teams": [
-        "Essendon"
-      ],
-      "players": [
-        "Bourke, Cillian"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Essendon": "bearish"
-      },
-      "key_facts": [
-        "Hamstring: 2-3 weeks"
-      ],
-      "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for Essendon",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278472"
-    },
-    {
-      "id": "inj_683a3bb9",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Bryan, Nick \u2014 Knee",
-      "summary": "Bryan, Nick (Essendon) is listed with Knee. Estimated return: TBC.",
-      "signal_type": "injury",
-      "teams": [
-        "Essendon"
-      ],
-      "players": [
-        "Bryan, Nick"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Essendon": "bearish"
-      },
-      "key_facts": [
-        "Knee: 2-3 weeks"
-      ],
-      "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for Essendon",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278475"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747256"
     },
     {
       "id": "inj_ae3dc3c8",
       "source_url": "https://www.afl.com.au/matches/injury-list",
       "headline": "Edwards, Tom \u2014 Knee",
-      "summary": "Edwards, Tom (Essendon) is listed with Knee. Estimated return: TBC.",
+      "summary": "Edwards, Tom (Essendon) is listed with Knee. Estimated return: 2 weeks.",
       "signal_type": "injury",
       "teams": [
         "Essendon"
@@ -1563,8 +2267,8 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Essendon",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278478"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747276"
     },
     {
       "id": "inj_c5f81825",
@@ -1587,68 +2291,20 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Essendon",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278481"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747279"
     },
     {
-      "id": "inj_0f6486be",
+      "id": "inj_46d6ad0c",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Kako, Isaac \u2014 Hamstring",
-      "summary": "Kako, Isaac (Essendon) is listed with Hamstring. Estimated return: 1-3 weeks.",
+      "headline": "Ridley, Jordan \u2014 Calf",
+      "summary": "Ridley, Jordan (Essendon) is listed with Calf. Estimated return: 2 weeks.",
       "signal_type": "injury",
       "teams": [
         "Essendon"
       ],
       "players": [
-        "Kako, Isaac"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Essendon": "bearish"
-      },
-      "key_facts": [
-        "Hamstring: 2-3 weeks"
-      ],
-      "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for Essendon",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278484"
-    },
-    {
-      "id": "inj_7410f259",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Setterfield, Will \u2014 Foot",
-      "summary": "Setterfield, Will (Essendon) is listed with Foot. Estimated return: TBC.",
-      "signal_type": "injury",
-      "teams": [
-        "Essendon"
-      ],
-      "players": [
-        "Setterfield, Will"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Essendon": "bearish"
-      },
-      "key_facts": [
-        "Foot: 2-3 weeks"
-      ],
-      "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for Essendon",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278495"
-    },
-    {
-      "id": "inj_6a312bff",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Unwin, Rhys \u2014 Calf",
-      "summary": "Unwin, Rhys (Essendon) is listed with Calf. Estimated return: 3 weeks.",
-      "signal_type": "injury",
-      "teams": [
-        "Essendon"
-      ],
-      "players": [
-        "Unwin, Rhys"
+        "Ridley, Jordan"
       ],
       "sentiment": "negative",
       "direction": {
@@ -1659,8 +2315,8 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Essendon",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278498"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747288"
     },
     {
       "id": "inj_ccc3aa20",
@@ -1683,8 +2339,8 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Fremantle",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278509"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747311"
     },
     {
       "id": "inj_cadd6a8f",
@@ -1707,8 +2363,8 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Geelong",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278521"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747319"
     },
     {
       "id": "inj_37073982",
@@ -1731,8 +2387,32 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Geelong",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278527"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747325"
+    },
+    {
+      "id": "inj_e6b64b78",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Stengle, Tyson \u2014 Conditioning",
+      "summary": "Stengle, Tyson (Geelong) is listed with Conditioning. Estimated return: Individualised program.",
+      "signal_type": "injury",
+      "teams": [
+        "Geelong"
+      ],
+      "players": [
+        "Stengle, Tyson"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Geelong": "bearish"
+      },
+      "key_facts": [
+        "Conditioning: 2-3 weeks"
+      ],
+      "relevance_score": 0.6,
+      "prediction_impact": "Potential availability concern for Geelong",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747331"
     },
     {
       "id": "inj_955fb5af",
@@ -1755,8 +2435,8 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Gold Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278545"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747337"
     },
     {
       "id": "inj_6a2c7158",
@@ -1779,8 +2459,8 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Gold Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278547"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747340"
     },
     {
       "id": "inj_2fb3b008",
@@ -1803,56 +2483,8 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Gold Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278550"
-    },
-    {
-      "id": "inj_c3c80717",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Rowell, Matt \u2014 Finger",
-      "summary": "Rowell, Matt (Gold Coast) is listed with Finger. Estimated return: TBC.",
-      "signal_type": "injury",
-      "teams": [
-        "Gold Coast"
-      ],
-      "players": [
-        "Rowell, Matt"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Gold Coast": "bearish"
-      },
-      "key_facts": [
-        "Finger: 2-3 weeks"
-      ],
-      "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for Gold Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278556"
-    },
-    {
-      "id": "inj_57f6316e",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Walter, Jed \u2014 Suspension",
-      "summary": "Walter, Jed (Gold Coast) is listed with Suspension. Estimated return: Round 1.",
-      "signal_type": "injury",
-      "teams": [
-        "Gold Coast"
-      ],
-      "players": [
-        "Walter, Jed"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Gold Coast": "bearish"
-      },
-      "key_facts": [
-        "Suspension: 2-3 weeks"
-      ],
-      "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for Gold Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278559"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747343"
     },
     {
       "id": "inj_cfd863cc",
@@ -1875,8 +2507,32 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Greater Western Sydney",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278565"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747349"
+    },
+    {
+      "id": "inj_cc26a179",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Bedford, Toby \u2014 Hamstring",
+      "summary": "Bedford, Toby (Greater Western Sydney) is listed with Hamstring. Estimated return: 2 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "Greater Western Sydney"
+      ],
+      "players": [
+        "Bedford, Toby"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Greater Western Sydney": "bearish"
+      },
+      "key_facts": [
+        "Hamstring: 2-3 weeks"
+      ],
+      "relevance_score": 0.6,
+      "prediction_impact": "Potential availability concern for Greater Western Sydney",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747352"
     },
     {
       "id": "inj_651185d6",
@@ -1899,8 +2555,32 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Greater Western Sydney",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278571"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747355"
+    },
+    {
+      "id": "inj_1f81bb44",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Daniels, Brent \u2014 Hamstring",
+      "summary": "Daniels, Brent (Greater Western Sydney) is listed with Hamstring. Estimated return: 3 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "Greater Western Sydney"
+      ],
+      "players": [
+        "Daniels, Brent"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Greater Western Sydney": "bearish"
+      },
+      "key_facts": [
+        "Hamstring: 2-3 weeks"
+      ],
+      "relevance_score": 0.6,
+      "prediction_impact": "Potential availability concern for Greater Western Sydney",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747357"
     },
     {
       "id": "inj_eef3ad26",
@@ -1923,8 +2603,8 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Greater Western Sydney",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278582"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747363"
     },
     {
       "id": "inj_6334e8bf",
@@ -1947,8 +2627,32 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Greater Western Sydney",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278585"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747366"
+    },
+    {
+      "id": "inj_4ff62015",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Wardius, Nathan \u2014 Knee",
+      "summary": "Wardius, Nathan (Greater Western Sydney) is listed with Knee. Estimated return: TBC.",
+      "signal_type": "injury",
+      "teams": [
+        "Greater Western Sydney"
+      ],
+      "players": [
+        "Wardius, Nathan"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Greater Western Sydney": "bearish"
+      },
+      "key_facts": [
+        "Knee: 2-3 weeks"
+      ],
+      "relevance_score": 0.6,
+      "prediction_impact": "Potential availability concern for Greater Western Sydney",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747372"
     },
     {
       "id": "inj_bd2892ba",
@@ -1971,8 +2675,8 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Hawthorn",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278596"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747375"
     },
     {
       "id": "inj_2880df44",
@@ -1995,32 +2699,32 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Hawthorn",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278599"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747378"
     },
     {
-      "id": "inj_16616fb2",
+      "id": "inj_39ff6af9",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Bowey, Jake \u2014 Foot",
-      "summary": "Bowey, Jake (Melbourne) is listed with Foot. Estimated return: TBC.",
+      "headline": "Hustwaite, Henry \u2014 Ankle",
+      "summary": "Hustwaite, Henry (Hawthorn) is listed with Ankle. Estimated return: 2-4 weeks.",
       "signal_type": "injury",
       "teams": [
-        "Melbourne"
+        "Hawthorn"
       ],
       "players": [
-        "Bowey, Jake"
+        "Hustwaite, Henry"
       ],
       "sentiment": "negative",
       "direction": {
-        "Melbourne": "bearish"
+        "Hawthorn": "bearish"
       },
       "key_facts": [
-        "Foot: 2-3 weeks"
+        "Ankle: 2-3 weeks"
       ],
       "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for Melbourne",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278607"
+      "prediction_impact": "Potential availability concern for Hawthorn",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747380"
     },
     {
       "id": "inj_93b7028a",
@@ -2043,110 +2747,14 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Melbourne",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278610"
-    },
-    {
-      "id": "inj_39f713c1",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Culley, Jai \u2014 Arm",
-      "summary": "Culley, Jai (Melbourne) is listed with Arm. Estimated return: 1-2 weeks.",
-      "signal_type": "injury",
-      "teams": [
-        "Melbourne"
-      ],
-      "players": [
-        "Culley, Jai"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Melbourne": "bearish"
-      },
-      "key_facts": [
-        "Arm: 2-3 weeks"
-      ],
-      "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for Melbourne",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278613"
-    },
-    {
-      "id": "inj_47b0b15a",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Fritsch, Bayley \u2014 Hand",
-      "summary": "Fritsch, Bayley (Melbourne) is listed with Hand. Estimated return: 1-2 weeks.",
-      "signal_type": "injury",
-      "teams": [
-        "Melbourne"
-      ],
-      "players": [
-        "Fritsch, Bayley"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Melbourne": "bearish"
-      },
-      "key_facts": [
-        "Hand: 2-3 weeks"
-      ],
-      "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for Melbourne",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278616"
-    },
-    {
-      "id": "inj_900e373d",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Henderson, Jack \u2014 Sacrum",
-      "summary": "Henderson, Jack (Melbourne) is listed with Sacrum. Estimated return: TBC.",
-      "signal_type": "injury",
-      "teams": [
-        "Melbourne"
-      ],
-      "players": [
-        "Henderson, Jack"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Melbourne": "bearish"
-      },
-      "key_facts": [
-        "Sacrum: 2-3 weeks"
-      ],
-      "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for Melbourne",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278619"
-    },
-    {
-      "id": "inj_2c87c7b3",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Jefferson, Matt \u2014 Foot",
-      "summary": "Jefferson, Matt (Melbourne) is listed with Foot. Estimated return: TBC.",
-      "signal_type": "injury",
-      "teams": [
-        "Melbourne"
-      ],
-      "players": [
-        "Jefferson, Matt"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Melbourne": "bearish"
-      },
-      "key_facts": [
-        "Foot: 2-3 weeks"
-      ],
-      "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for Melbourne",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278622"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747395"
     },
     {
       "id": "inj_296853fa",
       "source_url": "https://www.afl.com.au/matches/injury-list",
       "headline": "McAdam, Shane \u2014 Achilles",
-      "summary": "McAdam, Shane (Melbourne) is listed with Achilles. Estimated return: TBC.",
+      "summary": "McAdam, Shane (Melbourne) is listed with Achilles. Estimated return: 2-4 weeks.",
       "signal_type": "injury",
       "teams": [
         "Melbourne"
@@ -2163,104 +2771,56 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Melbourne",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278628"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747404"
     },
     {
-      "id": "inj_c492949f",
+      "id": "inj_fd362a07",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Moniz-Wakefield, Andy \u2014 Knee",
-      "summary": "Moniz-Wakefield, Andy (Melbourne) is listed with Knee. Estimated return: TBC.",
+      "headline": "Viney, Jack \u2014 Achilles",
+      "summary": "Viney, Jack (Melbourne) is listed with Achilles. Estimated return: TBC.",
       "signal_type": "injury",
       "teams": [
         "Melbourne"
       ],
       "players": [
-        "Moniz-Wakefield, Andy"
+        "Viney, Jack"
       ],
       "sentiment": "negative",
       "direction": {
         "Melbourne": "bearish"
       },
       "key_facts": [
-        "Knee: 2-3 weeks"
+        "Achilles: 2-3 weeks"
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Melbourne",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278633"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747407"
     },
     {
-      "id": "inj_9a670922",
+      "id": "inj_2ca94171",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "White, Kalani \u2014 Glandular fever",
-      "summary": "White, Kalani (Melbourne) is listed with Glandular fever. Estimated return: TBC.",
-      "signal_type": "injury",
-      "teams": [
-        "Melbourne"
-      ],
-      "players": [
-        "White, Kalani"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Melbourne": "bearish"
-      },
-      "key_facts": [
-        "Glandular fever: 2-3 weeks"
-      ],
-      "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for Melbourne",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278639"
-    },
-    {
-      "id": "inj_d0e16b0e",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Goad, Taylor \u2014 Ankle",
-      "summary": "Goad, Taylor (North Melbourne) is listed with Ankle. Estimated return: 2-4 weeks.",
+      "headline": "Spargo, Charlie \u2014 Concussion",
+      "summary": "Spargo, Charlie (North Melbourne) is listed with Concussion. Estimated return: 1-2 weeks.",
       "signal_type": "injury",
       "teams": [
         "North Melbourne"
       ],
       "players": [
-        "Goad, Taylor"
+        "Spargo, Charlie"
       ],
       "sentiment": "negative",
       "direction": {
         "North Melbourne": "bearish"
       },
       "key_facts": [
-        "Ankle: 2-3 weeks"
+        "Concussion: 2-3 weeks"
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for North Melbourne",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278648"
-    },
-    {
-      "id": "inj_d7ede300",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Hardeman, Riley \u2014 Ankle",
-      "summary": "Hardeman, Riley (North Melbourne) is listed with Ankle. Estimated return: 1-2 weeks.",
-      "signal_type": "injury",
-      "teams": [
-        "North Melbourne"
-      ],
-      "players": [
-        "Hardeman, Riley"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "North Melbourne": "bearish"
-      },
-      "key_facts": [
-        "Ankle: 2-3 weeks"
-      ],
-      "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for North Melbourne",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278651"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747421"
     },
     {
       "id": "inj_41f1f227",
@@ -2283,32 +2843,56 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for North Melbourne",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278659"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747424"
     },
     {
-      "id": "inj_ac04976c",
+      "id": "inj_ac98e3e3",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Wardlaw, George \u2014 Hamstring",
-      "summary": "Wardlaw, George (North Melbourne) is listed with Hamstring. Estimated return: 2-3 weeks.",
+      "headline": "Cochrane, Tom \u2014 Hamstring",
+      "summary": "Cochrane, Tom (Port Adelaide) is listed with Hamstring. Estimated return: 2-3 weeks.",
       "signal_type": "injury",
       "teams": [
-        "North Melbourne"
+        "Port Adelaide"
       ],
       "players": [
-        "Wardlaw, George"
+        "Cochrane, Tom"
       ],
       "sentiment": "negative",
       "direction": {
-        "North Melbourne": "bearish"
+        "Port Adelaide": "bearish"
       },
       "key_facts": [
         "Hamstring: 2-3 weeks"
       ],
       "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for North Melbourne",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278662"
+      "prediction_impact": "Potential availability concern for Port Adelaide",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747430"
+    },
+    {
+      "id": "inj_d0426acc",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Sinn, Josh \u2014 Shoulder",
+      "summary": "Sinn, Josh (Port Adelaide) is listed with Shoulder. Estimated return: TBC.",
+      "signal_type": "injury",
+      "teams": [
+        "Port Adelaide"
+      ],
+      "players": [
+        "Sinn, Josh"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Port Adelaide": "bearish"
+      },
+      "key_facts": [
+        "Shoulder: 2-3 weeks"
+      ],
+      "relevance_score": 0.6,
+      "prediction_impact": "Potential availability concern for Port Adelaide",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747439"
     },
     {
       "id": "inj_229be648",
@@ -2331,8 +2915,8 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Port Adelaide",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278676"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747444"
     },
     {
       "id": "inj_dd9babd5",
@@ -2355,8 +2939,32 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Richmond",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278679"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747447"
+    },
+    {
+      "id": "inj_683fc9b3",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Cumming, Sam \u2014 Shoulder",
+      "summary": "Cumming, Sam (Richmond) is listed with Shoulder. Estimated return: TBC.",
+      "signal_type": "injury",
+      "teams": [
+        "Richmond"
+      ],
+      "players": [
+        "Cumming, Sam"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Richmond": "bearish"
+      },
+      "key_facts": [
+        "Shoulder: 2-3 weeks"
+      ],
+      "relevance_score": 0.6,
+      "prediction_impact": "Potential availability concern for Richmond",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747450"
     },
     {
       "id": "inj_65e64c52",
@@ -2379,8 +2987,8 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Richmond",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278688"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747453"
     },
     {
       "id": "inj_46e0da4a",
@@ -2403,8 +3011,8 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Richmond",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278691"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747456"
     },
     {
       "id": "inj_9927e370",
@@ -2427,32 +3035,32 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Richmond",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278699"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747464"
     },
     {
-      "id": "inj_53364863",
+      "id": "inj_036e44e3",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Byrnes, Ryan \u2014 Foot",
-      "summary": "Byrnes, Ryan (St Kilda) is listed with Foot. Estimated return: TBC.",
+      "headline": "Clark, Hunter \u2014 Adductor",
+      "summary": "Clark, Hunter (St Kilda) is listed with Adductor. Estimated return: 2-3 weeks.",
       "signal_type": "injury",
       "teams": [
         "St Kilda"
       ],
       "players": [
-        "Byrnes, Ryan"
+        "Clark, Hunter"
       ],
       "sentiment": "negative",
       "direction": {
         "St Kilda": "bearish"
       },
       "key_facts": [
-        "Foot: 2-3 weeks"
+        "Adductor: 2-3 weeks"
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for St Kilda",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278708"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747514"
     },
     {
       "id": "inj_e941082c",
@@ -2475,32 +3083,32 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for St Kilda",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278713"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747523"
     },
     {
-      "id": "inj_d44f703c",
+      "id": "inj_a2b3317d",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "O'Connell, Liam \u2014 Facial fractures",
-      "summary": "O'Connell, Liam (St Kilda) is listed with Facial fractures. Estimated return: TBC.",
+      "headline": "Marshall, Rowan \u2014 Concussion",
+      "summary": "Marshall, Rowan (St Kilda) is listed with Concussion. Estimated return: 1-2 weeks.",
       "signal_type": "injury",
       "teams": [
         "St Kilda"
       ],
       "players": [
-        "O'Connell, Liam"
+        "Marshall, Rowan"
       ],
       "sentiment": "negative",
       "direction": {
         "St Kilda": "bearish"
       },
       "key_facts": [
-        "Facial fractures: 2-3 weeks"
+        "Concussion: 2-3 weeks"
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for St Kilda",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278716"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747526"
     },
     {
       "id": "inj_3900e137",
@@ -2523,8 +3131,8 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Sydney",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278722"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747531"
     },
     {
       "id": "inj_0649845b",
@@ -2547,38 +3155,38 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Sydney",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278728"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747537"
     },
     {
-      "id": "inj_8cfa6945",
+      "id": "inj_05765b2f",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Dattoli, Jesse \u2014 Foot",
-      "summary": "Dattoli, Jesse (Sydney) is listed with Foot. Estimated return: 1-2 weeks.",
+      "headline": "Cootee, Billy \u2014 Thigh",
+      "summary": "Cootee, Billy (Sydney) is listed with Thigh. Estimated return: 2-3 weeks.",
       "signal_type": "injury",
       "teams": [
         "Sydney"
       ],
       "players": [
-        "Dattoli, Jesse"
+        "Cootee, Billy"
       ],
       "sentiment": "negative",
       "direction": {
         "Sydney": "bearish"
       },
       "key_facts": [
-        "Foot: 2-3 weeks"
+        "Thigh: 2-3 weeks"
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Sydney",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278736"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747540"
     },
     {
       "id": "inj_bf9becbf",
       "source_url": "https://www.afl.com.au/matches/injury-list",
       "headline": "Hanily, Tom \u2014 Shin",
-      "summary": "Hanily, Tom (Sydney) is listed with Shin. Estimated return: 2-3 weeks.",
+      "summary": "Hanily, Tom (Sydney) is listed with Shin. Estimated return: 1-2 weeks.",
       "signal_type": "injury",
       "teams": [
         "Sydney"
@@ -2595,8 +3203,8 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Sydney",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278739"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747548"
     },
     {
       "id": "inj_16af4528",
@@ -2619,32 +3227,32 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Sydney",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278742"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747551"
     },
     {
-      "id": "inj_6e434849",
+      "id": "inj_0f0c3b98",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Phillipou, Jevan \u2014 Quad",
-      "summary": "Phillipou, Jevan (Sydney) is listed with Quad. Estimated return: 1-2 weeks.",
+      "headline": "Allen, Sam \u2014 Knee",
+      "summary": "Allen, Sam (West Coast) is listed with Knee. Estimated return: TBC.",
       "signal_type": "injury",
       "teams": [
-        "Sydney"
+        "West Coast"
       ],
       "players": [
-        "Phillipou, Jevan"
+        "Allen, Sam"
       ],
       "sentiment": "negative",
       "direction": {
-        "Sydney": "bearish"
+        "West Coast": "bearish"
       },
       "key_facts": [
-        "Quad: 2-3 weeks"
+        "Knee: 2-3 weeks"
       ],
       "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for Sydney",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278771"
+      "prediction_impact": "Potential availability concern for West Coast",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747557"
     },
     {
       "id": "inj_0a61d752",
@@ -2667,56 +3275,8 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for West Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278774"
-    },
-    {
-      "id": "inj_f364a19a",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Edwards, Harry \u2014 Concussion",
-      "summary": "Edwards, Harry (West Coast) is listed with Concussion. Estimated return: TBC.",
-      "signal_type": "injury",
-      "teams": [
-        "West Coast"
-      ],
-      "players": [
-        "Edwards, Harry"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "West Coast": "bearish"
-      },
-      "key_facts": [
-        "Concussion: 2-3 weeks"
-      ],
-      "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for West Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278783"
-    },
-    {
-      "id": "inj_0d7e1882",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Rodriguez, Fred \u2014 Foot",
-      "summary": "Rodriguez, Fred (West Coast) is listed with Foot. Estimated return: TBC.",
-      "signal_type": "injury",
-      "teams": [
-        "West Coast"
-      ],
-      "players": [
-        "Rodriguez, Fred"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "West Coast": "bearish"
-      },
-      "key_facts": [
-        "Foot: 2-3 weeks"
-      ],
-      "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for West Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278803"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747560"
     },
     {
       "id": "inj_abbe8e35",
@@ -2739,38 +3299,14 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for West Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278806"
-    },
-    {
-      "id": "inj_a897e236",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Starcevich, Brandon \u2014 Calf",
-      "summary": "Starcevich, Brandon (West Coast) is listed with Calf. Estimated return: 1-2 weeks.",
-      "signal_type": "injury",
-      "teams": [
-        "West Coast"
-      ],
-      "players": [
-        "Starcevich, Brandon"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "West Coast": "bearish"
-      },
-      "key_facts": [
-        "Calf: 2-3 weeks"
-      ],
-      "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for West Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278809"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747583"
     },
     {
       "id": "inj_8bef5292",
       "source_url": "https://www.afl.com.au/matches/injury-list",
       "headline": "Williams, Bailey \u2014 Groin",
-      "summary": "Williams, Bailey (West Coast) is listed with Groin. Estimated return: 2-3 weeks.",
+      "summary": "Williams, Bailey (West Coast) is listed with Groin. Estimated return: 1-2 weeks.",
       "signal_type": "injury",
       "teams": [
         "West Coast"
@@ -2787,8 +3323,8 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for West Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278812"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747589"
     },
     {
       "id": "inj_b18e532d",
@@ -2811,44 +3347,20 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Western Bulldogs",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278820"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747594"
     },
     {
-      "id": "inj_2bad806d",
+      "id": "inj_2a7c3208",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Gardner, Ryan \u2014 Groin",
-      "summary": "Gardner, Ryan (Western Bulldogs) is listed with Groin. Estimated return: 1-2 weeks.",
+      "headline": "Jones, Arthur \u2014 Concussion",
+      "summary": "Jones, Arthur (Western Bulldogs) is listed with Concussion. Estimated return: 1-2 weeks.",
       "signal_type": "injury",
       "teams": [
         "Western Bulldogs"
       ],
       "players": [
-        "Gardner, Ryan"
-      ],
-      "sentiment": "negative",
-      "direction": {
-        "Western Bulldogs": "bearish"
-      },
-      "key_facts": [
-        "Groin: 2-3 weeks"
-      ],
-      "relevance_score": 0.6,
-      "prediction_impact": "Potential availability concern for Western Bulldogs",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278823"
-    },
-    {
-      "id": "inj_541937ad",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Sanders, Ryley \u2014 Concussion",
-      "summary": "Sanders, Ryley (Western Bulldogs) is listed with Concussion. Estimated return: 1-2 weeks.",
-      "signal_type": "injury",
-      "teams": [
-        "Western Bulldogs"
-      ],
-      "players": [
-        "Sanders, Ryley"
+        "Jones, Arthur"
       ],
       "sentiment": "negative",
       "direction": {
@@ -2859,8 +3371,32 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Western Bulldogs",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278828"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747600"
+    },
+    {
+      "id": "inj_1f735d44",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Vandermeer, Laitham \u2014 Concussion",
+      "summary": "Vandermeer, Laitham (Western Bulldogs) is listed with Concussion. Estimated return: 1-2 weeks.",
+      "signal_type": "injury",
+      "teams": [
+        "Western Bulldogs"
+      ],
+      "players": [
+        "Vandermeer, Laitham"
+      ],
+      "sentiment": "negative",
+      "direction": {
+        "Western Bulldogs": "bearish"
+      },
+      "key_facts": [
+        "Concussion: 2-3 weeks"
+      ],
+      "relevance_score": 0.6,
+      "prediction_impact": "Potential availability concern for Western Bulldogs",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747609"
     },
     {
       "id": "inj_b5b1ef2b",
@@ -2883,42 +3419,42 @@
       ],
       "relevance_score": 0.6,
       "prediction_impact": "Potential availability concern for Western Bulldogs",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278834"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747615"
     },
     {
-      "id": "inj_bd9f1a31",
+      "id": "inj_e7eae275",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Peatling, James \u2014 Hamstring",
-      "summary": "Peatling, James (Adelaide) is listed with Hamstring. Estimated return: 1 week.",
+      "headline": "Doedee, Tom \u2014 Wrist",
+      "summary": "Doedee, Tom (Brisbane Lions) is listed with Wrist. Estimated return: 1 week.",
       "signal_type": "injury",
       "teams": [
-        "Adelaide"
+        "Brisbane Lions"
       ],
       "players": [
-        "Peatling, James"
+        "Doedee, Tom"
       ],
       "sentiment": "neutral",
       "direction": {},
       "key_facts": [
-        "Hamstring: 1 week"
+        "Wrist: 1 week"
       ],
       "relevance_score": 0.44999999999999996,
-      "prediction_impact": "Potential availability concern for Adelaide",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278402"
+      "prediction_impact": "Potential availability concern for Brisbane Lions",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747205"
     },
     {
-      "id": "inj_a1929835",
+      "id": "inj_bcc7b75d",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Moore, Darcy \u2014 Calf",
-      "summary": "Moore, Darcy (Collingwood) is listed with Calf. Estimated return: 1 week.",
+      "headline": "Howe, Jeremy \u2014 Calf",
+      "summary": "Howe, Jeremy (Collingwood) is listed with Calf. Estimated return: 1 week.",
       "signal_type": "injury",
       "teams": [
         "Collingwood"
       ],
       "players": [
-        "Moore, Darcy"
+        "Howe, Jeremy"
       ],
       "sentiment": "neutral",
       "direction": {},
@@ -2927,212 +3463,36 @@
       ],
       "relevance_score": 0.44999999999999996,
       "prediction_impact": "Potential availability concern for Collingwood",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278470"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747259"
     },
     {
-      "id": "inj_0d14e3fb",
+      "id": "inj_6a312bff",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Robey, Sullivan \u2014 Back",
-      "summary": "Robey, Sullivan (Essendon) is listed with Back. Estimated return: 1 week.",
+      "headline": "Unwin, Rhys \u2014 Calf",
+      "summary": "Unwin, Rhys (Essendon) is listed with Calf. Estimated return: 1 week.",
       "signal_type": "injury",
       "teams": [
         "Essendon"
       ],
       "players": [
-        "Robey, Sullivan"
+        "Unwin, Rhys"
       ],
       "sentiment": "neutral",
       "direction": {},
       "key_facts": [
-        "Back: 1 week"
+        "Calf: 1 week"
       ],
       "relevance_score": 0.44999999999999996,
       "prediction_impact": "Potential availability concern for Essendon",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278492"
-    },
-    {
-      "id": "inj_7bee4d4e",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Aleer, Leek \u2014 Groin",
-      "summary": "Aleer, Leek (Greater Western Sydney) is listed with Groin. Estimated return: 1 week.",
-      "signal_type": "injury",
-      "teams": [
-        "Greater Western Sydney"
-      ],
-      "players": [
-        "Aleer, Leek"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Groin: 1 week"
-      ],
-      "relevance_score": 0.44999999999999996,
-      "prediction_impact": "Potential availability concern for Greater Western Sydney",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278562"
-    },
-    {
-      "id": "inj_cc26a179",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Bedford, Toby \u2014 Hamstring",
-      "summary": "Bedford, Toby (Greater Western Sydney) is listed with Hamstring. Estimated return: 1 week.",
-      "signal_type": "injury",
-      "teams": [
-        "Greater Western Sydney"
-      ],
-      "players": [
-        "Bedford, Toby"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Hamstring: 1 week"
-      ],
-      "relevance_score": 0.44999999999999996,
-      "prediction_impact": "Potential availability concern for Greater Western Sydney",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278568"
-    },
-    {
-      "id": "inj_7ac6938b",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "McMullin, Toby \u2014 Hamstring",
-      "summary": "McMullin, Toby (Greater Western Sydney) is listed with Hamstring. Estimated return: 1 week.",
-      "signal_type": "injury",
-      "teams": [
-        "Greater Western Sydney"
-      ],
-      "players": [
-        "McMullin, Toby"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Hamstring: 1 week"
-      ],
-      "relevance_score": 0.44999999999999996,
-      "prediction_impact": "Potential availability concern for Greater Western Sydney",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278588"
-    },
-    {
-      "id": "inj_32d96280",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Mackenzie, Cam \u2014 Concussion",
-      "summary": "Mackenzie, Cam (Hawthorn) is listed with Concussion. Estimated return: 1 week.",
-      "signal_type": "injury",
-      "teams": [
-        "Hawthorn"
-      ],
-      "players": [
-        "Mackenzie, Cam"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Concussion: 1 week"
-      ],
-      "relevance_score": 0.44999999999999996,
-      "prediction_impact": "Potential availability concern for Hawthorn",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278602"
-    },
-    {
-      "id": "inj_d579c2ba",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Nairn, Cam \u2014 Back",
-      "summary": "Nairn, Cam (Hawthorn) is listed with Back. Estimated return: 1 week.",
-      "signal_type": "injury",
-      "teams": [
-        "Hawthorn"
-      ],
-      "players": [
-        "Nairn, Cam"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Back: 1 week"
-      ],
-      "relevance_score": 0.44999999999999996,
-      "prediction_impact": "Potential availability concern for Hawthorn",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278605"
-    },
-    {
-      "id": "inj_a42585e4",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Cunningham, Harry \u2014 Quad",
-      "summary": "Cunningham, Harry (Sydney) is listed with Quad. Estimated return: 1 week.",
-      "signal_type": "injury",
-      "teams": [
-        "Sydney"
-      ],
-      "players": [
-        "Cunningham, Harry"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Quad: 1 week"
-      ],
-      "relevance_score": 0.44999999999999996,
-      "prediction_impact": "Potential availability concern for Sydney",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278733"
-    },
-    {
-      "id": "inj_7ec7feec",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Hinge, Mitch \u2014 Back",
-      "summary": "Hinge, Mitch (Adelaide) is listed with Back. Estimated return: Test.",
-      "signal_type": "injury",
-      "teams": [
-        "Adelaide"
-      ],
-      "players": [
-        "Hinge, Mitch"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Back: Test"
-      ],
-      "relevance_score": 0.3,
-      "prediction_impact": "Potential availability concern for Adelaide",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278396"
-    },
-    {
-      "id": "inj_5d46833e",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Rayner, Cam \u2014 Groin",
-      "summary": "Rayner, Cam (Brisbane Lions) is listed with Groin. Estimated return: Test.",
-      "signal_type": "injury",
-      "teams": [
-        "Brisbane Lions"
-      ],
-      "players": [
-        "Rayner, Cam"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Groin: Test"
-      ],
-      "relevance_score": 0.3,
-      "prediction_impact": "Potential availability concern for Brisbane Lions",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278432"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747293"
     },
     {
       "id": "inj_798f407b",
       "source_url": "https://www.afl.com.au/matches/injury-list",
       "headline": "Cox, Brennan \u2014 Calf",
-      "summary": "Cox, Brennan (Fremantle) is listed with Calf. Estimated return: Test.",
+      "summary": "Cox, Brennan (Fremantle) is listed with Calf. Estimated return: 1 week.",
       "signal_type": "injury",
       "teams": [
         "Fremantle"
@@ -3143,12 +3503,188 @@
       "sentiment": "neutral",
       "direction": {},
       "key_facts": [
+        "Calf: 1 week"
+      ],
+      "relevance_score": 0.44999999999999996,
+      "prediction_impact": "Potential availability concern for Fremantle",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747296"
+    },
+    {
+      "id": "inj_10e06ee5",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Riddle, Aiden \u2014 Ankle",
+      "summary": "Riddle, Aiden (Fremantle) is listed with Ankle. Estimated return: 1 week.",
+      "signal_type": "injury",
+      "teams": [
+        "Fremantle"
+      ],
+      "players": [
+        "Riddle, Aiden"
+      ],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [
+        "Ankle: 1 week"
+      ],
+      "relevance_score": 0.44999999999999996,
+      "prediction_impact": "Potential availability concern for Fremantle",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747308"
+    },
+    {
+      "id": "inj_ac04976c",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Wardlaw, George \u2014 Hamstring",
+      "summary": "Wardlaw, George (North Melbourne) is listed with Hamstring. Estimated return: 1 week.",
+      "signal_type": "injury",
+      "teams": [
+        "North Melbourne"
+      ],
+      "players": [
+        "Wardlaw, George"
+      ],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [
+        "Hamstring: 1 week"
+      ],
+      "relevance_score": 0.44999999999999996,
+      "prediction_impact": "Potential availability concern for North Melbourne",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747427"
+    },
+    {
+      "id": "inj_d7ce9044",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Prestia, Dion \u2014 Hamstring",
+      "summary": "Prestia, Dion (Richmond) is listed with Hamstring. Estimated return: 1 week.",
+      "signal_type": "injury",
+      "teams": [
+        "Richmond"
+      ],
+      "players": [
+        "Prestia, Dion"
+      ],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [
+        "Hamstring: 1 week"
+      ],
+      "relevance_score": 0.44999999999999996,
+      "prediction_impact": "Potential availability concern for Richmond",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747459"
+    },
+    {
+      "id": "inj_f364a19a",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Edwards, Harry \u2014 Concussion",
+      "summary": "Edwards, Harry (West Coast) is listed with Concussion. Estimated return: 1 week.",
+      "signal_type": "injury",
+      "teams": [
+        "West Coast"
+      ],
+      "players": [
+        "Edwards, Harry"
+      ],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [
+        "Concussion: 1 week"
+      ],
+      "relevance_score": 0.44999999999999996,
+      "prediction_impact": "Potential availability concern for West Coast",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747566"
+    },
+    {
+      "id": "inj_4b1163e1",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Thilthorpe, Riley \u2014 Back",
+      "summary": "Thilthorpe, Riley (Adelaide) is listed with Back. Estimated return: Test.",
+      "signal_type": "injury",
+      "teams": [
+        "Adelaide"
+      ],
+      "players": [
+        "Thilthorpe, Riley"
+      ],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [
+        "Back: Test"
+      ],
+      "relevance_score": 0.3,
+      "prediction_impact": "Potential availability concern for Adelaide",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747193"
+    },
+    {
+      "id": "inj_a1929835",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Moore, Darcy \u2014 Calf",
+      "summary": "Moore, Darcy (Collingwood) is listed with Calf. Estimated return: Test.",
+      "signal_type": "injury",
+      "teams": [
+        "Collingwood"
+      ],
+      "players": [
+        "Moore, Darcy"
+      ],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [
         "Calf: Test"
       ],
       "relevance_score": 0.3,
+      "prediction_impact": "Potential availability concern for Collingwood",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747265"
+    },
+    {
+      "id": "inj_0f6486be",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Kako, Isaac \u2014 Hamstring",
+      "summary": "Kako, Isaac (Essendon) is listed with Hamstring. Estimated return: Test.",
+      "signal_type": "injury",
+      "teams": [
+        "Essendon"
+      ],
+      "players": [
+        "Kako, Isaac"
+      ],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [
+        "Hamstring: Test"
+      ],
+      "relevance_score": 0.3,
+      "prediction_impact": "Potential availability concern for Essendon",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747282"
+    },
+    {
+      "id": "inj_3cbf8cea",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Nicholls, Charlie \u2014 Foot",
+      "summary": "Nicholls, Charlie (Fremantle) is listed with Foot. Estimated return: Test.",
+      "signal_type": "injury",
+      "teams": [
+        "Fremantle"
+      ],
+      "players": [
+        "Nicholls, Charlie"
+      ],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [
+        "Foot: Test"
+      ],
+      "relevance_score": 0.3,
       "prediction_impact": "Potential availability concern for Fremantle",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278501"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747302"
     },
     {
       "id": "inj_0290aa45",
@@ -3169,52 +3705,8 @@
       ],
       "relevance_score": 0.3,
       "prediction_impact": "Potential availability concern for Fremantle",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278503"
-    },
-    {
-      "id": "inj_5f1f8254",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Switkowski, Sam \u2014 Concussion",
-      "summary": "Switkowski, Sam (Fremantle) is listed with Concussion. Estimated return: Test.",
-      "signal_type": "injury",
-      "teams": [
-        "Fremantle"
-      ],
-      "players": [
-        "Switkowski, Sam"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Concussion: Test"
-      ],
-      "relevance_score": 0.3,
-      "prediction_impact": "Potential availability concern for Fremantle",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278506"
-    },
-    {
-      "id": "inj_8b1823ee",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Worner, Karl \u2014 Knee soreness",
-      "summary": "Worner, Karl (Fremantle) is listed with Knee soreness. Estimated return: Test.",
-      "signal_type": "injury",
-      "teams": [
-        "Fremantle"
-      ],
-      "players": [
-        "Worner, Karl"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Knee soreness: Test"
-      ],
-      "relevance_score": 0.3,
-      "prediction_impact": "Potential availability concern for Fremantle",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278512"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747305"
     },
     {
       "id": "inj_9e5c9980",
@@ -3235,8 +3727,8 @@
       ],
       "relevance_score": 0.3,
       "prediction_impact": "Potential availability concern for Geelong",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278518"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747317"
     },
     {
       "id": "inj_cf800f85",
@@ -3257,130 +3749,64 @@
       ],
       "relevance_score": 0.3,
       "prediction_impact": "Potential availability concern for Geelong",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278524"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747322"
     },
     {
-      "id": "inj_eb888d9a",
+      "id": "inj_6e4455d4",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Miers, Gryan \u2014 Thumb",
-      "summary": "Miers, Gryan (Geelong) is listed with Thumb. Estimated return: Test.",
-      "signal_type": "injury",
-      "teams": [
-        "Geelong"
-      ],
-      "players": [
-        "Miers, Gryan"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Thumb: Test"
-      ],
-      "relevance_score": 0.3,
-      "prediction_impact": "Potential availability concern for Geelong",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278530"
-    },
-    {
-      "id": "inj_dc2e534c",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Smith, Bailey \u2014 Calf",
-      "summary": "Smith, Bailey (Geelong) is listed with Calf. Estimated return: Test.",
-      "signal_type": "injury",
-      "teams": [
-        "Geelong"
-      ],
-      "players": [
-        "Smith, Bailey"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Calf: Test"
-      ],
-      "relevance_score": 0.3,
-      "prediction_impact": "Potential availability concern for Geelong",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278536"
-    },
-    {
-      "id": "inj_f41ef3eb",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Ballard, Charlie \u2014 Knee",
-      "summary": "Ballard, Charlie (Gold Coast) is listed with Knee. Estimated return: Test.",
-      "signal_type": "injury",
-      "teams": [
-        "Gold Coast"
-      ],
-      "players": [
-        "Ballard, Charlie"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Knee: Test"
-      ],
-      "relevance_score": 0.3,
-      "prediction_impact": "Potential availability concern for Gold Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278542"
-    },
-    {
-      "id": "inj_88947e2a",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Rogers, Jake \u2014 Hamstring",
-      "summary": "Rogers, Jake (Gold Coast) is listed with Hamstring. Estimated return: Test.",
-      "signal_type": "injury",
-      "teams": [
-        "Gold Coast"
-      ],
-      "players": [
-        "Rogers, Jake"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Hamstring: Test"
-      ],
-      "relevance_score": 0.3,
-      "prediction_impact": "Potential availability concern for Gold Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278553"
-    },
-    {
-      "id": "inj_a695b242",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Callaghan, Finn \u2014 Hip",
-      "summary": "Callaghan, Finn (Greater Western Sydney) is listed with Hip. Estimated return: Test.",
-      "signal_type": "injury",
-      "teams": [
-        "Greater Western Sydney"
-      ],
-      "players": [
-        "Callaghan, Finn"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Hip: Test"
-      ],
-      "relevance_score": 0.3,
-      "prediction_impact": "Potential availability concern for Greater Western Sydney",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278573"
-    },
-    {
-      "id": "inj_70361409",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Barrass, Tom \u2014 Back",
-      "summary": "Barrass, Tom (Hawthorn) is listed with Back. Estimated return: Test.",
+      "headline": "LeRay, Matt \u2014 Ankle",
+      "summary": "LeRay, Matt (Hawthorn) is listed with Ankle. Estimated return: Test.",
       "signal_type": "injury",
       "teams": [
         "Hawthorn"
       ],
       "players": [
-        "Barrass, Tom"
+        "LeRay, Matt"
+      ],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [
+        "Ankle: Test"
+      ],
+      "relevance_score": 0.3,
+      "prediction_impact": "Potential availability concern for Hawthorn",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747383"
+    },
+    {
+      "id": "inj_32d96280",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Mackenzie, Cam \u2014 Concussion",
+      "summary": "Mackenzie, Cam (Hawthorn) is listed with Concussion. Estimated return: Test.",
+      "signal_type": "injury",
+      "teams": [
+        "Hawthorn"
+      ],
+      "players": [
+        "Mackenzie, Cam"
+      ],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [
+        "Concussion: Test"
+      ],
+      "relevance_score": 0.3,
+      "prediction_impact": "Potential availability concern for Hawthorn",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747386"
+    },
+    {
+      "id": "inj_d579c2ba",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Nairn, Cam \u2014 Back",
+      "summary": "Nairn, Cam (Hawthorn) is listed with Back. Estimated return: Test.",
+      "signal_type": "injury",
+      "teams": [
+        "Hawthorn"
+      ],
+      "players": [
+        "Nairn, Cam"
       ],
       "sentiment": "neutral",
       "direction": {},
@@ -3389,108 +3815,42 @@
       ],
       "relevance_score": 0.3,
       "prediction_impact": "Potential availability concern for Hawthorn",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278593"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747389"
     },
     {
-      "id": "inj_6ad4d9fc",
+      "id": "inj_d7ede300",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Mihocek, Brody \u2014 Concussion",
-      "summary": "Mihocek, Brody (Melbourne) is listed with Concussion. Estimated return: Test.",
-      "signal_type": "injury",
-      "teams": [
-        "Melbourne"
-      ],
-      "players": [
-        "Mihocek, Brody"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Concussion: Test"
-      ],
-      "relevance_score": 0.3,
-      "prediction_impact": "Potential availability concern for Melbourne",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278630"
-    },
-    {
-      "id": "inj_4b4490fc",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Corr, Aidan \u2014 Calf",
-      "summary": "Corr, Aidan (North Melbourne) is listed with Calf. Estimated return: Test.",
+      "headline": "Hardeman, Riley \u2014 Ankle",
+      "summary": "Hardeman, Riley (North Melbourne) is listed with Ankle. Estimated return: Test.",
       "signal_type": "injury",
       "teams": [
         "North Melbourne"
       ],
       "players": [
-        "Corr, Aidan"
+        "Hardeman, Riley"
       ],
       "sentiment": "neutral",
       "direction": {},
       "key_facts": [
-        "Calf: Test"
+        "Ankle: Test"
       ],
       "relevance_score": 0.3,
       "prediction_impact": "Potential availability concern for North Melbourne",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278645"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747418"
     },
     {
-      "id": "inj_dc21ba14",
+      "id": "inj_2d12fd2a",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "McDonald, Luke \u2014 Wrist",
-      "summary": "McDonald, Luke (North Melbourne) is listed with Wrist. Estimated return: Test.",
-      "signal_type": "injury",
-      "teams": [
-        "North Melbourne"
-      ],
-      "players": [
-        "McDonald, Luke"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Wrist: Test"
-      ],
-      "relevance_score": 0.3,
-      "prediction_impact": "Potential availability concern for North Melbourne",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278653"
-    },
-    {
-      "id": "inj_8ac4f71c",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "McKercher, Colby \u2014 Finger",
-      "summary": "McKercher, Colby (North Melbourne) is listed with Finger. Estimated return: Test.",
-      "signal_type": "injury",
-      "teams": [
-        "North Melbourne"
-      ],
-      "players": [
-        "McKercher, Colby"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Finger: Test"
-      ],
-      "relevance_score": 0.3,
-      "prediction_impact": "Potential availability concern for North Melbourne",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278656"
-    },
-    {
-      "id": "inj_a59c5891",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Lukosius, Jack \u2014 Groin",
-      "summary": "Lukosius, Jack (Port Adelaide) is listed with Groin. Estimated return: Test.",
+      "headline": "Liddy, Mani \u2014 Groin",
+      "summary": "Liddy, Mani (Port Adelaide) is listed with Groin. Estimated return: Test.",
       "signal_type": "injury",
       "teams": [
         "Port Adelaide"
       ],
       "players": [
-        "Lukosius, Jack"
+        "Liddy, Mani"
       ],
       "sentiment": "neutral",
       "direction": {},
@@ -3499,58 +3859,14 @@
       ],
       "relevance_score": 0.3,
       "prediction_impact": "Potential availability concern for Port Adelaide",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278668"
-    },
-    {
-      "id": "inj_61f6ff21",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Hayes-Brown, Ollie \u2014 Patella tendon",
-      "summary": "Hayes-Brown, Ollie (Richmond) is listed with Patella tendon. Estimated return: Test.",
-      "signal_type": "injury",
-      "teams": [
-        "Richmond"
-      ],
-      "players": [
-        "Hayes-Brown, Ollie"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Patella tendon: Test"
-      ],
-      "relevance_score": 0.3,
-      "prediction_impact": "Potential availability concern for Richmond",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278685"
-    },
-    {
-      "id": "inj_d7ce9044",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Prestia, Dion \u2014 Hamstring",
-      "summary": "Prestia, Dion (Richmond) is listed with Hamstring. Estimated return: Test.",
-      "signal_type": "injury",
-      "teams": [
-        "Richmond"
-      ],
-      "players": [
-        "Prestia, Dion"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Hamstring: Test"
-      ],
-      "relevance_score": 0.3,
-      "prediction_impact": "Potential availability concern for Richmond",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278693"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747433"
     },
     {
       "id": "inj_efa3500f",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Vlastuin, Nick \u2014 Management",
-      "summary": "Vlastuin, Nick (Richmond) is listed with Management. Estimated return: Test.",
+      "headline": "Vlastuin, Nick \u2014 Conditioning",
+      "summary": "Vlastuin, Nick (Richmond) is listed with Conditioning. Estimated return: Test.",
       "signal_type": "injury",
       "teams": [
         "Richmond"
@@ -3561,68 +3877,46 @@
       "sentiment": "neutral",
       "direction": {},
       "key_facts": [
-        "Management: Test"
+        "Conditioning: Test"
       ],
       "relevance_score": 0.3,
       "prediction_impact": "Potential availability concern for Richmond",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278705"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747508"
     },
     {
-      "id": "inj_bbc847b9",
+      "id": "inj_a42585e4",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Silvagni, Jack \u2014 Concussion",
-      "summary": "Silvagni, Jack (St Kilda) is listed with Concussion. Estimated return: Test.",
+      "headline": "Cunningham, Harry \u2014 Quad",
+      "summary": "Cunningham, Harry (Sydney) is listed with Quad. Estimated return: Test.",
       "signal_type": "injury",
       "teams": [
-        "St Kilda"
+        "Sydney"
       ],
       "players": [
-        "Silvagni, Jack"
+        "Cunningham, Harry"
       ],
       "sentiment": "neutral",
       "direction": {},
       "key_facts": [
-        "Concussion: Test"
+        "Quad: Test"
       ],
       "relevance_score": 0.3,
-      "prediction_impact": "Potential availability concern for St Kilda",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278719"
+      "prediction_impact": "Potential availability concern for Sydney",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747543"
     },
     {
-      "id": "inj_5528aa2a",
+      "id": "inj_8cfa6945",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Duggan, Liam \u2014 Concussion",
-      "summary": "Duggan, Liam (West Coast) is listed with Concussion. Estimated return: Test.",
+      "headline": "Dattoli, Jesse \u2014 Foot",
+      "summary": "Dattoli, Jesse (Sydney) is listed with Foot. Estimated return: Test.",
       "signal_type": "injury",
       "teams": [
-        "West Coast"
+        "Sydney"
       ],
       "players": [
-        "Duggan, Liam"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Concussion: Test"
-      ],
-      "relevance_score": 0.3,
-      "prediction_impact": "Potential availability concern for West Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278780"
-    },
-    {
-      "id": "inj_79c416eb",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Ginbey, Reuben \u2014 Foot",
-      "summary": "Ginbey, Reuben (West Coast) is listed with Foot. Estimated return: Test.",
-      "signal_type": "injury",
-      "teams": [
-        "West Coast"
-      ],
-      "players": [
-        "Ginbey, Reuben"
+        "Dattoli, Jesse"
       ],
       "sentiment": "neutral",
       "direction": {},
@@ -3630,9 +3924,31 @@
         "Foot: Test"
       ],
       "relevance_score": 0.3,
-      "prediction_impact": "Potential availability concern for West Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278786"
+      "prediction_impact": "Potential availability concern for Sydney",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747546"
+    },
+    {
+      "id": "inj_6e434849",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Phillipou, Jevan \u2014 Quad",
+      "summary": "Phillipou, Jevan (Sydney) is listed with Quad. Estimated return: Test.",
+      "signal_type": "injury",
+      "teams": [
+        "Sydney"
+      ],
+      "players": [
+        "Phillipou, Jevan"
+      ],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [
+        "Quad: Test"
+      ],
+      "relevance_score": 0.3,
+      "prediction_impact": "Potential availability concern for Sydney",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747554"
     },
     {
       "id": "inj_41fec941",
@@ -3653,74 +3969,52 @@
       ],
       "relevance_score": 0.3,
       "prediction_impact": "Potential availability concern for West Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278788"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747568"
     },
     {
-      "id": "inj_9287d862",
+      "id": "inj_6b6649c9",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Kelly, Tim \u2014 Hamstring",
-      "summary": "Kelly, Tim (West Coast) is listed with Hamstring. Estimated return: Test.",
+      "headline": "Williams, Jack \u2014 Calf",
+      "summary": "Williams, Jack (West Coast) is listed with Calf. Estimated return: Test.",
       "signal_type": "injury",
       "teams": [
         "West Coast"
       ],
       "players": [
-        "Kelly, Tim"
+        "Williams, Jack"
       ],
       "sentiment": "neutral",
       "direction": {},
       "key_facts": [
-        "Hamstring: Test"
+        "Calf: Test"
       ],
       "relevance_score": 0.3,
       "prediction_impact": "Potential availability concern for West Coast",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278797"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747592"
     },
     {
-      "id": "inj_49e1204c",
+      "id": "inj_2bad806d",
       "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Dale, Bailey \u2014 Knee",
-      "summary": "Dale, Bailey (Western Bulldogs) is listed with Knee. Estimated return: Test.",
+      "headline": "Gardner, Ryan \u2014 Groin",
+      "summary": "Gardner, Ryan (Western Bulldogs) is listed with Groin. Estimated return: Test.",
       "signal_type": "injury",
       "teams": [
         "Western Bulldogs"
       ],
       "players": [
-        "Dale, Bailey"
+        "Gardner, Ryan"
       ],
       "sentiment": "neutral",
       "direction": {},
       "key_facts": [
-        "Knee: Test"
+        "Groin: Test"
       ],
       "relevance_score": 0.3,
       "prediction_impact": "Potential availability concern for Western Bulldogs",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278815"
-    },
-    {
-      "id": "inj_48e88123",
-      "source_url": "https://www.afl.com.au/matches/injury-list",
-      "headline": "Darcy, Sam \u2014 Soreness",
-      "summary": "Darcy, Sam (Western Bulldogs) is listed with Soreness. Estimated return: Test.",
-      "signal_type": "injury",
-      "teams": [
-        "Western Bulldogs"
-      ],
-      "players": [
-        "Darcy, Sam"
-      ],
-      "sentiment": "neutral",
-      "direction": {},
-      "key_facts": [
-        "Soreness: Test"
-      ],
-      "relevance_score": 0.3,
-      "prediction_impact": "Potential availability concern for Western Bulldogs",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278817"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747597"
     },
     {
       "id": "inj_129b0c73",
@@ -3741,38 +4035,60 @@
       ],
       "relevance_score": 0.3,
       "prediction_impact": "Potential availability concern for Western Bulldogs",
-      "published_at": "2026-03-08T00:00:00",
-      "processed_at": "2026-03-08T17:13:19.278825"
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747603"
+    },
+    {
+      "id": "inj_541937ad",
+      "source_url": "https://www.afl.com.au/matches/injury-list",
+      "headline": "Sanders, Ryley \u2014 Concussion",
+      "summary": "Sanders, Ryley (Western Bulldogs) is listed with Concussion. Estimated return: Test.",
+      "signal_type": "injury",
+      "teams": [
+        "Western Bulldogs"
+      ],
+      "players": [
+        "Sanders, Ryley"
+      ],
+      "sentiment": "neutral",
+      "direction": {},
+      "key_facts": [
+        "Concussion: Test"
+      ],
+      "relevance_score": 0.3,
+      "prediction_impact": "Potential availability concern for Western Bulldogs",
+      "published_at": "2026-03-13T00:00:00",
+      "processed_at": "2026-03-13T16:49:27.747606"
     }
   ],
-  "total": 162,
+  "total": 179,
   "by_type": {
-    "injury": 150,
-    "form": 2,
-    "suspension": 2,
-    "tactical": 2,
-    "general": 5,
-    "selection": 1
+    "general": 19,
+    "selection": 3,
+    "form": 7,
+    "injury": 145,
+    "suspension": 3,
+    "tactical": 2
   },
   "by_team": {
-    "Adelaide": 6,
-    "Brisbane Lions": 10,
-    "Carlton": 10,
-    "Collingwood": 9,
-    "Essendon": 11,
-    "Fremantle": 5,
-    "Geelong": 11,
-    "Gold Coast": 14,
-    "Greater Western Sydney": 16,
-    "Hawthorn": 11,
-    "Melbourne": 13,
-    "North Melbourne": 8,
-    "Port Adelaide": 6,
-    "Richmond": 12,
-    "St Kilda": 10,
-    "Sydney": 18,
-    "West Coast": 16,
-    "Western Bulldogs": 15
+    "Adelaide": 9,
+    "Brisbane Lions": 13,
+    "Carlton": 19,
+    "Collingwood": 12,
+    "Essendon": 15,
+    "Fremantle": 7,
+    "Geelong": 17,
+    "Gold Coast": 17,
+    "Greater Western Sydney": 14,
+    "Hawthorn": 15,
+    "Melbourne": 12,
+    "North Melbourne": 7,
+    "Port Adelaide": 10,
+    "Richmond": 19,
+    "St Kilda": 15,
+    "Sydney": 24,
+    "West Coast": 19,
+    "Western Bulldogs": 18
   },
-  "updated": "2026-03-08T17:13:19.278963"
+  "updated": "2026-03-13T16:49:27.747776"
 }

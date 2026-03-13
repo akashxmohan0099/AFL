@@ -133,26 +133,68 @@ def get_match_detail(match_id: int) -> dict | None:
         preds = store.load_predictions(
             year=int(m["year"]), round_num=int(m["round_number"])
         )
-        if not preds.empty:
-            for side, team_name in [("home_players", m["home_team"]), ("away_players", m["away_team"])]:
-                team_mask = preds["team"] == team_name
-                if "match_id" in preds.columns:
-                    exact = team_mask & (preds["match_id"] == match_id)
-                    if exact.any():
-                        team_mask = exact
-                team_preds = preds.loc[team_mask]
-                for _, p in team_preds.iterrows():
-                    entry = {
-                        "player": p.get("player", ""),
-                        "team": p.get("team", ""),
-                        "opponent": p.get("opponent", ""),
-                    }
-                    for col in ["predicted_goals", "predicted_disposals", "predicted_marks",
-                                 "p_scorer", "p_2plus_goals", "p_3plus_goals",
-                                 "p_15plus_disp", "p_20plus_disp", "p_25plus_disp", "p_30plus_disp",
-                                 "p_3plus_mk", "p_5plus_mk"]:
-                        if col in p.index and pd.notna(p[col]):
-                            entry[col] = round(float(p[col]), 4)
+
+    # Build actual stats lookup from player_games
+    pg = cache.player_games
+    actuals_map: dict[str, dict] = {}  # "player|team" -> stats
+    if not pg.empty:
+        pg_match = pg[pg["match_id"] == match_id]
+        for _, row in pg_match.iterrows():
+            key = f"{row['player']}|{row['team']}"
+            actuals_map[key] = {
+                "goals": int(row["GL"]) if pd.notna(row.get("GL")) else None,
+                "disposals": int(row["DI"]) if pd.notna(row.get("DI")) else None,
+                "marks": int(row["MK"]) if pd.notna(row.get("MK")) else None,
+                "kicks": int(row["KI"]) if pd.notna(row.get("KI")) else None,
+                "handballs": int(row["HB"]) if pd.notna(row.get("HB")) else None,
+                "tackles": int(row["TK"]) if pd.notna(row.get("TK")) else None,
+                "hitouts": int(row["HO"]) if pd.notna(row.get("HO")) else None,
+            }
+
+    # Populate player lists (predictions + actuals)
+    if store is not None and not preds.empty:
+        for side, team_name in [("home_players", m["home_team"]), ("away_players", m["away_team"])]:
+            team_mask = preds["team"] == team_name
+            if "match_id" in preds.columns:
+                exact = team_mask & (preds["match_id"] == match_id)
+                if exact.any():
+                    team_mask = exact
+            team_preds = preds.loc[team_mask]
+            seen = set()
+            for _, p in team_preds.iterrows():
+                player_name = p.get("player", "")
+                entry = {
+                    "player": player_name,
+                    "team": p.get("team", ""),
+                    "opponent": p.get("opponent", ""),
+                }
+                for col in ["predicted_goals", "predicted_disposals", "predicted_marks",
+                             "p_scorer", "p_2plus_goals", "p_3plus_goals",
+                             "p_15plus_disp", "p_20plus_disp", "p_25plus_disp", "p_30plus_disp",
+                             "p_3plus_mk", "p_5plus_mk"]:
+                    if col in p.index and pd.notna(p[col]):
+                        entry[col] = round(float(p[col]), 4)
+                # Merge actual stats
+                key = f"{player_name}|{p.get('team', '')}"
+                if key in actuals_map:
+                    entry.update(actuals_map[key])
+                seen.add(key)
+                result[side].append(entry)
+            # Add players with actuals but no predictions
+            for key, stats in actuals_map.items():
+                if key in seen:
+                    continue
+                pname, pteam = key.split("|", 1)
+                if pteam == team_name:
+                    entry = {"player": pname, "team": pteam, **stats}
+                    result[side].append(entry)
+    elif actuals_map:
+        # No predictions available — populate from actuals only
+        for side, team_name in [("home_players", m["home_team"]), ("away_players", m["away_team"])]:
+            for key, stats in actuals_map.items():
+                pname, pteam = key.split("|", 1)
+                if pteam == team_name:
+                    entry = {"player": pname, "team": pteam, **stats}
                     result[side].append(entry)
 
     return result

@@ -59,13 +59,15 @@ class APISettings:
             "http://localhost:3000",
             "http://localhost:3001",
             "http://localhost:3002",
+            "http://localhost:3003",
             "http://127.0.0.1:3000",
             "http://127.0.0.1:3001",
             "http://127.0.0.1:3002",
+            "http://127.0.0.1:3003",
         )
-        default_methods = ("GET", "OPTIONS")
-        default_headers = ("Content-Type", "X-API-Key")
-        default_exempt_paths = ("/api/health", "/docs", "/openapi.json", "/redoc")
+        default_methods = ("GET", "POST", "OPTIONS")
+        default_headers = ("Content-Type", "X-API-Key", "X-Admin-Key")
+        default_exempt_paths = ("/api/health", "/api/admin", "/docs", "/openapi.json", "/redoc")
 
         api_key = os.getenv("AFL_API_KEY") or os.getenv("API_KEY")
         api_key = api_key.strip() if api_key else None

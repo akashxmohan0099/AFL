@@ -146,7 +146,7 @@ def create_app(settings: APISettings | None = None) -> FastAPI:
         return _finalize(response, response.status_code)
 
     # Import and register routers
-    from api.routers import players, rounds, matches, odds, metrics, season, venues, teams, league, news  # noqa: E402
+    from api.routers import players, rounds, matches, odds, metrics, season, venues, teams, league, news, admin  # noqa: E402
 
     app.include_router(players.router)
     app.include_router(rounds.router)
@@ -158,6 +158,7 @@ def create_app(settings: APISettings | None = None) -> FastAPI:
     app.include_router(teams.router)
     app.include_router(league.router)
     app.include_router(news.router)
+    app.include_router(admin.router)
 
     @app.get("/api/health")
     def health():

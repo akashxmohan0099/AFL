@@ -5,8 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getSeasonMatches, getSeasonSchedule } from "@/lib/api";
-import type { SeasonMatch, SeasonSchedule, ScheduleRound, ScheduleMatch, ScheduleForecast, ScheduleTeamPred, ScheduleMatchPrediction } from "@/lib/types";
+import { getSeasonMatches, getSeasonSchedule, getRoundSimulations } from "@/lib/api";
+import type { SeasonMatch, SeasonSchedule, ScheduleRound, ScheduleMatch, ScheduleForecast, ScheduleTeamPred, ScheduleMatchPrediction, RoundSimSummary } from "@/lib/types";
 import { TEAM_ABBREVS, TEAM_COLORS, CURRENT_YEAR, AVAILABLE_YEARS, displayVenue } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -31,6 +31,7 @@ interface UnifiedMatch {
   home_actual?: { actual_gl?: number; actual_di?: number; actual_mk?: number } | null;
   away_actual?: { actual_gl?: number; actual_di?: number; actual_mk?: number } | null;
   forecast?: ScheduleForecast | null;
+  sim?: RoundSimSummary | null;
 }
 
 function toUnifiedFromCompleted(m: SeasonMatch): UnifiedMatch {
@@ -100,125 +101,175 @@ function UnifiedMatchCard({ match }: { match: UnifiedMatch }) {
 
   const cardContent = (
     <Card className={cn(
-      "border transition-all duration-150",
+      "border transition-all duration-150 h-full",
       "group-hover:border-primary/30 group-hover:bg-muted/20",
       correct === true ? "border-emerald-500/25 bg-emerald-500/[0.03]" :
       correct === false ? "border-red-500/25 bg-red-500/[0.03]" :
       "border-border/50"
     )}>
-      <CardContent className="pt-3 pb-3 px-3 space-y-2">
+      <CardContent className="pt-4 pb-4 px-4 space-y-3 h-full flex flex-col">
         {/* Team rows with scores or win prob % */}
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: homeColor }} />
-              <span className="text-xs font-semibold font-mono">{homeAbbr}</span>
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: homeColor }} />
+              <span className="text-sm font-bold font-mono">{homeAbbr}</span>
             </div>
             {isPlayed ? (
-              <span className="text-sm font-bold tabular-nums font-mono">{match.home_score}</span>
+              <span className="text-base font-bold tabular-nums font-mono">{match.home_score}</span>
             ) : homeProb != null ? (
-              <span className="text-[11px] font-mono tabular-nums text-muted-foreground">{Math.round(homeProb * 100)}%</span>
+              <span className="text-sm font-semibold font-mono tabular-nums text-muted-foreground">{Math.round(homeProb * 100)}%</span>
             ) : null}
           </div>
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: TEAM_COLORS[match.away_team]?.primary || "#555" }} />
-              <span className="text-xs font-semibold font-mono">{awayAbbr}</span>
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: TEAM_COLORS[match.away_team]?.primary || "#555" }} />
+              <span className="text-sm font-bold font-mono">{awayAbbr}</span>
             </div>
             {isPlayed ? (
-              <span className="text-sm font-bold tabular-nums font-mono">{match.away_score}</span>
+              <span className="text-base font-bold tabular-nums font-mono">{match.away_score}</span>
             ) : homeProb != null ? (
-              <span className="text-[11px] font-mono tabular-nums text-muted-foreground">{Math.round((1 - homeProb) * 100)}%</span>
+              <span className="text-sm font-semibold font-mono tabular-nums text-muted-foreground">{Math.round((1 - homeProb) * 100)}%</span>
             ) : null}
           </div>
         </div>
 
         {/* Win prob bar */}
         {homeProb != null && (
-          <div className="w-full h-1 rounded-full bg-muted/50 overflow-hidden flex">
+          <div className="w-full h-1.5 rounded-full bg-muted/50 overflow-hidden flex">
             <div className="h-full rounded-l-full" style={{ width: `${Math.round(homeProb * 100)}%`, backgroundColor: homeColor }} />
           </div>
         )}
 
         {/* Stat grid — always shown when we have pred data */}
         {hasPredData && (
-          <div className="border-t border-border/30 pt-2">
-            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 gap-y-1 items-center">
+          <div className="border-t border-border/40 pt-2.5">
+            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 gap-y-1.5 items-center">
               <div />
-              <p className="text-[9px] font-mono text-muted-foreground/60 text-center uppercase">Goals</p>
-              <p className="text-[9px] font-mono text-muted-foreground/60 text-center uppercase">Disposals</p>
-              <p className="text-[9px] font-mono text-muted-foreground/60 text-center uppercase">Marks</p>
+              <p className="text-[11px] font-mono text-muted-foreground/80 text-center uppercase font-semibold">Goals</p>
+              <p className="text-[11px] font-mono text-muted-foreground/80 text-center uppercase font-semibold">Disp</p>
+              <p className="text-[11px] font-mono text-muted-foreground/80 text-center uppercase font-semibold">Marks</p>
 
               {/* Home row */}
-              <span className="text-[10px] font-mono font-medium">{homeAbbr}</span>
+              <span className="text-xs font-mono font-semibold">{homeAbbr}</span>
               <StatCell actual={ha?.actual_gl} pred={hp?.pred_gl} isPlayed={isPlayed} isGoals />
               <StatCell actual={ha?.actual_di} pred={hp?.pred_di} isPlayed={isPlayed} />
               <StatCell actual={ha?.actual_mk} pred={hp?.pred_mk} isPlayed={isPlayed} />
 
               {/* Away row */}
-              <span className="text-[10px] font-mono font-medium">{awayAbbr}</span>
+              <span className="text-xs font-mono font-semibold">{awayAbbr}</span>
               <StatCell actual={aa?.actual_gl} pred={ap?.pred_gl} isPlayed={isPlayed} isGoals />
               <StatCell actual={aa?.actual_di} pred={ap?.pred_di} isPlayed={isPlayed} />
               <StatCell actual={aa?.actual_mk} pred={ap?.pred_mk} isPlayed={isPlayed} />
             </div>
             {match.predicted_margin != null && !isPlayed && (
-              <p className="text-[8px] font-mono text-muted-foreground/40 mt-1 text-right">
+              <p className="text-[11px] font-mono text-muted-foreground/70 mt-1.5 text-right">
                 Margin: {Math.abs(match.predicted_margin).toFixed(0)} pts ({TEAM_ABBREVS[match.predicted_winner ?? ""] || match.predicted_winner})
               </p>
             )}
-            <p className="text-[9px] font-mono text-muted-foreground/40 mt-1 text-right">
+            <p className="text-[11px] font-mono text-muted-foreground/60 mt-1 text-right">
               {isPlayed ? (
-                <><span className="font-bold text-foreground/50">Actual</span> / <span className="text-muted-foreground/50">Predicted</span></>
+                <><span className="font-bold text-foreground/70">Actual</span> / <span className="text-muted-foreground/60">Predicted</span></>
               ) : (
-                <span className="text-muted-foreground/50">Predicted team totals</span>
+                <span className="text-muted-foreground/60">Predicted team totals</span>
               )}
             </p>
           </div>
         )}
 
+        {/* Simulation summary */}
+        {match.sim && (
+          <div className="border-t border-border/40 pt-2.5 space-y-2">
+            <p className="text-[11px] font-mono text-muted-foreground/70 uppercase tracking-wider font-semibold">
+              Monte Carlo <span className="normal-case text-muted-foreground/50 font-normal">({match.sim.n_sims.toLocaleString()} sims)</span>
+            </p>
+            {/* Sim win prob bar */}
+            <div className="w-full h-2 rounded-full bg-muted/50 overflow-hidden flex">
+              <div className="h-full rounded-l-full" style={{ width: `${Math.round(match.sim.home_win_pct * 100)}%`, backgroundColor: homeColor }} />
+            </div>
+            <div className="flex justify-between text-xs font-mono tabular-nums text-foreground/80 font-semibold">
+              <span>{homeAbbr} {Math.round(match.sim.home_win_pct * 100)}%</span>
+              <span>{Math.round(match.sim.away_win_pct * 100)}% {awayAbbr}</span>
+            </div>
+            {/* Key stats row */}
+            <div className="flex items-center justify-between text-xs font-mono">
+              <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground/70">Total</span>
+                <span className="tabular-nums font-bold text-foreground/90">{match.sim.avg_total.toFixed(0)}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground/70">Margin</span>
+                <span className="tabular-nums font-bold text-foreground/90">
+                  {match.sim.avg_margin > 0 ? "+" : ""}{match.sim.avg_margin.toFixed(0)}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground/70">Range</span>
+                <span className="tabular-nums font-semibold text-foreground/80">{match.sim.score_range.home.p25.toFixed(0)}-{match.sim.score_range.home.p75.toFixed(0)}</span>
+              </div>
+            </div>
+            {/* Top scorers */}
+            {match.sim.top_scorers.length > 0 && (
+              <div className="flex gap-1.5 flex-wrap">
+                {match.sim.top_scorers.map((s) => (
+                  <span
+                    key={s.player}
+                    className="text-[11px] font-mono px-2 py-0.5 rounded bg-muted/50 text-foreground/80 font-medium"
+                  >
+                    <span className="w-2 h-2 rounded-full inline-block mr-1" style={{
+                      backgroundColor: TEAM_COLORS[s.team]?.primary || "#555"
+                    }} />
+                    {s.player.split(",")[0]} {Math.round(s.p_1plus * 100)}%
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Weather forecast */}
         {fc && (
-          <div className="border-t border-border/30 pt-2 flex items-center gap-2 flex-wrap">
+          <div className="border-t border-border/40 pt-2.5 flex items-center gap-2 flex-wrap">
             {fc.temperature_avg != null && (
               <span className={cn(
-                "text-[10px] font-mono px-1.5 py-0.5 rounded",
-                fc.temperature_avg > 30 ? "bg-red-500/10 text-red-400" :
-                fc.temperature_avg < 12 ? "bg-cyan-500/10 text-cyan-400" :
+                "text-xs font-mono font-medium px-2 py-0.5 rounded",
+                fc.temperature_avg > 30 ? "bg-red-500/15 text-red-400" :
+                fc.temperature_avg < 12 ? "bg-cyan-500/15 text-cyan-400" :
                 "bg-muted text-muted-foreground"
               )}>
                 {fc.temperature_avg.toFixed(0)}°C
               </span>
             )}
             {fc.is_roofed && (
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400">ROOF</span>
+              <span className="text-xs font-mono font-medium px-2 py-0.5 rounded bg-blue-500/15 text-blue-400">ROOF</span>
             )}
             {fc.is_wet && (
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400">WET</span>
+              <span className="text-xs font-mono font-medium px-2 py-0.5 rounded bg-blue-500/15 text-blue-400">WET</span>
             )}
             {fc.wind_speed_avg != null && fc.wind_speed_avg > 20 && (
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400">
+              <span className="text-xs font-mono font-medium px-2 py-0.5 rounded bg-amber-500/15 text-amber-400">
                 {fc.wind_speed_avg.toFixed(0)}km/h
               </span>
             )}
           </div>
         )}
 
-        {/* Footer */}
-        <div className="flex justify-between items-center pt-0.5">
-          <span className="text-[10px] text-muted-foreground/60 truncate mr-2">{displayVenue(match.venue)}</span>
-          <div className="flex items-center gap-1.5 shrink-0">
+        {/* Footer — pushed to bottom */}
+        <div className="flex justify-between items-center pt-1 mt-auto">
+          <span className="text-xs text-muted-foreground/80 truncate mr-2">{displayVenue(match.venue)}</span>
+          <div className="flex items-center gap-2 shrink-0">
             {match.date && !isPlayed && (
-              <span className="text-[9px] text-muted-foreground/50 font-mono">{formatDate(match.date)}</span>
+              <span className="text-[11px] text-muted-foreground/70 font-mono">{formatDate(match.date)}</span>
             )}
             {match.predicted_winner && isPlayed && (
-              <span className="text-[9px] font-mono text-muted-foreground/50">
+              <span className="text-[11px] font-mono font-medium text-muted-foreground/70">
                 {TEAM_ABBREVS[match.predicted_winner] || match.predicted_winner}
               </span>
             )}
             {correct != null && (
               <span className={cn(
-                "text-[9px] font-mono font-bold px-1.5 py-0.5 rounded",
-                correct ? "text-emerald-400 bg-emerald-400/10" : "text-red-400 bg-red-400/10"
+                "text-[11px] font-mono font-bold px-2 py-0.5 rounded",
+                correct ? "text-emerald-400 bg-emerald-400/15" : "text-red-400 bg-red-400/15"
               )} title={correct ? "Winner prediction correct" : "Winner prediction wrong"}>
                 {correct ? "Correct" : "Wrong"}
               </span>
@@ -229,21 +280,21 @@ function UnifiedMatchCard({ match }: { match: UnifiedMatch }) {
     </Card>
   );
 
-  return <Link href={matchLink} className="block group">{cardContent}</Link>;
+  return <Link href={matchLink} className="block group h-full">{cardContent}</Link>;
 }
 
 function StatCell({ actual, pred, isPlayed, isGoals }: { actual?: number | null; pred?: number | null; isPlayed: boolean; isGoals?: boolean }) {
   return (
     <div className="text-center">
       {isPlayed && actual != null && (
-        <span className="text-[10px] font-mono font-bold tabular-nums text-foreground">{actual}</span>
+        <span className="text-xs font-mono font-bold tabular-nums text-foreground">{actual}</span>
       )}
       {pred != null && (
-        <span className={cn("font-mono tabular-nums", isPlayed ? "text-[9px] text-muted-foreground/40 ml-0.5" : "text-[10px] text-muted-foreground")}>
+        <span className={cn("font-mono tabular-nums", isPlayed ? "text-[11px] text-muted-foreground/60 ml-0.5" : "text-xs text-muted-foreground/90")}>
           {isPlayed ? "/ " : ""}{isGoals ? pred.toFixed(1) : Math.round(pred)}
         </span>
       )}
-      {pred == null && !isPlayed && <span className="text-[10px] text-muted-foreground/30">-</span>}
+      {pred == null && !isPlayed && <span className="text-xs text-muted-foreground/40">-</span>}
     </div>
   );
 }
@@ -266,6 +317,7 @@ function formatUpdatedTime(isoStr: string): string {
 export default function MatchesPage() {
   const [matches, setMatches] = useState<SeasonMatch[]>([]);
   const [schedule, setSchedule] = useState<SeasonSchedule | null>(null);
+  const [simsByRound, setSimsByRound] = useState<Record<number, RoundSimSummary[]>>({});
   const [year, setYear] = useState(CURRENT_YEAR);
   const [selectedRound, setSelectedRound] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -274,6 +326,7 @@ export default function MatchesPage() {
 
   useEffect(() => {
     setLoading(true);
+    setSimsByRound({});
     Promise.all([
       getSeasonMatches(year).catch(() => []),
       getSeasonSchedule(year).catch(() => null),
@@ -282,9 +335,51 @@ export default function MatchesPage() {
         setMatches(m || []);
         setSchedule(s);
         setSelectedRound(null);
+
+        // Find all rounds with prediction data and fetch simulations
+        if (s?.rounds) {
+          const completedKeys = new Set((m || []).map((cm: SeasonMatch) => `${cm.home_team}|${cm.away_team}|${cm.round_number}`));
+          const upcomingRoundNums = new Set<number>();
+          for (const r of s.rounds) {
+            const hasUnplayed = r.matches.some(
+              (rm: ScheduleMatch) => rm.home_score == null && !completedKeys.has(`${rm.home_team}|${rm.away_team}|${r.round_number}`)
+            );
+            if (hasUnplayed) upcomingRoundNums.add(r.round_number);
+          }
+          // Fetch simulations for upcoming rounds (max 2)
+          const upcomingToSim = [...upcomingRoundNums].sort((a, b) => a - b).slice(0, 2);
+          // Also fetch simulations for completed rounds (most recent 3)
+          const completedRoundNums = [...new Set((m || []).map((cm: SeasonMatch) => cm.round_number))].sort((a, b) => b - a).slice(0, 3);
+          const allRoundsToSim = [...new Set([...upcomingToSim, ...completedRoundNums])];
+          Promise.all(
+            allRoundsToSim.map((rn) =>
+              getRoundSimulations(year, rn)
+                .then((sims) => ({ rn, sims }))
+                .catch(() => ({ rn, sims: [] as RoundSimSummary[] }))
+            )
+          ).then((results) => {
+            const newSims: Record<number, RoundSimSummary[]> = {};
+            for (const { rn, sims } of results) {
+              if (sims.length > 0) newSims[rn] = sims;
+            }
+            setSimsByRound(newSims);
+          });
+        }
       })
       .finally(() => setLoading(false));
   }, [year]);
+
+  // On-demand: fetch sims for selected round if not already loaded
+  useEffect(() => {
+    if (selectedRound == null || simsByRound[selectedRound]) return;
+    getRoundSimulations(year, selectedRound)
+      .then((sims) => {
+        if (sims.length > 0) {
+          setSimsByRound((prev) => ({ ...prev, [selectedRound]: sims }));
+        }
+      })
+      .catch(() => {});
+  }, [selectedRound, year]);
 
   // Completed match keys (for deduplicating with schedule)
   const completedMatchKeys = new Set(
@@ -364,10 +459,11 @@ export default function MatchesPage() {
 
   const sectionMap: Record<number, Section> = {};
 
-  // Add completed matches (enriched with schedule prediction data)
+  // Add completed matches (enriched with schedule prediction data + simulation)
   for (const [roundNum, roundMatches] of Object.entries(completedGrouped)) {
     const rn = Number(roundNum);
     if (!sectionMap[rn]) sectionMap[rn] = { roundNum: rn, matches: [], hasUpcoming: false };
+    const roundSims = simsByRound[rn] || [];
     for (const m of roundMatches) {
       const u = toUnifiedFromCompleted(m);
       // Enrich with schedule prediction data if the completed card is missing it
@@ -381,18 +477,30 @@ export default function MatchesPage() {
         if (u.away_pred == null && sm.away_pred) u.away_pred = sm.away_pred;
         if (u.match_id == null && sm.match_id != null) u.match_id = sm.match_id;
       }
+      // Attach simulation summary
+      const sim = roundSims.find(
+        (s) => s.home_team === m.home_team && s.away_team === m.away_team
+      );
+      if (sim) u.sim = sim;
       sectionMap[rn].matches.push(u);
     }
   }
 
-  // Add upcoming matches
+  // Add upcoming matches (with simulation data)
   for (const r of filteredUpcoming) {
     if (!sectionMap[r.round_number]) sectionMap[r.round_number] = { roundNum: r.round_number, matches: [], hasUpcoming: false };
     sectionMap[r.round_number].hasUpcoming = true;
     sectionMap[r.round_number].status = r.status;
     if (r.prediction_updated) sectionMap[r.round_number].predictionUpdated = r.prediction_updated;
+    const roundSims = simsByRound[r.round_number] || [];
     for (const m of r.matches) {
-      sectionMap[r.round_number].matches.push(toUnifiedFromSchedule(m, r.round_number));
+      const u = toUnifiedFromSchedule(m, r.round_number);
+      // Attach simulation summary if available
+      const sim = roundSims.find(
+        (s) => s.home_team === m.home_team && s.away_team === m.away_team
+      );
+      if (sim) u.sim = sim;
+      sectionMap[r.round_number].matches.push(u);
     }
   }
 
@@ -471,14 +579,14 @@ export default function MatchesPage() {
           const hasCompleted = section.matches.some((m) => m.home_score != null);
           const hasUnplayed = section.matches.some((m) => m.home_score == null);
           return (
-            <div key={section.roundNum} className="space-y-3">
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            <div key={section.roundNum} className="space-y-4">
+              <div className="flex items-center gap-3">
+                <h3 className="text-base font-bold text-muted-foreground uppercase tracking-wider">
                   Round {section.roundNum}
                 </h3>
                 {section.hasUpcoming && (
                   <span className={cn(
-                    "text-[10px] font-mono font-semibold px-2 py-0.5 rounded uppercase",
+                    "text-xs font-mono font-bold px-2.5 py-1 rounded uppercase",
                     section.status === "upcoming"
                       ? "text-primary bg-primary/10"
                       : "text-muted-foreground bg-muted/50"
@@ -487,12 +595,12 @@ export default function MatchesPage() {
                   </span>
                 )}
                 {section.predictionUpdated && (
-                  <span className="text-[9px] font-mono text-muted-foreground/50 ml-auto">
+                  <span className="text-[11px] font-mono text-muted-foreground/70 ml-auto">
                     Predictions: {formatUpdatedTime(section.predictionUpdated)}
                   </span>
                 )}
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
                 {section.matches.map((m, i) => (
                   <UnifiedMatchCard key={`${section.roundNum}-${i}`} match={m} />
                 ))}

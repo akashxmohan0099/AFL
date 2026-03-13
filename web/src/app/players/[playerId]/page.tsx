@@ -16,34 +16,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getPlayer, getPlayerGames } from "@/lib/api";
 import { TEAM_ABBREVS, TEAM_COLORS, CHART_COLORS } from "@/lib/constants";
 import { cn, formatDate } from "@/lib/utils";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar,
-} from "recharts";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-const tooltipStyle = {
-  backgroundColor: "rgba(15, 15, 25, 0.95)",
-  border: "1px solid rgba(255,255,255,0.08)",
-  borderRadius: 6,
-  fontSize: 11,
-  fontFamily: "monospace",
-};
 
 function StatBox({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
   return (
@@ -108,40 +86,6 @@ export default function PlayerProfilePage() {
   const pva = profile.predictions_vs_actuals || {};
   const pvaRecords = pva.records || [];
   const pvaMae = pva.mae || {};
-
-  // Season chart data
-  const seasonChart = (profile.seasons || []).map((s: any) => ({
-    year: s.year,
-    Goals: s.GL,
-    Disposals: s.DI,
-    Marks: s.MK,
-    Tackles: s.TK,
-  }));
-
-  // Opponent chart — top 8 by avg disposals
-  const oppChart = [...oppSplits]
-    .filter((o: any) => o.games >= 3)
-    .sort((a: any, b: any) => b.avg_di - a.avg_di)
-    .slice(0, 10)
-    .map((o: any) => ({
-      opponent: TEAM_ABBREVS[o.opponent] || o.opponent.substring(0, 10),
-      Goals: o.avg_gl,
-      Disposals: o.avg_di,
-      Marks: o.avg_mk,
-      games: o.games,
-    }));
-
-  // Consistency radar data
-  const radarData = ["gl", "di", "mk", "tk"].map(stat => {
-    const c = consistency[stat];
-    if (!c) return null;
-    return {
-      stat: stat.toUpperCase(),
-      avg: c.avg,
-      ceiling: c.ceiling,
-      floor: c.floor,
-    };
-  }).filter(Boolean);
 
   // Max values for mini bars in opponent splits
   const maxOppDI = oppSplits.length > 0 ? Math.max(...oppSplits.map((o: any) => o.avg_di || 0)) : 1;
@@ -411,30 +355,6 @@ export default function PlayerProfilePage() {
           </Card>
         )}
       </div>
-
-      {/* ── Season Averages Chart ────────────────────────────────── */}
-      {seasonChart.length > 0 && (
-        <Card className="border-border/40">
-          <CardHeader className="pb-2 pt-4 px-4">
-            <CardTitle className="text-sm font-medium">Season Averages</CardTitle>
-          </CardHeader>
-          <CardContent className="px-2 pb-3">
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={seasonChart}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                <XAxis dataKey="year" tick={{ fontSize: 11, fontFamily: "monospace" }} stroke="rgba(255,255,255,0.1)" />
-                <YAxis tick={{ fontSize: 11 }} stroke="rgba(255,255,255,0.1)" />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Legend />
-                <Bar dataKey="Disposals" fill={CHART_COLORS.disposals} radius={[2, 2, 0, 0]} />
-                <Bar dataKey="Goals" fill={CHART_COLORS.goals} radius={[2, 2, 0, 0]} />
-                <Bar dataKey="Marks" fill={CHART_COLORS.marks} radius={[2, 2, 0, 0]} />
-                <Bar dataKey="Tackles" fill="#94a3b8" radius={[2, 2, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
 
       {/* ── Season Breakdown Table ───────────────────────────────── */}
       {(profile.seasons || []).length > 0 && (

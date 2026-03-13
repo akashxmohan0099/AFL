@@ -1,0 +1,655 @@
+{
+  "round_number": 1,
+  "year": 2026,
+  "scraped_at": "2026-03-13T16:48:47.699214",
+  "teams": [
+    {
+      "team": "Carlton",
+      "selected": [
+        "Dean, H",
+        "Weitering, J",
+        "Young, L",
+        "Hollands, O",
+        "McGovern, M",
+        "Florent, O",
+        "Lord, C",
+        "Cripps, P",
+        "Chesser, C",
+        "Hayward, W",
+        "Hollands, E",
+        "Ainsworth, B",
+        "McKay, H",
+        "Williams, Z",
+        "Kemp, B",
+        "Pittonet, M",
+        "Smith, J",
+        "Walsh, S"
+      ],
+      "interchange": [
+        "Cowan, L",
+        "Hewett, G",
+        "Carroll, M",
+        "Fogarty, L",
+        "O'Keeffe, H"
+      ],
+      "emergencies": [
+        "Byrne, T",
+        "Boyd, J",
+        "Moir, A"
+      ],
+      "total_named": 26
+    },
+    {
+      "team": "Richmond",
+      "selected": [
+        "Faull, J",
+        "Lynch, T",
+        "Armstrong, H",
+        "Rioli, M",
+        "Campbell, S",
+        "Mansell, R",
+        "Ralphsmith, H",
+        "Lalor, S",
+        "McAuliffe, K",
+        "Short, J",
+        "Banks, S",
+        "Grlj, S",
+        "Broad, N",
+        "Miller, B",
+        "Balta, N",
+        "Nankervis, T",
+        "Taranto, T",
+        "Ross, J"
+      ],
+      "interchange": [
+        "Gibcus, J",
+        "Trezise, J",
+        "Hopper, J",
+        "Green, S",
+        "Gray, C"
+      ],
+      "emergencies": [
+        "Brown, T",
+        "Trainor, L",
+        "Sonsie, T"
+      ],
+      "total_named": 26
+    },
+    {
+      "team": "Essendon",
+      "selected": [
+        "Prior, J",
+        "McKay, B",
+        "Reid, Z",
+        "Roberts, A",
+        "Redman, M",
+        "McGrath, A",
+        "Duursma, X",
+        "Caldwell, J",
+        "Fiorini, B",
+        "Durham, S",
+        "Caddy, N",
+        "Perkins, A",
+        "Achkar, H El",
+        "Wright, P",
+        "Langford, K",
+        "Blakiston, L",
+        "Parish, D",
+        "Merrett, Z"
+      ],
+      "interchange": [
+        "Sharp, D",
+        "May, A",
+        "Kondogiannis, M",
+        "Johnson, Z",
+        "Nguyen, J"
+      ],
+      "emergencies": [
+        "Farrow, J",
+        "Guelfi, M",
+        "E-Hawli, S"
+      ],
+      "total_named": 26
+    },
+    {
+      "team": "Hawthorn",
+      "selected": [
+        "MacDonald, C",
+        "Chol, M",
+        "Gunston, J",
+        "Butler, S",
+        "Lewis, M",
+        "Watson, N",
+        "Moore, D",
+        "Mackenzie, C",
+        "D'Ambrosio, M",
+        "Battle, J",
+        "Sicily, J",
+        "Hardwick, B",
+        "Amon, K",
+        "Barrass, T",
+        "Impey, J",
+        "Meek, L",
+        "Newcombe, J",
+        "Nash, C"
+      ],
+      "interchange": [
+        "Scrimshaw, J",
+        "Ginnivan, J",
+        "Ward, J",
+        "Weddle, J",
+        "Reeves, N"
+      ],
+      "emergencies": [
+        "Morrison, H",
+        "Mraz, N",
+        "Macdonald, B"
+      ],
+      "total_named": 26
+    },
+    {
+      "team": "Western Bulldogs",
+      "selected": [
+        "Jaques, L",
+        "Khamis, B",
+        "Lobb, R",
+        "Budarick, C",
+        "O'Donnell, J",
+        "Dale, B",
+        "Davidson, S",
+        "Bontempelli, M",
+        "Williams, B",
+        "West, R",
+        "Darcy, S",
+        "Freijah, J",
+        "Lewis, W",
+        "Naughton, A",
+        "Liberatore, T",
+        "English, T",
+        "Kennedy, M",
+        "Richards, E"
+      ],
+      "interchange": [
+        "Sellwood, M",
+        "Baker, O",
+        "Hynes, C",
+        "Sanders, R",
+        "Bramble, L"
+      ],
+      "emergencies": [
+        "Gallagher, H",
+        "Kennedy, L",
+        "Emmett, L"
+      ],
+      "total_named": 26
+    },
+    {
+      "team": "Greater Western Sydney",
+      "selected": [
+        "Stringer, J",
+        "Hogan, J",
+        "Gruzewski, M",
+        "Gothard, P",
+        "Riccardi, J",
+        "Coniglio, S",
+        "Thomas, H",
+        "Oliver, C",
+        "Angwin, R",
+        "Ash, L",
+        "Whitfield, L",
+        "Fonti, J",
+        "Laverde, J",
+        "Buckley, J",
+        "Idun, C",
+        "Briggs, K",
+        "Greene, T",
+        "Callaghan, F"
+      ],
+      "interchange": [
+        "Himmelberg, H",
+        "Rowston, H",
+        "Delana, J",
+        "O'Halloran, X",
+        "Brown, C"
+      ],
+      "emergencies": [
+        "Stone, C",
+        "Leake, J",
+        "Hannaford, O"
+      ],
+      "total_named": 26
+    },
+    {
+      "team": "Geelong",
+      "selected": [
+        "O'Sullivan, C",
+        "Henry, J",
+        "Koning, S De",
+        "Stewart, T",
+        "Mullin, O",
+        "Humphries, L",
+        "O'Connor, M",
+        "Smith, B",
+        "Dempsey, O",
+        "Close, B",
+        "Mannagh, S",
+        "Martin, J",
+        "Cameron, J",
+        "Neale, S",
+        "Dangerfield, P",
+        "Blicavs, M",
+        "Atkins, T",
+        "Holmes, M"
+      ],
+      "interchange": [
+        "Guthrie, Z",
+        "Clark, J",
+        "Bruhn, T",
+        "Miers, G",
+        "Edwards, M"
+      ],
+      "emergencies": [
+        "Bowes, J",
+        "Henry, O",
+        "Knevitt, M"
+      ],
+      "total_named": 26
+    },
+    {
+      "team": "Fremantle",
+      "selected": [
+        "Bolton, S",
+        "Treacy, J",
+        "Reid, M",
+        "Dudley, I",
+        "Voss, P",
+        "Switkowski, S",
+        "Wagner, C",
+        "Brayshaw, A",
+        "Johnson, M",
+        "Clark, J",
+        "Pearce, A",
+        "McVee, J",
+        "Worner, K",
+        "McDonald, O",
+        "Chapman, H",
+        "Darcy, S",
+        "Jackson, L",
+        "Serong, C"
+      ],
+      "interchange": [
+        "Walker, B",
+        "Amiss, J",
+        "O'Driscoll, N",
+        "Erasmus, N",
+        "Young, H"
+      ],
+      "emergencies": [
+        "Cox, M",
+        "Banfield, B",
+        "Davies, H"
+      ],
+      "total_named": 26
+    },
+    {
+      "team": "Sydney",
+      "selected": [
+        "Mills, C",
+        "McCartin, T",
+        "Rampe, D",
+        "Melican, L",
+        "Blakey, N",
+        "Serong, J",
+        "Bice, R",
+        "McInerney, J",
+        "Roberts, M",
+        "Rosas, M",
+        "Rowbottom, J",
+        "Papley, T",
+        "Amartey, J",
+        "Curnow, C",
+        "Heeney, I",
+        "Grundy, B",
+        "Gulden, E",
+        "Warner, C"
+      ],
+      "interchange": [
+        "Wicks, S",
+        "Sheldrick, A",
+        "Jordon, J",
+        "Lloyd, J",
+        "McDonald, L"
+      ],
+      "emergencies": [
+        "Warner, C",
+        "Ladhams, P",
+        "McLean, H"
+      ],
+      "total_named": 26
+    },
+    {
+      "team": "Brisbane Lions",
+      "selected": [
+        "Draper, S",
+        "Rayner, C",
+        "Gallop, T",
+        "Cameron, C",
+        "Allen, O",
+        "Ashcroft, L",
+        "Reville, B",
+        "Ashcroft, W",
+        "Berry, J",
+        "Wilmot, D",
+        "Fletcher, J",
+        "Zorko, D",
+        "Coleman, K",
+        "Zakostelsky, Z",
+        "Lester, R",
+        "Fort, D",
+        "Dunkley, J",
+        "Neale, L"
+      ],
+      "interchange": [
+        "Lohmann, K",
+        "McCarthy, L",
+        "Annable, D",
+        "Tunstill, J",
+        "Answerth, N"
+      ],
+      "emergencies": [
+        "Marshall, S",
+        "Torrent, R",
+        "Joyce, D"
+      ],
+      "total_named": 26
+    },
+    {
+      "team": "Collingwood",
+      "selected": [
+        "Frampton, B",
+        "Quaynor, I",
+        "Maynard, B",
+        "Houston, D",
+        "Daicos, J",
+        "Crisp, J",
+        "Allan, E",
+        "Daicos, N",
+        "Lipinski, P",
+        "Schultz, L",
+        "Goey, J De",
+        "McCreery, B",
+        "Membrey, T",
+        "Elliott, J",
+        "McStay, D",
+        "Cameron, D",
+        "Pendlebury, S",
+        "Perryman, H"
+      ],
+      "interchange": [
+        "Parker, W",
+        "Sidebottom, S",
+        "Long, N",
+        "Buller, J",
+        "Steele, R"
+      ],
+      "emergencies": [
+        "Steene, O",
+        "West, C",
+        "Sullivan, L"
+      ],
+      "total_named": 26
+    },
+    {
+      "team": "Adelaide",
+      "selected": [
+        "Rachele, J",
+        "Walker, T",
+        "Fogarty, D",
+        "Pedlar, L",
+        "Thilthorpe, R",
+        "Chee, C Ah",
+        "Cook, B",
+        "Dawson, J",
+        "Cumming, I",
+        "Murray, N",
+        "Worrell, J",
+        "Laird, R",
+        "Milera, W",
+        "Butts, J",
+        "Bond, H",
+        "McAndrew, L",
+        "Berry, S",
+        "Soligo, J"
+      ],
+      "interchange": [
+        "Murray, T",
+        "Peatling, J",
+        "N-Bullen, A",
+        "Michalanney, M",
+        "Keays, B"
+      ],
+      "emergencies": [
+        "Jones, C",
+        "Nankervis, L",
+        "Borlase, J"
+      ],
+      "total_named": 26
+    },
+    {
+      "team": "Kangaroos",
+      "selected": [
+        "Pink, T",
+        "Logue, G",
+        "Comben, C",
+        "O'Sullivan, F",
+        "Daniel, C",
+        "Blamires, T",
+        "Simpkin, J",
+        "Powell, T",
+        "Stephens, D",
+        "Curtis, P",
+        "Trembath, C",
+        "Konstanty, J",
+        "Zurhaar, C",
+        "Larkey, N",
+        "Dovaston, L",
+        "Xerri, T",
+        "D-Uniacke, L",
+        "Sheezel, H"
+      ],
+      "interchange": [
+        "Duursma, Z",
+        "McKercher, C",
+        "McDonald, L",
+        "Parker, L",
+        "Darling, J"
+      ],
+      "emergencies": [
+        "C-Jones, C",
+        "Banch, Z",
+        "Hansen, R"
+      ],
+      "total_named": 26
+    },
+    {
+      "team": "Port Adelaide",
+      "selected": [
+        "B-Jones, D",
+        "Whitlock, J",
+        "Richards, J",
+        "H-Francis, J",
+        "Georgiades, M",
+        "Berry, J",
+        "Burgoyne, J",
+        "Rozee, C",
+        "Wehr, J",
+        "Bergman, M",
+        "Aliir, A",
+        "Farrell, K",
+        "Jones, L",
+        "Ratugolea, E",
+        "Marshall, T",
+        "Visentini, D",
+        "Butters, Z",
+        "Drew, W"
+      ],
+      "interchange": [
+        "Durdin, C",
+        "Mackinlay, E",
+        "Lord, O",
+        "Evans, L",
+        "Watkins, J"
+      ],
+      "emergencies": [
+        "Mead, J",
+        "Lukosius, J",
+        "Sweet, J"
+      ],
+      "total_named": 26
+    },
+    {
+      "team": "Melbourne",
+      "selected": [
+        "Petty, H",
+        "Lever, J",
+        "Howes, B",
+        "Jiath, C",
+        "Turner, D",
+        "Salem, C",
+        "Culley, J",
+        "Steele, J",
+        "Langdon, E",
+        "Pickett, K",
+        "Rooyen, J Van",
+        "Pickett, L",
+        "Fritsch, B",
+        "Mihocek, B",
+        "Chandler, K",
+        "Gawn, M",
+        "Windsor, C",
+        "Langford, H"
+      ],
+      "interchange": [
+        "Lindsay, X",
+        "Tholstrup, K",
+        "Rivers, T",
+        "Sharp, H",
+        "Sparrow, T"
+      ],
+      "emergencies": [
+        "Melksham, J",
+        "McDonald, T",
+        "Heath, M"
+      ],
+      "total_named": 26
+    },
+    {
+      "team": "St Kilda",
+      "selected": [
+        "Ryan, L",
+        "Sharman, C",
+        "Higgins, J",
+        "Phillipou, M",
+        "Boxshall, H",
+        "Owens, M",
+        "Windhager, M",
+        "Hall, M",
+        "Wilson, D",
+        "Tauru, A",
+        "Hill, B",
+        "W-Milera, N",
+        "Silvagni, J",
+        "Wilkie, C",
+        "Caminiti, A",
+        "Koning, T De",
+        "Flanders, S",
+        "Sinclair, J"
+      ],
+      "interchange": [
+        "Macrae, J",
+        "Keeler, I",
+        "Carroll, J",
+        "Wood, M",
+        "Garcia, H"
+      ],
+      "emergencies": [
+        "Stocker, L",
+        "Dodson, A",
+        "Banfield, C"
+      ],
+      "total_named": 26
+    },
+    {
+      "team": "Gold Coast",
+      "selected": [
+        "Andrew, M",
+        "Uwland, B",
+        "Collins, S",
+        "Noble, J",
+        "Rioli, D",
+        "Jeffrey, J",
+        "Weller, L",
+        "Powell, W",
+        "Clohesy, S",
+        "Miller, T",
+        "Humphrey, B",
+        "Graham, W",
+        "Read, E",
+        "King, B",
+        "Lombard, L",
+        "Witts, J",
+        "Anderson, N",
+        "Petracca, C"
+      ],
+      "interchange": [
+        "Davies, A",
+        "Long, B",
+        "Uwland, Z",
+        "Adams, O",
+        "Farrar, J"
+      ],
+      "emergencies": [
+        "Walter, J",
+        "Moyle, N",
+        "Graham, C"
+      ],
+      "total_named": 26
+    },
+    {
+      "team": "West Coast",
+      "selected": [
+        "Reid, A",
+        "Waterman, J",
+        "Cripps, J",
+        "Graham, J",
+        "Shanahan, J",
+        "Duursma, W",
+        "Davis, H",
+        "Yeo, E",
+        "Robertson, D",
+        "Duggan, L",
+        "Hough, B",
+        "Lindsay, J",
+        "Ginbey, R",
+        "Young, T",
+        "Allan, B",
+        "Flynn, M",
+        "Reid, H",
+        "McCarthy, T"
+      ],
+      "interchange": [
+        "D-Tytler, C",
+        "Maric, R",
+        "Cole, T",
+        "Newton, J",
+        "Murdock, M"
+      ],
+      "emergencies": [
+        "Kelly, T",
+        "Bazzo, R",
+        "Macrae, F"
+      ],
+      "total_named": 26
+    }
+  ]
+}

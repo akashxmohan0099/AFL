@@ -11,3 +11,7 @@ web/node_modules/
 node_modules/
 logs/
 scraper.log
+.claude/
+data/embeddings/
+data/sequence/
+*.jsonl

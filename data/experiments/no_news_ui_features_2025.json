@@ -1,0 +1,257 @@
+{
+  "label": "no_news_ui_features_2025",
+  "season": 2025,
+  "run_id": "backtest_2025_20260311T071351441581Z",
+  "n_predictions": 9931,
+  "n_rounds": 28,
+  "thresholds": {
+    "1plus_goals": {
+      "n": 9931,
+      "base_rate": 0.3305,
+      "brier_score": 0.1604,
+      "bss": 0.275,
+      "log_loss": 0.4816,
+      "accuracy": 0.7647,
+      "hit_rate_p60": 0.7186,
+      "n_confident_p60": 2001,
+      "hit_rate_p70": 0.7774,
+      "n_confident_p70": 1294,
+      "hit_rate_p80": 0.8295,
+      "n_confident_p80": 569,
+      "calibration_ece": 0.0116,
+      "calibration_curve": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "predicted_mean": 0.0417,
+          "observed_mean": 0.0406,
+          "count": 2265
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "predicted_mean": 0.1515,
+          "observed_mean": 0.1588,
+          "count": 1423
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "predicted_mean": 0.2494,
+          "observed_mean": 0.2624,
+          "count": 1707
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "predicted_mean": 0.3457,
+          "observed_mean": 0.3355,
+          "count": 1097
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "predicted_mean": 0.4475,
+          "observed_mean": 0.4439,
+          "count": 784
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "predicted_mean": 0.5494,
+          "observed_mean": 0.5535,
+          "count": 654
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "predicted_mean": 0.6533,
+          "observed_mean": 0.611,
+          "count": 707
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "predicted_mean": 0.7486,
+          "observed_mean": 0.7366,
+          "count": 725
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "predicted_mean": 0.842,
+          "observed_mean": 0.7923,
+          "count": 443
+        },
+        {
+          "bin_lower": 0.9,
+          "bin_upper": 1.0,
+          "predicted_mean": 0.9344,
+          "observed_mean": 0.9603,
+          "count": 126
+        }
+      ],
+      "hit_rate_p50": 0.678,
+      "n_confident_p50": 2655
+    },
+    "2plus_goals": {
+      "n": 9931,
+      "base_rate": 0.125,
+      "brier_score": 0.0849,
+      "bss": 0.2232,
+      "log_loss": 0.2816,
+      "accuracy": 0.8844,
+      "hit_rate_p60": 0.6649,
+      "n_confident_p60": 185,
+      "hit_rate_p70": 0.6857,
+      "n_confident_p70": 70,
+      "hit_rate_p80": 0.8462,
+      "n_confident_p80": 13,
+      "calibration_ece": 0.0307,
+      "calibration_curve": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "predicted_mean": 0.0437,
+          "observed_mean": 0.0184,
+          "count": 5176
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "predicted_mean": 0.1395,
+          "observed_mean": 0.0998,
+          "count": 2025
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "predicted_mean": 0.2462,
+          "observed_mean": 0.2178,
+          "count": 946
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "predicted_mean": 0.3472,
+          "observed_mean": 0.2818,
+          "count": 802
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "predicted_mean": 0.4445,
+          "observed_mean": 0.4512,
+          "count": 523
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "predicted_mean": 0.5427,
+          "observed_mean": 0.5584,
+          "count": 274
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "predicted_mean": 0.6423,
+          "observed_mean": 0.6522,
+          "count": 115
+        },
+        {
+          "bin_lower": 0.7,
+          "bin_upper": 0.8,
+          "predicted_mean": 0.7405,
+          "observed_mean": 0.6491,
+          "count": 57
+        },
+        {
+          "bin_lower": 0.8,
+          "bin_upper": 0.9,
+          "predicted_mean": 0.8329,
+          "observed_mean": 0.8182,
+          "count": 11
+        }
+      ],
+      "hit_rate_p50": 0.6013,
+      "n_confident_p50": 459
+    },
+    "3plus_goals": {
+      "n": 9931,
+      "base_rate": 0.0501,
+      "brier_score": 0.0403,
+      "bss": 0.1545,
+      "log_loss": 0.1496,
+      "accuracy": 0.9495,
+      "hit_rate_p60": 0.5556,
+      "n_confident_p60": 27,
+      "hit_rate_p70": 0.7143,
+      "n_confident_p70": 7,
+      "hit_rate_p80": 1.0,
+      "n_confident_p80": 4,
+      "calibration_ece": 0.0239,
+      "calibration_curve": [
+        {
+          "bin_lower": 0.0,
+          "bin_upper": 0.1,
+          "predicted_mean": 0.0297,
+          "observed_mean": 0.0103,
+          "count": 7607
+        },
+        {
+          "bin_lower": 0.1,
+          "bin_upper": 0.2,
+          "predicted_mean": 0.1444,
+          "observed_mean": 0.0988,
+          "count": 1306
+        },
+        {
+          "bin_lower": 0.2,
+          "bin_upper": 0.3,
+          "predicted_mean": 0.2416,
+          "observed_mean": 0.2158,
+          "count": 621
+        },
+        {
+          "bin_lower": 0.3,
+          "bin_upper": 0.4,
+          "predicted_mean": 0.3419,
+          "observed_mean": 0.3625,
+          "count": 251
+        },
+        {
+          "bin_lower": 0.4,
+          "bin_upper": 0.5,
+          "predicted_mean": 0.4484,
+          "observed_mean": 0.4359,
+          "count": 78
+        },
+        {
+          "bin_lower": 0.5,
+          "bin_upper": 0.6,
+          "predicted_mean": 0.5406,
+          "observed_mean": 0.4146,
+          "count": 41
+        },
+        {
+          "bin_lower": 0.6,
+          "bin_upper": 0.7,
+          "predicted_mean": 0.6463,
+          "observed_mean": 0.5,
+          "count": 20
+        }
+      ],
+      "hit_rate_p50": 0.4706,
+      "n_confident_p50": 68
+    }
+  },
+  "scorer_auc": {
+    "overall": 0.8153
+  },
+  "mae": {
+    "goals": 0.5139,
+    "baseline_goals": 0.5419,
+    "improvement_pct": 5.2
+  },
+  "calibration_ece": 0.0116
+}

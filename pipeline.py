@@ -83,6 +83,221 @@ def _load_rosters(year):
     return rosters
 
 
+def _load_team_lists(year, round_num, player_names_by_team):
+    """Load scraped team selections for a given round.
+
+    Reads the JSON produced by news.scrape_team_selections() and resolves
+    abbreviated names (e.g. "Wicks, S") to full names (e.g. "Wicks, Sam")
+    using the known player names from player_games.parquet.
+
+    Args:
+        year: Season year
+        round_num: Round number
+        player_names_by_team: dict of {team: [full_name, ...]} from player_games
+
+    Returns:
+        dict of {team: [player_full_name, ...]} for the playing squad
+        (selected + interchange, excluding emergencies), or None if not available.
+    """
+    import json
+
+    team_list_path = config.NEWS_DIR / "team_lists" / f"round_{round_num}_{year}.json"
+    if not team_list_path.exists():
+        return None
+
+    with open(team_list_path) as f:
+        data = json.load(f)
+
+    teams = data.get("teams", [])
+    if not teams:
+        return None
+
+    # Build a cross-team index for fallback matching (traded players)
+    all_players = []
+    for names in player_names_by_team.values():
+        all_players.extend(names)
+    all_players = list(set(all_players))
+
+    result = {}
+    total_matched = 0
+    total_players = 0
+
+    for entry in teams:
+        team = entry.get("team", "")
+        # Map common alternative names
+        if team == "Kangaroos":
+            team = "North Melbourne"
+        # Playing squad = selected + interchange (NOT emergencies), deduplicated
+        squad_abbrev_raw = entry.get("selected", []) + entry.get("interchange", [])
+        seen = set()
+        squad_abbrev = []
+        for p in squad_abbrev_raw:
+            if p not in seen:
+                seen.add(p)
+                squad_abbrev.append(p)
+        if not squad_abbrev:
+            continue
+
+        # Build lookup from abbreviated -> full name using known players for this team
+        known = player_names_by_team.get(team, [])
+        matched = _match_abbreviated_names(squad_abbrev, known, all_players_fallback=all_players)
+
+        result[team] = matched
+        total_matched += len(matched)
+        total_players += len(squad_abbrev)
+
+    if result:
+        print(f"  Loaded team lists (R{round_num}): {total_matched}/{total_players} players matched across {len(result)} teams")
+    return result if result else None
+
+
+def _match_abbreviated_names(abbrev_names, full_names, all_players_fallback=None):
+    """Match abbreviated names like 'Wicks, S' to full names like 'Wicks, Sam'.
+
+    Handles several FootyWire name format quirks:
+      - Abbreviated first names: "Wicks, S" → "Wicks, Sam"
+      - Hyphenated surname abbreviations: "D-Uniacke, L" → "Davies-Uniacke, Luke"
+      - Multi-word surname prefixes: "Chee, C Ah" → "Ah Chee, Callum"
+      - Traded players: falls back to cross-team lookup
+
+    Args:
+        abbrev_names: list of "Last, F" or "Last, First" strings from team lists
+        full_names: list of "Last, First" strings from player_games.parquet (team-specific)
+        all_players_fallback: list of all player names across all teams (for traded players)
+
+    Returns:
+        list of matched full names (preserving order of abbrev_names)
+    """
+    import re
+
+    def _build_index(names):
+        """Build (last_lower, first_char_lower) -> [full_name, ...] index."""
+        idx = {}
+        for fn in names:
+            if "," not in fn:
+                continue
+            last, first = fn.split(",", 1)
+            last = last.strip().lower()
+            first = first.strip()
+            first_char = first[0].lower() if first else ""
+            key = (last, first_char)
+            if key not in idx:
+                idx[key] = []
+            idx[key].append(fn)
+        return idx
+
+    def _build_hyphen_index(names):
+        """Build index for matching abbreviated hyphenated surnames.
+
+        E.g. "D-Uniacke" should match "Davies-Uniacke".
+        Key: (first_char_of_first_part, second_part_lower, first_char_of_first_name)
+        """
+        idx = {}
+        for fn in names:
+            if "," not in fn:
+                continue
+            last, first = fn.split(",", 1)
+            last = last.strip()
+            first = first.strip()
+            first_char = first[0].lower() if first else ""
+            if "-" in last:
+                parts = last.split("-", 1)
+                abbr_char = parts[0][0].lower()
+                suffix = parts[1].lower()
+                key = (abbr_char, suffix, first_char)
+                if key not in idx:
+                    idx[key] = []
+                idx[key].append(fn)
+        return idx
+
+    def _normalize_surname(name):
+        """Normalize multi-word surname prefixes.
+
+        'Achkar, H El' → 'El Achkar, H', 'Chee, C Ah' → 'Ah Chee, C'
+        """
+        if "," not in name:
+            return name
+        last, first = name.split(",", 1)
+        last = last.strip()
+        first = first.strip()
+        # Check if first name ends with a surname prefix (e.g. "H El", "C Ah")
+        prefix_match = re.match(
+            r"^(.+?)\s+(El|Ah|De|Di|Le|La|Van|Von|Mac|Mc|O')$",
+            first, re.IGNORECASE,
+        )
+        if prefix_match:
+            actual_first = prefix_match.group(1)
+            prefix = prefix_match.group(2)
+            return f"{prefix} {last}, {actual_first}"
+        return name
+
+    index = _build_index(full_names)
+    fallback_index = _build_index(all_players_fallback) if all_players_fallback else {}
+    hyphen_index = _build_hyphen_index(full_names)
+    fallback_hyphen_index = _build_hyphen_index(all_players_fallback) if all_players_fallback else {}
+
+    def _lookup(last, first_char, indexes, hyphen_indexes):
+        """Try all matching strategies in order."""
+        key = (last, first_char)
+        for idx in indexes:
+            cands = idx.get(key, [])
+            if cands:
+                return cands
+
+        # Hyphenated abbreviation: "d-uniacke" → match "davies-uniacke"
+        if "-" in last:
+            parts = last.split("-", 1)
+            abbr_char = parts[0].lower()
+            suffix = parts[1].lower()
+            if len(abbr_char) == 1:
+                hkey = (abbr_char, suffix, first_char)
+                for hidx in hyphen_indexes:
+                    cands = hidx.get(hkey, [])
+                    if cands:
+                        return cands
+
+        return []
+
+    matched = []
+    for abbr in abbrev_names:
+        if "," not in abbr:
+            parts = abbr.rsplit(" ", 1)
+            if len(parts) == 2:
+                abbr = f"{parts[1]}, {parts[0]}"
+            else:
+                continue
+
+        # Normalize multi-word surnames (e.g. "Chee, C Ah" → "Ah Chee, C")
+        abbr = _normalize_surname(abbr)
+
+        last, first = abbr.split(",", 1)
+        last = last.strip().lower()
+        first = first.strip()
+        first_char = first[0].lower() if first else ""
+
+        # Try team-specific first, then cross-team fallback
+        candidates = _lookup(
+            last, first_char,
+            [index, fallback_index],
+            [hyphen_index, fallback_hyphen_index],
+        )
+
+        if len(candidates) == 1:
+            matched.append(candidates[0])
+        elif len(candidates) > 1:
+            # Multiple matches — try full first-name prefix match
+            best = None
+            for c in candidates:
+                c_first = c.split(",", 1)[1].strip()
+                if c_first.lower().startswith(first.lower()):
+                    best = c
+                    break
+            matched.append(best if best else candidates[0])
+        # else: no match — true rookie not yet in player_games
+
+    return matched
+
+
 def _new_run_id(prefix=None):
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     if prefix:
@@ -348,7 +563,7 @@ def cmd_daily(args):
     print(f"{'='*70}")
 
     # ── Step 1: Scrape new match results ──
-    print("\n[1/5] Scraping new match results from FootyWire...")
+    print("\n[1/7] Scraping new match results from FootyWire...")
     result = scrape_season(year, incremental=True)
     if result is None:
         print("  No new data scraped.")
@@ -356,7 +571,7 @@ def cmd_daily(args):
         print(f"  Saved to {result}")
 
     # ── Step 2: Rebuild clean data & features ──
-    print("\n[2/5] Rebuilding clean data...")
+    print("\n[2/7] Rebuilding clean data...")
     cleaned = build_player_games(save=True)
     print(f"  Cleaned: {cleaned.shape[0]:,} rows")
 
@@ -364,7 +579,7 @@ def cmd_daily(args):
     if features_path.exists():
         features_path.unlink()
 
-    print("\n[3/5] Rebuilding features...")
+    print("\n[3/7] Rebuilding features...")
     feature_df = build_features()
     print(f"  Features: {feature_df.shape[0]:,} rows, {feature_df.shape[1]} columns")
 
@@ -426,9 +641,9 @@ def cmd_daily(args):
     new_rounds = [r for r in completed_rounds if int(r) not in already_learned]
 
     if not new_rounds:
-        print(f"\n[4/5] No new completed rounds to learn from.")
+        print(f"\n[4/7] No new completed rounds to learn from.")
     else:
-        print(f"\n[4/5] Learning from {len(new_rounds)} new round(s): {[int(r) for r in new_rounds]}")
+        print(f"\n[4/7] Learning from {len(new_rounds)} new round(s): {[int(r) for r in new_rounds]}")
 
         # Load team-match data for game winner model
         tm_path = config.BASE_STORE_DIR / "team_matches.parquet"
@@ -672,7 +887,7 @@ def cmd_daily(args):
                 break  # Stop after the first fully-unplayed round
 
     if rounds_to_predict:
-        print(f"\n[5/5] Predicting round(s) with unplayed games: {rounds_to_predict}...")
+        print(f"\n[5/7] Predicting round(s) with unplayed games: {rounds_to_predict}...")
         class PredArgs:
             pass
         for r_pred in rounds_to_predict:
@@ -686,7 +901,128 @@ def cmd_daily(args):
                 store.save_predictions(year, r_pred, preds)
                 print(f"  Saved Round {r_pred} predictions to sequential store ({live_run_id})")
     else:
-        print(f"\n[5/5] No upcoming rounds to predict (all fixtures played or no fixture files).")
+        print(f"\n[5/7] No upcoming rounds to predict (all fixtures played or no fixture files).")
+
+    # ── Step 6: Game winner predictions for upcoming rounds ──
+    if rounds_to_predict:
+        print(f"\n[6/7] Generating game winner predictions for upcoming rounds...")
+        tm_path = config.BASE_STORE_DIR / "team_matches.parquet"
+        if tm_path.exists():
+            team_match_df = pd.read_parquet(tm_path)
+            team_match_df["date"] = pd.to_datetime(team_match_df["date"])
+
+            # Train game winner model on all available data
+            winner_model = AFLGameWinnerModel()
+            try:
+                # Train player models for winner features
+                all_train = feature_df[
+                    (feature_df["year"] < year)
+                    | ((feature_df["year"] == year)
+                       & (feature_df["round_number"] < min(rounds_to_predict)))
+                ].copy()
+                all_train = add_dynamic_sample_weights(all_train, year, min(rounds_to_predict))
+
+                scoring_model = AFLScoringModel()
+                scoring_model.train_backtest(all_train, feature_cols)
+                disposal_model = AFLDisposalModel(distribution=config.DISPOSAL_DISTRIBUTION)
+                disposal_model.train_backtest(all_train, feature_cols)
+                marks_model = AFLMarksModel(distribution=config.MARKS_DISTRIBUTION)
+                marks_model.train_backtest(all_train, feature_cols)
+
+                player_preds_for_gw = _build_player_predictions_for_winner_features(
+                    all_train, feature_cols,
+                    scoring_model=scoring_model,
+                    disposal_model=disposal_model,
+                    marks_model=marks_model,
+                )
+
+                tm_train = team_match_df[
+                    (team_match_df["year"] < year)
+                    | ((team_match_df["year"] == year)
+                       & (team_match_df["round_number"] < min(rounds_to_predict)))
+                ].copy()
+
+                winner_model.train_backtest(
+                    tm_train,
+                    player_predictions_df=player_preds_for_gw if not player_preds_for_gw.empty else None,
+                )
+
+                for r_pred in rounds_to_predict:
+                    fix_path = config.FIXTURES_DIR / f"round_{r_pred}_{year}.csv"
+                    if not fix_path.exists():
+                        continue
+                    fix_df = pd.read_csv(fix_path)
+                    home_rows = fix_df[fix_df["is_home"] == 1]
+
+                    # Build synthetic team_match rows from fixtures
+                    synthetic_rows = []
+                    for _, row in fix_df.iterrows():
+                        # Generate a synthetic match_id from fixture info
+                        date_str = str(row.get("date", "2026-01-01"))
+                        date_val = pd.to_datetime(date_str, errors="coerce")
+                        match_id = int(f"{year}{r_pred:02d}{len(synthetic_rows):02d}")
+
+                        synthetic_rows.append({
+                            "match_id": match_id,
+                            "date": date_val,
+                            "year": year,
+                            "round_number": r_pred,
+                            "venue": row.get("venue", ""),
+                            "team": row["team"],
+                            "opponent": row["opponent"],
+                            "is_home": bool(row["is_home"]),
+                            "is_finals": False,
+                            "score": np.nan,
+                            "opp_score": np.nan,
+                            "margin": np.nan,
+                            "GL": np.nan, "BH": np.nan, "DI": np.nan,
+                            "IF": np.nan, "CL": np.nan, "CP": np.nan,
+                            "TK": np.nan, "RB": np.nan, "MK": np.nan,
+                            "result": np.nan,
+                            "rest_days": np.nan,
+                            "attendance": np.nan,
+                        })
+
+                    if synthetic_rows:
+                        tm_round = pd.DataFrame(synthetic_rows)
+                        # Ensure home rows share match_id
+                        for _, hr in home_rows.iterrows():
+                            h_team = hr["team"]
+                            a_team = hr["opponent"]
+                            h_mask = (tm_round["team"] == h_team) & (tm_round["opponent"] == a_team) & (tm_round["is_home"] == True)
+                            a_mask = (tm_round["team"] == a_team) & (tm_round["opponent"] == h_team) & (tm_round["is_home"] == False)
+                            if h_mask.any() and a_mask.any():
+                                shared_id = tm_round.loc[h_mask, "match_id"].iloc[0]
+                                tm_round.loc[a_mask, "match_id"] = shared_id
+
+                        game_preds = _predict_games_for_round(
+                            winner_model, tm_train, tm_round,
+                            player_predictions_df=player_preds_for_gw if not player_preds_for_gw.empty else None,
+                            store=store,
+                        )
+                        if not game_preds.empty:
+                            store.save_game_predictions(year, r_pred, game_preds)
+                            print(f"  R{r_pred}: {len(game_preds)} game predictions saved")
+                            for _, gp in game_preds.iterrows():
+                                winner = gp.get("predicted_winner", "?")
+                                prob = gp.get("home_win_prob", 0.5)
+                                print(f"    {gp.get('home_team','?')} vs {gp.get('away_team','?')}: "
+                                      f"{winner} ({max(prob, 1-prob):.1%})")
+                        else:
+                            print(f"  R{r_pred}: No game predictions generated")
+            except Exception as e:
+                print(f"  Game winner prediction failed: {e}")
+                import traceback
+                traceback.print_exc()
+        else:
+            print(f"  No team_matches.parquet — skipping game winner predictions")
+    else:
+        print(f"\n[6/7] No upcoming rounds — skipping game winner predictions.")
+
+    # ── Step 7: Monte Carlo simulation ready ──
+    # The API runs Monte Carlo simulations on-demand per match request
+    # using the stored predictions. No pre-computation needed.
+    print(f"\n[7/7] Monte Carlo simulations ready (API runs on-demand from stored predictions)")
 
     print(f"\n{'='*70}")
     print(f"  LIVE LEARNING COMPLETE — {year}")
@@ -911,9 +1247,10 @@ def _predict_from_fixtures(model, fixtures, year, round_num, disp_model=None, ma
     Optionally: players (comma-separated player names per team)
 
     Player resolution tiers:
-      1. CSV 'players' column (per-round team sheet overrides)
-      1.5. Roster JSON (full squad from rosters_{year}.json)
-      2. Last historical match lineup (fallback)
+      0. CSV 'players' column (per-row team sheet overrides)
+      1. Scraped team lists (selected + interchange = playing 22-23)
+      2. Roster JSON (full squad from rosters_{year}.json)
+      3. Last historical match lineup (fallback)
     """
     # Use cleaned player games so build_features has required columns
     pg_path = config.BASE_STORE_DIR / "player_games.parquet"
@@ -942,6 +1279,15 @@ def _predict_from_fixtures(model, fixtures, year, round_num, disp_model=None, ma
     fixtures = _ensure_fixture_match_ids(fixtures)
     fixture_match_ids = set(fixtures["match_id"].astype(int).unique().tolist())
 
+    # Load scraped team lists (selected + interchange = actual playing squad).
+    # Build per-team player name index for abbreviated name resolution.
+    all_teams = fixtures["team"].unique().tolist()
+    player_names_by_team = {}
+    for t in all_teams:
+        names = stats_real[stats_real["team"] == t]["player"].unique().tolist()
+        player_names_by_team[t] = names
+    team_lists = _load_team_lists(year, round_num, player_names_by_team)
+
     # Build synthetic "future match" rows (one per player per fixture team),
     # then run build_features on history + synthetic rows so rolling features are non-empty.
     synthetic_rows = []
@@ -953,9 +1299,12 @@ def _predict_from_fixtures(model, fixtures, year, round_num, disp_model=None, ma
         fixture_date = pd.to_datetime(fixture.get("date"), errors="coerce")
         synthetic_match_id = int(fixture["match_id"])
 
-        # Get lineup: Tier 1 → CSV players, Tier 1.5 → roster JSON, Tier 2 → last match
+        # Get lineup: Tier 0 → CSV players, Tier 1 → scraped team list,
+        #             Tier 2 → roster JSON, Tier 3 → last match
         if "players" in fixture and pd.notna(fixture.get("players")):
             players = [p.strip() for p in str(fixture["players"]).split(",")]
+        elif team_lists and team in team_lists:
+            players = team_lists[team]
         elif rosters and team in rosters:
             players = rosters[team]
         else:

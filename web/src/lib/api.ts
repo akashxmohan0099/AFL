@@ -26,20 +26,16 @@ import type {
   IntelFeed,
   IntelSummary,
   TeamIntel,
+  RoundSimSummary,
 } from "./types";
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-const API_KEY = process.env.API_KEY || process.env.NEXT_PUBLIC_API_KEY || "";
+// When deployed on Vercel, API routes are same-origin (/api/...).
+// For local dev with external API, set NEXT_PUBLIC_API_URL.
+export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 async function fetchApi<T>(path: string): Promise<T> {
-  const headers: HeadersInit = {};
-  if (API_KEY) {
-    headers["X-API-Key"] = API_KEY;
-  }
-
   const res = await fetch(`${API_BASE}${path}`, {
     cache: "no-store",
-    headers,
   });
   if (!res.ok) {
     throw new Error(`API error: ${res.status} ${res.statusText}`);
@@ -85,8 +81,22 @@ export const getMatches = (year: number, round: number) =>
 export const getMatchDetail = (matchId: number) =>
   fetchApi<MatchDetail>(`/api/matches/detail/${matchId}`);
 
-export const getMatchSimulation = (matchId: number) =>
-  fetchApi<MatchSimulation>(`/api/matches/detail/${matchId}/simulation`);
+export const getRoundSimulations = (year: number, roundNum: number) =>
+  fetchApi<RoundSimSummary[]>(`/api/matches/simulations/${year}/${roundNum}`);
+
+export const getMatchSimulation = (
+  matchId: number,
+  opts?: { round?: number; home?: string; away?: string }
+) => {
+  const params = new URLSearchParams();
+  if (opts?.round) params.set("round", String(opts.round));
+  if (opts?.home) params.set("home", opts.home);
+  if (opts?.away) params.set("away", opts.away);
+  const qs = params.toString();
+  return fetchApi<MatchSimulation>(
+    `/api/matches/detail/${matchId}/simulation${qs ? `?${qs}` : ""}`
+  );
+};
 
 // Odds
 export const getGameOdds = (year: number, round: number) =>

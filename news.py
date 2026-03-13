@@ -199,10 +199,14 @@ def scrape_team_selections(year=None):
 
     soup = BeautifulSoup(html, "html.parser")
 
-    # Extract round info from page title/heading
+    # Extract round info from page title/heading, then fallback to body text
     title = soup.find("title")
     title_text = title.get_text(strip=True) if title else ""
     round_match = re.search(r"Round\s+(\d+)", title_text)
+    if not round_match:
+        # Fallback: search headings and body text for round number
+        page_text = soup.get_text()
+        round_match = re.search(r"Round\s+(\d+)", page_text)
     round_num = int(round_match.group(1)) if round_match else 0
 
     year_match = re.search(r"(\d{4})", title_text)
@@ -212,86 +216,89 @@ def scrape_team_selections(year=None):
 
     log.info(f"Parsing team selections for {year} Round {round_num}")
 
-    # Parse match blocks - FootyWire uses tables for team selections
-    # Each match has two teams shown side by side
+    # Parse match blocks - FootyWire uses tables for team selections.
+    # The page has two table types per match:
+    #   1. Interchange/Emergencies/Ins/Outs table (links with <b> section headers)
+    #   2. Position grid table (FB/HB/C/HF/FF/Fol positions = Selected 18)
+    # We walk all tables, tracking section via <b> labels to correctly assign players.
     teams_data = []
 
-    # Find all team name links (pattern: pp-team-name--player-name)
-    # Group players by team based on the link href pattern
-    all_links = soup.find_all("a", href=True)
+    POSITION_LABELS = {"FB", "HB", "C", "HF", "FF", "Fol", "R", "RR", "IC"}
+    SECTION_LABELS = {"Interchange", "Emergencies", "Ins", "Outs"}
 
-    # Build team -> players mapping from player page links
-    team_players = {}
-    for link in all_links:
-        href = link.get("href", "")
-        if href.startswith("pp-") or "/pp-" in href:
-            # Extract team from href: pp-team-name--player-name
-            href_clean = href.split("/")[-1] if "/" in href else href
-            if href_clean.startswith("pp-"):
+    # Collect players per team per section by walking tables in document order
+    team_sections = {}  # team_slug -> {selected: [], interchange: [], emergencies: []}
+
+    for table in soup.find_all("table"):
+        section = "pre"
+        for elem in table.descendants:
+            if not hasattr(elem, "name"):
+                continue
+            if elem.name == "b":
+                text = elem.get_text(strip=True)
+                if text in SECTION_LABELS:
+                    section = text
+                elif text in POSITION_LABELS:
+                    section = "selected"
+            elif elem.name == "a":
+                href = elem.get("href", "")
+                if not href.startswith("pp-") and "/pp-" not in href:
+                    continue
+                href_clean = href.split("/")[-1] if "/" in href else href
+                if not href_clean.startswith("pp-"):
+                    continue
                 parts = href_clean[3:].split("--")
-                if len(parts) == 2:
-                    team_slug = parts[0]
-                    player_name = link.get_text(strip=True)
-                    if player_name:
-                        if team_slug not in team_players:
-                            team_players[team_slug] = []
-                        team_players[team_slug].append(player_name)
+                if len(parts) != 2:
+                    continue
+                team_slug = parts[0]
+                player_name = elem.get_text(strip=True)
+                if not player_name:
+                    continue
 
-    # Map team slugs to canonical names
-    slug_to_canonical = {}
-    for slug in team_players:
-        # Convert slug like "sydney-swans" to "Sydney Swans"
+                if team_slug not in team_sections:
+                    team_sections[team_slug] = {
+                        "selected": [], "interchange": [], "emergencies": [],
+                    }
+
+                if section == "selected":
+                    team_sections[team_slug]["selected"].append(player_name)
+                elif section == "Interchange":
+                    team_sections[team_slug]["interchange"].append(player_name)
+                elif section == "Emergencies":
+                    team_sections[team_slug]["emergencies"].append(player_name)
+                # Skip "Ins" and "Outs" — they're change tracking, not squad membership
+
+    # Map team slugs to canonical names and build output
+    for slug, sections in team_sections.items():
         readable = slug.replace("-", " ").title()
         canonical = TEAM_MAP.get(readable)
         if not canonical:
-            # Try matching the slug directly against lowered keys
             for key, val in TEAM_MAP.items():
                 if key.lower().replace(" ", "-") == slug:
                     canonical = val
                     break
         if not canonical:
-            # Last resort: use the readable form but warn
             canonical = readable
             log.warning(f"Unknown team slug: {slug} -> {readable}")
-        slug_to_canonical[slug] = canonical
 
-    # Now parse the page structure to identify selected/interchange/emergency
-    # FootyWire puts these in sections within each match table
-    page_text = soup.get_text()
-
-    for slug, players in team_players.items():
-        canonical = slug_to_canonical.get(slug, slug)
-
-        # The typical AFL team has 22 selected + 4 interchange + 3 emergencies
-        # On the FootyWire page, the first ~18 are starters, next ~4 interchange, last ~3 emergency
-        # Without exact HTML structure, we estimate based on typical squad sizes
-        n_players = len(players)
-
-        if n_players >= 26:
-            # Full squad: 18 selected + 4-5 interchange + 3-4 emergencies
-            selected = players[:18]
-            interchange = players[18:23]
-            emergencies = players[23:]
-        elif n_players >= 22:
-            selected = players[:18]
-            interchange = players[18:22]
-            emergencies = players[22:]
-        else:
-            selected = players
-            interchange = []
-            emergencies = []
+        # Deduplicate (player links may appear as both <a> and <b> in position grid)
+        selected = list(dict.fromkeys(sections["selected"]))
+        interchange = list(dict.fromkeys(sections["interchange"]))
+        emergencies = list(dict.fromkeys(sections["emergencies"]))
 
         # Normalize all player names
         selected = [_normalize_player_name(p) for p in selected]
         interchange = [_normalize_player_name(p) for p in interchange]
         emergencies = [_normalize_player_name(p) for p in emergencies]
 
+        n_total = len(selected) + len(interchange) + len(emergencies)
+
         teams_data.append({
             "team": canonical,
             "selected": selected,
             "interchange": interchange,
             "emergencies": emergencies,
-            "total_named": n_players,
+            "total_named": n_total,
         })
 
     if not teams_data:

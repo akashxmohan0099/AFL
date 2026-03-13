@@ -9,7 +9,6 @@ import {
   getSeasonSummary,
   getSeasonMatches,
   getUpcoming,
-  getRoundAccuracy,
   getHealth,
   API_BASE,
 } from "@/lib/api";
@@ -17,22 +16,9 @@ import type {
   SeasonSummary,
   SeasonMatch,
   UpcomingRound,
-  RoundAccuracy,
   HealthStatus,
 } from "@/lib/types";
 import { TEAM_ABBREVS, TEAM_COLORS, CURRENT_YEAR, CHART_COLORS, displayVenue } from "@/lib/constants";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-  Area,
-  AreaChart,
-} from "recharts";
 import { ArrowRight, ChevronRight } from "lucide-react";
 
 function StatTicker({ label, value, color, suffix = "", tip, subtitle }: { label: string; value: string; color: string; suffix?: string; tip?: string; subtitle?: string }) {
@@ -91,7 +77,6 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<SeasonSummary | null>(null);
   const [matches, setMatches] = useState<SeasonMatch[]>([]);
   const [upcoming, setUpcoming] = useState<UpcomingRound | null>(null);
-  const [accuracy, setAccuracy] = useState<RoundAccuracy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -102,15 +87,13 @@ export default function DashboardPage() {
       getSeasonSummary(CURRENT_YEAR).catch(() => null),
       getSeasonMatches(CURRENT_YEAR).catch(() => []),
       getUpcoming(CURRENT_YEAR).catch(() => null),
-      getRoundAccuracy(CURRENT_YEAR).catch(() => []),
     ])
-      .then(([h, s, m, u, a]) => {
+      .then(([h, s, m, u]) => {
         if (!h) setError("Cannot connect to API server");
         setHealth(h);
         setSummary(s as SeasonSummary | null);
         setMatches((m as SeasonMatch[]) || []);
         setUpcoming(u as UpcomingRound | null);
-        setAccuracy((a as RoundAccuracy[]) || []);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -136,10 +119,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-20" />)}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-          <Skeleton className="h-72 lg:col-span-3" />
-          <Skeleton className="h-72 lg:col-span-2" />
-        </div>
+        <Skeleton className="h-72" />
       </div>
     );
   }
@@ -152,22 +132,6 @@ export default function DashboardPage() {
   const played = matches.filter((m) => m.correct != null);
   const correctCount = played.filter((m) => m.correct).length;
   const winRate = played.length > 0 ? (correctCount / played.length) * 100 : 0;
-
-  const chartData = accuracy.map((r) => ({
-    round: `R${r.round_number}`,
-    Goals: r.goals_mae != null ? Number(r.goals_mae.toFixed(3)) : null,
-    Disposals: r.disposals_mae != null ? Number(r.disposals_mae.toFixed(2)) : null,
-    Marks: r.marks_mae != null ? Number(r.marks_mae.toFixed(2)) : null,
-  }));
-
-  const tooltipStyle = {
-    backgroundColor: "rgba(15, 15, 25, 0.95)",
-    border: "1px solid rgba(255,255,255,0.08)",
-    borderRadius: 6,
-    fontSize: 11,
-    fontFamily: "monospace",
-    boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-  };
 
   return (
     <div className="space-y-5">
@@ -228,56 +192,9 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Main content: Chart + Results */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-        {/* Chart Panel */}
-        <Card className="lg:col-span-3 border-border/50">
-          <CardHeader className="pb-2 pt-4 px-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-sm font-medium">Prediction Error by Round</CardTitle>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Lower = more accurate predictions</p>
-              </div>
-              <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS.goals }} /> Goals</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS.disposals }} /> Disposals</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS.marks }} /> Marks</span>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pb-3 px-2">
-            {chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={260}>
-                <AreaChart data={chartData}>
-                  <defs>
-                    <linearGradient id="goalsFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={CHART_COLORS.goals} stopOpacity={0.15} />
-                      <stop offset="100%" stopColor={CHART_COLORS.goals} stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="dispFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={CHART_COLORS.disposals} stopOpacity={0.15} />
-                      <stop offset="100%" stopColor={CHART_COLORS.disposals} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis dataKey="round" tick={{ fontSize: 10, fontFamily: "monospace" }} stroke="rgba(255,255,255,0.1)" />
-                  <YAxis tick={{ fontSize: 10, fontFamily: "monospace" }} stroke="rgba(255,255,255,0.1)" />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Area type="monotone" dataKey="Goals" stroke={CHART_COLORS.goals} strokeWidth={2} fill="url(#goalsFill)" dot={{ r: 3, fill: CHART_COLORS.goals }} connectNulls />
-                  <Area type="monotone" dataKey="Disposals" stroke={CHART_COLORS.disposals} strokeWidth={2} fill="url(#dispFill)" dot={{ r: 3, fill: CHART_COLORS.disposals }} connectNulls />
-                  <Line type="monotone" dataKey="Marks" stroke={CHART_COLORS.marks} strokeWidth={2} dot={{ r: 3 }} connectNulls />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[260px] flex items-center justify-center text-sm text-muted-foreground">
-                Accuracy data will appear after completed rounds
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Recent Results */}
-        <Card className="lg:col-span-2 border-border/50">
+      {/* Recent Results */}
+      <div>
+        <Card className="border-border/50">
           <CardHeader className="pb-2 pt-4 px-4">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium">Recent Match Results</CardTitle>

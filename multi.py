@@ -533,10 +533,24 @@ def build_candidate_legs_from_predictions(
 
     if game_preds_df is not None and len(game_preds_df) > 0:
         gp = game_preds_df[game_preds_df["match_id"] == mid]
+        # Fallback: match by team names when match_ids differ (e.g. placeholder vs real)
+        if len(gp) == 0 and "home_team" in game_preds_df.columns:
+            teams = {home_team, away_team}
+            gp = game_preds_df[
+                (game_preds_df["home_team"].isin(teams))
+                & (game_preds_df["away_team"].isin(teams))
+            ]
         if len(gp) > 0:
             row = gp.iloc[0]
             predicted_margin = float(row.get("predicted_margin", 0.0))
             home_win_prob = float(row.get("home_win_prob", 0.5))
+            # Correct home/away assignment from game predictions (authoritative)
+            if "home_team" in row.index:
+                gp_home = str(row["home_team"])
+                gp_away = str(row["away_team"])
+                if gp_home != home_team and gp_home == away_team:
+                    home_team = gp_home
+                    away_team = gp_away
 
     # Estimate total from player predicted_score sums
     if "predicted_score" in df.columns:
@@ -553,10 +567,14 @@ def build_candidate_legs_from_predictions(
     }
 
     # Build match_players_df for simulate_match
+    if "is_home" in df.columns:
+        is_home_vals = df["is_home"].values
+    else:
+        is_home_vals = (df["team"] == home_team).values
     players_df = pd.DataFrame({
         "player": df["player"].values,
         "team": df["team"].values,
-        "is_home": df.get("is_home", pd.Series([True] * len(df))).values,
+        "is_home": is_home_vals,
         "lambda_goals": df.get(
             "lambda_goals", df.get("predicted_goals", pd.Series([0.5] * len(df)))
         ).values.astype(float),

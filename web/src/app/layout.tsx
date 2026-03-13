@@ -1,19 +1,20 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { Sidebar, MobileSidebar } from "@/components/layout/Sidebar";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { NewsPanelProvider, NewsToggleButton } from "@/components/layout/AppShell";
+import { LastUpdated } from "@/components/layout/LastUpdated";
 
-const ibmPlexSans = IBM_Plex_Sans({
-  variable: "--font-ibm-sans",
+const inter = Inter({
+  variable: "--font-sans",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
 });
 
-const ibmPlexMono = IBM_Plex_Mono({
-  variable: "--font-ibm-mono",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-mono",
   subsets: ["latin"],
   weight: ["400", "500", "600"],
 });
@@ -31,24 +32,26 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} antialiased`}
+        className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}
       >
-        <Script id="theme-init" strategy="beforeInteractive">{`(function(){try{var t=localStorage.getItem('afl-theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.classList.toggle('dark',t==='dark')}catch(e){}})()`}</Script>
+        <Script id="theme-init" strategy="beforeInteractive">{`(function(){try{var t=localStorage.getItem('afl-theme')||'dark';document.documentElement.classList.toggle('dark',t==='dark')}catch(e){document.documentElement.classList.add('dark')}})()`}</Script>
         <div className="flex min-h-screen">
           <Sidebar />
           <NewsPanelProvider>
-            {/* Top bar */}
-            <header className="h-11 border-b border-border/50 bg-card/50 backdrop-blur-sm flex items-center justify-between px-4 md:px-5 sticky top-0 z-40">
+            {/* Top bar — brand green header */}
+            <header className="h-11 border-b border-[oklch(0.30_0.06_170)] bg-[oklch(0.35_0.08_170)] flex items-center justify-between px-4 md:px-5 sticky top-0 z-40">
               <div className="flex items-center gap-3">
                 <MobileSidebar />
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
-                  AFL Predictions
+                <span className="text-xs font-bold text-[oklch(0.90_0.15_95)] uppercase tracking-widest">
+                  AFL Predict Pro
                 </span>
               </div>
-              <div className="flex items-center gap-4 text-[11px] text-muted-foreground font-mono">
-                <span>Season <span className="text-foreground font-semibold">2026</span></span>
+              <div className="flex items-center gap-4 text-[11px] text-white/70 font-mono">
+                <LastUpdated />
+                <span className="w-px h-3 bg-white/20" />
+                <span>Season <span className="text-white font-semibold">2026</span></span>
                 <ThemeToggle />
-                <span className="w-px h-3 bg-border" />
+                <span className="w-px h-3 bg-white/20" />
                 <NewsToggleButton />
               </div>
             </header>

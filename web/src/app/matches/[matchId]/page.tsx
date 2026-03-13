@@ -79,13 +79,17 @@ export default function MatchDetailPage() {
 
   // Lazy-load Monte Carlo simulation
   useEffect(() => {
-    if (!matchId) return;
+    if (!matchId && !homeTeamParam) return;
     setSimLoading(true);
-    getMatchSimulation(matchId)
+    getMatchSimulation(matchId || 0, {
+      round: roundNumber,
+      home: homeTeamParam,
+      away: awayTeamParam,
+    })
       .then(setSimulation)
       .catch(() => setSimulation(null))
       .finally(() => setSimLoading(false));
-  }, [matchId]);
+  }, [matchId, roundNumber, homeTeamParam, awayTeamParam]);
 
   if (loading) {
     return (
