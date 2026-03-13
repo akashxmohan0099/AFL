@@ -85,16 +85,10 @@ jobs:
       - name: Seed Supabase (incremental)
         if: ${{ github.event.inputs.full_seed != 'true' }}
         run: |
-          python supabase/seed.py --table predictions
-          python supabase/seed.py --table outcomes
-          python supabase/seed.py --table game_predictions
-          python supabase/seed.py --table matches
-          python supabase/seed.py --table player_games
-          python supabase/seed.py --table team_matches
-          python supabase/seed.py --table weather
-          python supabase/seed.py --table fixtures
-          python supabase/seed.py --table news
-          python supabase/seed.py --table mc_simulations
+          for table in matches player_games team_matches predictions outcomes game_predictions weather fixtures news mc_simulations; do
+            echo "--- Seeding $table ---"
+            python supabase/seed.py --table "$table" || echo "Warning: $table seed failed, continuing..."
+          done
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
