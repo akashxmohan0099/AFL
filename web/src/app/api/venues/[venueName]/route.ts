@@ -5,6 +5,7 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ venueName: string }> }
 ) {
+  try {
   const { venueName } = await params;
   const venue = decodeURIComponent(venueName);
 
@@ -116,4 +117,8 @@ export async function GET(
       attendance: m.attendance,
     })),
   });
+  } catch (err) {
+    console.error("route error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

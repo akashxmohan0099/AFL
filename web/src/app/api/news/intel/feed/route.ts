@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 export async function GET(req: NextRequest) {
+  try {
   const sp = req.nextUrl.searchParams;
   const signalType = sp.get("signal_type") ?? "";
   const team = sp.get("team") ?? "";
@@ -77,4 +78,8 @@ export async function GET(req: NextRequest) {
     by_team: byTeam,
     updated: row.updated_at,
   });
+  } catch (err) {
+    console.error("route error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

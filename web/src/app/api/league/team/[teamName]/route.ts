@@ -5,6 +5,7 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ teamName: string }> }
 ) {
+  try {
   const { teamName } = await params;
   const team = decodeURIComponent(teamName);
   const year = Number(req.nextUrl.searchParams.get("year") ?? new Date().getFullYear());
@@ -114,4 +115,8 @@ export async function GET(
       away: splitStats(awayGames),
     },
   });
+  } catch (err) {
+    console.error("route error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

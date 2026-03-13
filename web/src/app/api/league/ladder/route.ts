@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 export async function GET(req: NextRequest) {
+  try {
   const year = Number(req.nextUrl.searchParams.get("year") ?? new Date().getFullYear());
 
   const { data: rows } = await supabase
@@ -53,4 +54,8 @@ export async function GET(req: NextRequest) {
   ladder.forEach((t, i) => ((t as Record<string, unknown>).position = i + 1));
 
   return NextResponse.json({ year, ladder });
+  } catch (err) {
+    console.error("route error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

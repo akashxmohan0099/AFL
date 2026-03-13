@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 export async function GET() {
+  try {
   // Fetch matches with weather join
   const { data: matches } = await supabase
     .from("matches")
@@ -92,4 +93,8 @@ export async function GET() {
 
   result.sort((a, b) => b.total_games - a.total_games);
   return NextResponse.json(result);
+  } catch (err) {
+    console.error("route error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

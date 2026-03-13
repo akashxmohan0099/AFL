@@ -5,6 +5,7 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ year: string }> }
 ) {
+  try {
   const { year } = await params;
   const y = Number(year);
 
@@ -79,4 +80,8 @@ export async function GET(
     marks_mae: markCount > 0 ? +(markErrors / markCount).toFixed(2) : null,
     scorer_accuracy: scorerTotal > 0 ? +((scorerCorrect / scorerTotal) * 100).toFixed(1) : null,
   });
+  } catch (err) {
+    console.error("route error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

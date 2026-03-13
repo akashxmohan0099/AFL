@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
 export async function GET() {
+  try {
   const { data: row } = await supabase
     .from("news_intel")
     .select("data, updated_at")
@@ -73,4 +74,8 @@ export async function GET() {
     team_direction: teamDirection,
     updated: row.updated_at,
   });
+  } catch (err) {
+    console.error("route error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
