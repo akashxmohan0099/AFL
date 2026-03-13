@@ -1,9 +1,14 @@
 name: Daily Pipeline
 
+# Safety-net daily run. The game-update.yml workflow handles real-time
+# updates after each game; this ensures nothing is missed and runs
+# the full pipeline once per day regardless.
+
 on:
   schedule:
-    # Run daily at 06:00 UTC (4:00 PM AEST / 5:00 PM AEDT)
-    - cron: "0 6 * * *"
+    # Tuesdays & Wednesdays at 06:00 UTC — between rounds, no games
+    # Catches any data the game-update workflow may have missed
+    - cron: "0 6 * * 2,3"
   workflow_dispatch:
     inputs:
       year:
