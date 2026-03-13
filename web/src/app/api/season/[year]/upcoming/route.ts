@@ -11,46 +11,43 @@ export async function GET(
     const { year } = await params;
     const y = Number(year);
 
-    // Load all matches for the year to find the next unplayed round
-    const { data: matches } = await supabase
-      .from("matches")
-      .select("match_id, home_team, away_team, venue, date, round_number, home_score, away_score")
-      .eq("year", y)
-      .order("round_number", { ascending: true });
+    // Load fixtures, completed matches, game predictions, and player predictions
+    const [fixRes, matchesRes, gpRes] = await Promise.all([
+      supabase
+        .from("fixtures")
+        .select("team, opponent, venue, date, round_number")
+        .eq("year", y)
+        .eq("is_home", true)
+        .order("round_number", { ascending: true }),
+      supabase
+        .from("matches")
+        .select("home_team, away_team, round_number, home_score, away_score")
+        .eq("year", y),
+      supabase
+        .from("game_predictions")
+        .select("home_team, away_team, round_number, home_win_prob, predicted_winner")
+        .eq("year", y),
+    ]);
 
-    const allMatches = matches ?? [];
+    const fixtures = fixRes.data ?? [];
+    const matches = matchesRes.data ?? [];
+    const gamePreds = gpRes.data ?? [];
 
-    // Group by round and find the first round with unplayed matches
-    const roundMap = new Map<number, any[]>();
-    for (const m of allMatches) {
-      const arr = roundMap.get(m.round_number) ?? [];
-      arr.push(m);
-      roundMap.set(m.round_number, arr);
-    }
-
-    let upcomingRound: number | null = null;
-    for (const rn of [...roundMap.keys()].sort((a, b) => a - b)) {
-      const roundMatches = roundMap.get(rn)!;
-      const hasUnplayed = roundMatches.some(
-        (m: any) => m.home_score == null || m.away_score == null
-      );
-      if (hasUnplayed) {
-        upcomingRound = rn;
-        break;
+    // Build set of completed match keys
+    const completedKeys = new Set<string>();
+    for (const m of matches) {
+      if (m.home_score != null && m.away_score != null) {
+        completedKeys.add(`${m.home_team}|${m.away_team}|${m.round_number}`);
       }
     }
 
-    // If all rounds are played, try to find any predictions for a future round
-    if (upcomingRound == null) {
-      const { data: predRounds } = await supabase
-        .from("predictions")
-        .select("round_number")
-        .eq("year", y)
-        .order("round_number", { ascending: false })
-        .limit(1);
-
-      if (predRounds && predRounds.length > 0) {
-        upcomingRound = predRounds[0].round_number;
+    // Find the first round with unplayed fixtures
+    let upcomingRound: number | null = null;
+    for (const f of fixtures) {
+      const key = `${f.team}|${f.opponent}|${f.round_number}`;
+      if (!completedKeys.has(key)) {
+        upcomingRound = f.round_number;
+        break;
       }
     }
 
@@ -60,26 +57,39 @@ export async function GET(
         round_number: null,
         matches: [],
         predictions: [],
+        game_predictions: [],
       });
     }
 
-    // Get unplayed matches for the upcoming round
-    const upcomingMatches = (roundMap.get(upcomingRound) ?? []).filter(
-      (m: any) => m.home_score == null || m.away_score == null
-    );
+    // Get unplayed fixtures for the upcoming round
+    const roundFixtures = fixtures.filter((f: any) => {
+      if (f.round_number !== upcomingRound) return false;
+      const key = `${f.team}|${f.opponent}|${f.round_number}`;
+      return !completedKeys.has(key);
+    });
 
-    // If no match rows exist yet (future round), check predictions for fixture info
-    let fixtureMatches = upcomingMatches.map((m: any) => ({
-      home_team: m.home_team,
-      away_team: m.away_team,
-      venue: m.venue ?? null,
-      date: m.date ? String(m.date).slice(0, 10) : null,
-    }));
+    // Game predictions lookup
+    const gpLookup = new Map<string, any>();
+    for (const gp of gamePreds) {
+      gpLookup.set(`${gp.home_team}_${gp.away_team}_${gp.round_number}`, gp);
+    }
 
-    // Load predictions for the upcoming round
+    const fixtureMatches = roundFixtures.map((f: any) => {
+      const gp = gpLookup.get(`${f.team}_${f.opponent}_${f.round_number}`);
+      return {
+        home_team: f.team,
+        away_team: f.opponent,
+        venue: f.venue ?? null,
+        date: f.date ?? null,
+        home_win_prob: gp?.home_win_prob != null ? +Number(gp.home_win_prob).toFixed(4) : null,
+        predicted_winner: gp?.predicted_winner ?? null,
+      };
+    });
+
+    // Load player predictions for the upcoming round
     const { data: preds } = await supabase
       .from("predictions")
-      .select("player, team, opponent, predicted_goals, predicted_disposals, predicted_marks")
+      .select("player, team, opponent, predicted_goals, predicted_disposals, predicted_marks, p_scorer")
       .eq("year", y)
       .eq("round_number", upcomingRound);
 
@@ -90,24 +100,8 @@ export async function GET(
       predicted_goals: p.predicted_goals ?? null,
       predicted_disposals: p.predicted_disposals ?? null,
       predicted_marks: p.predicted_marks ?? null,
+      p_scorer: p.p_scorer ?? null,
     }));
-
-    // If no match rows but we have predictions, derive fixtures from predictions
-    if (fixtureMatches.length === 0 && predictions.length > 0) {
-      const teamPairs = new Set<string>();
-      for (const p of predictions) {
-        const pair = [p.team, p.opponent].sort().join("|");
-        if (!teamPairs.has(pair)) {
-          teamPairs.add(pair);
-          fixtureMatches.push({
-            home_team: p.team,
-            away_team: p.opponent,
-            venue: null,
-            date: null,
-          });
-        }
-      }
-    }
 
     return NextResponse.json({
       year: y,

@@ -223,30 +223,73 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="px-4 pb-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {upcoming.matches.map((m, i) => {
                 const homeAbbr = TEAM_ABBREVS[m.home_team] || m.home_team;
                 const awayAbbr = TEAM_ABBREVS[m.away_team] || m.away_team;
+                const homeColor = TEAM_COLORS[m.home_team]?.primary || "#555";
+                const homeProb = (m as unknown as { home_win_prob?: number | null }).home_win_prob ?? null;
                 const homePreds = upcoming.predictions.filter((p) => p.team === m.home_team);
                 const awayPreds = upcoming.predictions.filter((p) => p.team === m.away_team);
                 const homeGoals = homePreds.reduce((s, p) => s + (p.predicted_goals ?? 0), 0);
                 const awayGoals = awayPreds.reduce((s, p) => s + (p.predicted_goals ?? 0), 0);
-                const favored = homeGoals > awayGoals ? "home" : "away";
+                const homeScore = Math.round(homeGoals * 6 + homeGoals * 0.7);
+                const awayScore = Math.round(awayGoals * 6 + awayGoals * 0.7);
+                const favored = homeProb != null ? (homeProb > 0.5 ? "home" : "away") : (homeGoals > awayGoals ? "home" : "away");
+
+                // Top goal scorers
+                const allPreds = [...homePreds, ...awayPreds]
+                  .filter((p) => p.p_scorer != null)
+                  .sort((a, b) => (b.p_scorer ?? 0) - (a.p_scorer ?? 0))
+                  .slice(0, 3);
 
                 return (
-                  <div key={i} className="flex items-center justify-between px-3 py-2.5 rounded-lg border border-border/50 bg-card/30 hover:bg-muted/20 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: TEAM_COLORS[m.home_team]?.primary || "#555" }} />
-                        <span className={`text-xs font-mono font-semibold ${favored === "home" ? "text-primary" : ""}`}>{homeAbbr}</span>
+                  <div key={i} className="px-3 py-3 rounded-lg border border-border/50 bg-card/30 hover:bg-muted/20 transition-colors space-y-2">
+                    {/* Teams + win prob */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: homeColor }} />
+                          <span className={`text-xs font-mono font-semibold ${favored === "home" ? "text-primary" : ""}`}>{homeAbbr}</span>
+                        </div>
+                        {homeProb != null && (
+                          <span className="text-xs font-mono tabular-nums font-semibold text-muted-foreground">{Math.round(homeProb * 100)}%</span>
+                        )}
                       </div>
-                      <span className="text-[10px] text-muted-foreground/50">v</span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: TEAM_COLORS[m.away_team]?.primary || "#555" }} />
-                        <span className={`text-xs font-mono font-semibold ${favored === "away" ? "text-primary" : ""}`}>{awayAbbr}</span>
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: TEAM_COLORS[m.away_team]?.primary || "#555" }} />
+                          <span className={`text-xs font-mono font-semibold ${favored === "away" ? "text-primary" : ""}`}>{awayAbbr}</span>
+                        </div>
+                        {homeProb != null && (
+                          <span className="text-xs font-mono tabular-nums font-semibold text-muted-foreground">{Math.round((1 - homeProb) * 100)}%</span>
+                        )}
                       </div>
                     </div>
-                    <span className="text-[10px] text-muted-foreground truncate ml-2">{displayVenue(m.venue)}</span>
+                    {/* Win prob bar */}
+                    {homeProb != null && (
+                      <div className="w-full h-1.5 rounded-full bg-muted/50 overflow-hidden flex">
+                        <div className="h-full rounded-l-full" style={{ width: `${Math.round(homeProb * 100)}%`, backgroundColor: homeColor }} />
+                      </div>
+                    )}
+                    {/* Predicted scores */}
+                    {(homeGoals > 0 || awayGoals > 0) && (
+                      <div className="flex justify-between text-[11px] font-mono text-muted-foreground/70">
+                        <span>Est. {homeScore}-{awayScore}</span>
+                        <span>{displayVenue(m.venue)}</span>
+                      </div>
+                    )}
+                    {/* Top scorers */}
+                    {allPreds.length > 0 && (
+                      <div className="flex gap-1 flex-wrap">
+                        {allPreds.map((p) => (
+                          <span key={p.player} className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted/40 text-foreground/70">
+                            <span className="w-1.5 h-1.5 rounded-full inline-block mr-0.5" style={{ backgroundColor: TEAM_COLORS[p.team]?.primary || "#555" }} />
+                            {p.player.split(",")[0]} {Math.round((p.p_scorer ?? 0) * 100)}%
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}

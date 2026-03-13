@@ -511,13 +511,8 @@ export default function MatchesPage() {
     }
   }
 
-  // Sort: rounds with upcoming first (ascending), then completed-only (descending)
-  const sections = Object.values(sectionMap).sort((a, b) => {
-    if (a.hasUpcoming && !b.hasUpcoming) return -1;
-    if (!a.hasUpcoming && b.hasUpcoming) return 1;
-    if (a.hasUpcoming && b.hasUpcoming) return a.roundNum - b.roundNum;
-    return b.roundNum - a.roundNum;
-  });
+  // Sort: ascending round order (Round 0, 1, 2, ...)
+  const sections = Object.values(sectionMap).sort((a, b) => a.roundNum - b.roundNum);
 
   return (
     <div className="space-y-6">
