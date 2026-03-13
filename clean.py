@@ -19,7 +19,8 @@ from pathlib import Path
 
 import config
 
-warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
+if hasattr(pd.errors, "SettingWithCopyWarning"):
+    warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
 
 # ---------------------------------------------------------------------------
 # Stat columns — the 22 raw stats from AFLTables + pct_played
