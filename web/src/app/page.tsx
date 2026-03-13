@@ -167,8 +167,8 @@ export default function DashboardPage() {
               <CardTitle className="text-sm font-medium">
                 Upcoming &mdash; Round {upcoming.round_number}
               </CardTitle>
-              <Link href="/predictions" className="text-[10px] text-muted-foreground hover:text-primary font-mono transition-colors flex items-center gap-0.5">
-                PREDICTIONS <ArrowRight className="w-2.5 h-2.5" />
+              <Link href="/matches" className="text-[10px] text-muted-foreground hover:text-primary font-mono transition-colors flex items-center gap-0.5">
+                ALL MATCHES <ArrowRight className="w-2.5 h-2.5" />
               </Link>
             </div>
           </CardHeader>
