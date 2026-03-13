@@ -209,6 +209,7 @@ export interface HealthStatus {
   matches: number;
   experiments: number;
   latest_data?: string;
+  latest_data_full?: string;
 }
 
 // --- Season/match endpoints ---

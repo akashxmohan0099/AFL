@@ -31,6 +31,7 @@ export async function GET() {
         .single();
       if (data?.date) {
         result.latest_data = String(data.date).slice(0, 10);
+        result.latest_data_full = String(data.date);
       }
     }
 
