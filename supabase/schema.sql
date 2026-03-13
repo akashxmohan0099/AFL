@@ -406,29 +406,35 @@ CREATE TABLE news_team_lists (
 );
 
 -- ============================================================
--- 15. SIMULATIONS — pre-computed Monte Carlo results
+-- 15. MC_SIMULATIONS — per-player Monte Carlo simulation results
 -- ============================================================
-CREATE TABLE simulations (
-  match_id      BIGINT NOT NULL,
-  year          SMALLINT NOT NULL,
-  round_number  SMALLINT NOT NULL,
-  home_team     TEXT NOT NULL,
-  away_team     TEXT NOT NULL,
-  n_sims        INTEGER NOT NULL,
-  -- Match-level outcomes
-  home_win_pct  REAL,
-  away_win_pct  REAL,
-  draw_pct      REAL,
-  avg_home_score REAL,
-  avg_away_score REAL,
-  avg_total     REAL,
-  avg_margin    REAL,
-  -- Full result stored as JSONB for flexibility
-  match_outcomes JSONB, -- score distributions, percentiles, brackets
-  players       JSONB, -- per-player simulation distributions
-  suggested_multis JSONB, -- correlated multi suggestions
+CREATE TABLE mc_simulations (
+  year              SMALLINT NOT NULL,
+  round_number      SMALLINT NOT NULL,
+  match_id          BIGINT,
+  player            TEXT NOT NULL,
+  team              TEXT NOT NULL,
+  opponent          TEXT,
+  predicted_goals   REAL,
+  predicted_disposals REAL,
+  mc_p_1plus_goals  REAL,
+  mc_p_2plus_goals  REAL,
+  mc_p_3plus_goals  REAL,
+  mc_p_4plus_goals  REAL,
+  mc_p_10plus_disp  REAL,
+  mc_p_15plus_disp  REAL,
+  mc_p_20plus_disp  REAL,
+  mc_p_25plus_disp  REAL,
+  mc_p_30plus_disp  REAL,
+  direct_p_1plus_goals  REAL,
+  direct_p_2plus_goals  REAL,
+  direct_p_3plus_goals  REAL,
+  direct_p_20plus_disp  REAL,
+  direct_p_25plus_disp  REAL,
+  direct_p_30plus_disp  REAL,
 
-  PRIMARY KEY (match_id)
+  PRIMARY KEY (year, round_number, player, team)
 );
 
-CREATE INDEX idx_sim_year_round ON simulations (year, round_number);
+CREATE INDEX idx_mc_year_round ON mc_simulations (year, round_number);
+CREATE INDEX idx_mc_team ON mc_simulations (team);

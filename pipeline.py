@@ -1019,10 +1019,87 @@ def cmd_daily(args):
     else:
         print(f"\n[6/7] No upcoming rounds — skipping game winner predictions.")
 
-    # ── Step 7: Monte Carlo simulation ready ──
-    # The API runs Monte Carlo simulations on-demand per match request
-    # using the stored predictions. No pre-computation needed.
-    print(f"\n[7/7] Monte Carlo simulations ready (API runs on-demand from stored predictions)")
+    # ── Step 7: Run Monte Carlo simulations for upcoming rounds ──
+    if rounds_to_predict:
+        print(f"\n[7/7] Running Monte Carlo simulations for upcoming rounds...")
+        from model import MonteCarloSimulator
+        try:
+            # Models should already be trained from step 6
+            # Re-use them or re-train if needed
+            if 'scoring_model' not in dir() or scoring_model is None:
+                all_train = feature_df[
+                    (feature_df["year"] < year)
+                    | ((feature_df["year"] == year)
+                       & (feature_df["round_number"] < min(rounds_to_predict)))
+                ].copy()
+                all_train = add_dynamic_sample_weights(all_train, year, min(rounds_to_predict))
+                scoring_model = AFLScoringModel()
+                scoring_model.train_backtest(all_train, feature_cols)
+                disposal_model = AFLDisposalModel(distribution=config.DISPOSAL_DISTRIBUTION)
+                disposal_model.train_backtest(all_train, feature_cols)
+
+            # Load team match data for correlation estimation
+            tm_path = config.BASE_STORE_DIR / "team_matches.parquet"
+            team_match_df_mc = None
+            if tm_path.exists():
+                team_match_df_mc = pd.read_parquet(tm_path)
+                team_match_df_mc["date"] = pd.to_datetime(team_match_df_mc["date"])
+
+            simulator = MonteCarloSimulator(
+                scoring_model=scoring_model,
+                disposal_model=disposal_model,
+            )
+            all_train_mc = feature_df[
+                (feature_df["year"] < year)
+                | ((feature_df["year"] == year)
+                   & (feature_df["round_number"] < min(rounds_to_predict)))
+            ].copy()
+            simulator.estimate_correlation_factors(all_train_mc, team_match_df_mc)
+
+            sim_out_dir = Path(config.SEQUENTIAL_DIR) / "simulations"
+            sim_out_dir.mkdir(parents=True, exist_ok=True)
+
+            for r_pred in rounds_to_predict:
+                # Load saved predictions for this round
+                preds_df = store.load_predictions(year, r_pred)
+                if preds_df is None or preds_df.empty:
+                    print(f"  R{r_pred}: No predictions found, skipping MC")
+                    continue
+
+                # Load game predictions for this round
+                gp_df = store.load_game_predictions(year, r_pred)
+
+                # Propagate is_home if not present
+                if "is_home" not in preds_df.columns:
+                    # Infer from game predictions home_team
+                    if gp_df is not None and not gp_df.empty:
+                        home_teams = set(gp_df["home_team"].values)
+                        preds_df["is_home"] = preds_df["team"].isin(home_teams)
+                    else:
+                        preds_df["is_home"] = False
+
+                mc_t0 = time.time()
+                mc_results = simulator.simulate_round(
+                    preds_df,
+                    game_preds_df=gp_df if gp_df is not None else None,
+                    n_sims=10000,
+                )
+                mc_elapsed = time.time() - mc_t0
+
+                if mc_results is not None and not mc_results.empty:
+                    out_path = sim_out_dir / f"{year}_R{r_pred:02d}_mc.parquet"
+                    mc_results.to_parquet(out_path, index=False)
+                    print(f"  R{r_pred}: MC simulation done ({len(mc_results)} players, "
+                          f"{mc_elapsed:.1f}s) → {out_path.name}")
+                else:
+                    print(f"  R{r_pred}: MC simulation returned empty")
+
+        except Exception as e:
+            print(f"  Monte Carlo simulation failed: {e}")
+            import traceback
+            traceback.print_exc()
+    else:
+        print(f"\n[7/7] No upcoming rounds — skipping Monte Carlo simulations.")
 
     print(f"\n{'='*70}")
     print(f"  LIVE LEARNING COMPLETE — {year}")
@@ -4307,8 +4384,8 @@ def cmd_simulate(args):
     # Save results
     out_dir = Path(config.SEQUENTIAL_DIR) / "simulations"
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / f"{year}_R{rnd:02d}_simulated.csv"
-    mc_results.to_csv(out_path, index=False)
+    out_path = out_dir / f"{year}_R{rnd:02d}_mc.parquet"
+    mc_results.to_parquet(out_path, index=False)
     print(f"  Saved to {out_path}")
 
     # Print comparison table

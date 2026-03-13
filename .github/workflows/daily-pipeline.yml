@@ -94,6 +94,7 @@ jobs:
           python supabase/seed.py --table weather
           python supabase/seed.py --table fixtures
           python supabase/seed.py --table news
+          python supabase/seed.py --table mc_simulations
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}

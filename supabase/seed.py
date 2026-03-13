@@ -384,6 +384,51 @@ def seed_news():
         print(f"  Team lists: {len(list(tl_dir.glob('*.json')))} files")
 
 
+def seed_simulations():
+    """Seed Monte Carlo simulation results from pipeline output."""
+    print("\n=== mc_simulations ===")
+    sim_dir = Path(config.SEQUENTIAL_DIR) / "simulations"
+    if not sim_dir.exists():
+        print("  No simulations directory found")
+        return
+
+    frames = []
+    for f in sorted(sim_dir.glob("*_mc.parquet")):
+        # Parse: 2026_R01_mc.parquet
+        parts = f.stem.split("_")
+        year = int(parts[0])
+        rnd = int(parts[1].replace("R", ""))
+        df = pd.read_parquet(f)
+        df["year"] = year
+        df["round_number"] = rnd
+        frames.append(df)
+
+    if not frames:
+        print("  No MC simulation files found")
+        return
+
+    df = pd.concat(frames, ignore_index=True)
+    df.columns = [c.lower() for c in df.columns]
+
+    # Select the columns we need for the web
+    keep_cols = [
+        "year", "round_number", "match_id", "player", "team", "opponent",
+        "predicted_goals", "predicted_disposals",
+        "mc_p_1plus_goals", "mc_p_2plus_goals", "mc_p_3plus_goals", "mc_p_4plus_goals",
+        "mc_p_10plus_disp", "mc_p_15plus_disp", "mc_p_20plus_disp",
+        "mc_p_25plus_disp", "mc_p_30plus_disp",
+        "direct_p_1plus_goals", "direct_p_2plus_goals", "direct_p_3plus_goals",
+        "direct_p_20plus_disp", "direct_p_25plus_disp", "direct_p_30plus_disp",
+    ]
+    # Only keep columns that exist
+    keep_cols = [c for c in keep_cols if c in df.columns]
+    df = df[keep_cols]
+
+    records = clean_for_json(df)
+    upsert_batch("mc_simulations", records)
+    print(f"  Done: {len(records)} rows")
+
+
 ALL_SEEDERS = {
     "matches": seed_matches,
     "player_games": seed_player_games,
@@ -399,13 +444,14 @@ ALL_SEEDERS = {
     "weather": seed_weather,
     "experiments": seed_experiments,
     "news": seed_news,
+    "mc_simulations": seed_simulations,
 }
 
 # Order matters — matches first (FK references)
 SEED_ORDER = [
     "matches", "player_games", "team_matches", "weather", "odds", "umpires",
     "coaches", "player_odds", "predictions", "outcomes", "game_predictions",
-    "fixtures", "experiments", "news",
+    "fixtures", "experiments", "news", "mc_simulations",
 ]
 
 

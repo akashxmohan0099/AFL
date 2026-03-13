@@ -15,15 +15,14 @@ export async function GET(
     const homeParam = url.searchParams.get("home");
     const awayParam = url.searchParams.get("away");
 
-    // Try to find game prediction by match_id first, then by round+teams
-    let gp: any = null;
+    // Resolve match details
     let homeTeam = homeParam;
     let awayTeam = awayParam;
     let roundNumber = roundParam ? Number(roundParam) : null;
     let year: number | null = null;
+    let matchIdResolved = id > 0 ? id : null;
 
     if (id > 0) {
-      // Look up match to get year, round, teams
       const { data: matchRow } = await supabase
         .from("matches")
         .select("year, round_number, home_team, away_team")
@@ -36,57 +35,52 @@ export async function GET(
         homeTeam = matchRow.home_team;
         awayTeam = matchRow.away_team;
       }
-
-      // Try game_predictions by match_id
-      const { data: gpRow } = await supabase
-        .from("game_predictions")
-        .select("*")
-        .eq("match_id", id)
-        .maybeSingle();
-
-      if (gpRow) {
-        gp = gpRow;
-        year = gp.year;
-        roundNumber = gp.round_number;
-        homeTeam = gp.home_team;
-        awayTeam = gp.away_team;
-      }
     }
 
-    // Fallback: lookup by round + teams
-    if (!gp && homeTeam && awayTeam && roundNumber) {
-      // Determine year from fixtures or current year
-      if (!year) {
-        const { data: fixRow } = await supabase
-          .from("fixtures")
-          .select("year")
-          .eq("team", homeTeam)
-          .eq("opponent", awayTeam)
-          .eq("round_number", roundNumber)
-          .maybeSingle();
-        year = fixRow?.year ?? new Date().getFullYear();
-      }
-
-      const { data: gpRow } = await supabase
-        .from("game_predictions")
-        .select("*")
-        .eq("home_team", homeTeam)
-        .eq("away_team", awayTeam)
+    // Determine year from fixtures if not found
+    if (!year && homeTeam && awayTeam && roundNumber) {
+      const { data: fixRow } = await supabase
+        .from("fixtures")
+        .select("year")
+        .eq("team", homeTeam)
+        .eq("opponent", awayTeam)
         .eq("round_number", roundNumber)
-        .eq("year", year)
         .maybeSingle();
-
-      if (gpRow) gp = gpRow;
+      year = fixRow?.year ?? new Date().getFullYear();
     }
 
-    if (!gp || !homeTeam || !awayTeam || !year || roundNumber == null) {
+    if (!homeTeam || !awayTeam || !year || roundNumber == null) {
       return NextResponse.json(
-        { error: "No simulation data found for this match" },
+        { error: "Could not resolve match details" },
         { status: 404 }
       );
     }
 
-    // Load player predictions for this round + these teams
+    // Load game prediction for win prob + margin
+    const { data: gpRow } = await supabase
+      .from("game_predictions")
+      .select("home_win_prob, predicted_margin, predicted_winner")
+      .eq("year", year)
+      .eq("home_team", homeTeam)
+      .eq("away_team", awayTeam)
+      .eq("round_number", roundNumber)
+      .maybeSingle();
+
+    const homeProb = gpRow?.home_win_prob ?? 0.5;
+    const awayProb = 1 - homeProb;
+    const predMargin = gpRow?.predicted_margin ?? 0;
+
+    // Try to load REAL Monte Carlo data from mc_simulations table
+    const { data: mcRows } = await supabase
+      .from("mc_simulations")
+      .select("*")
+      .eq("year", year)
+      .eq("round_number", roundNumber)
+      .in("team", [homeTeam, awayTeam]);
+
+    const hasRealMC = mcRows && mcRows.length > 0;
+
+    // Also load player predictions for team aggregation
     const { data: playerPreds } = await supabase
       .from("predictions")
       .select("player, team, opponent, predicted_goals, predicted_disposals, predicted_marks, predicted_behinds, p_scorer, p_2plus_goals, p_3plus_goals, p_15plus_disp, p_20plus_disp, p_25plus_disp, p_30plus_disp, p_3plus_mk, p_5plus_mk")
@@ -98,7 +92,7 @@ export async function GET(
     const homePlayers = preds.filter((p: any) => p.team === homeTeam);
     const awayPlayers = preds.filter((p: any) => p.team === awayTeam);
 
-    // Aggregate team goals
+    // Aggregate team scores
     const homeGoals = homePlayers.reduce((s: number, p: any) => s + (p.predicted_goals ?? 0), 0);
     const awayGoals = awayPlayers.reduce((s: number, p: any) => s + (p.predicted_goals ?? 0), 0);
     const homeBehinds = homePlayers.reduce((s: number, p: any) => s + (p.predicted_behinds ?? (p.predicted_goals ?? 0) * 0.7), 0);
@@ -106,12 +100,9 @@ export async function GET(
     const homeScore = Math.round(homeGoals * 6 + homeBehinds);
     const awayScore = Math.round(awayGoals * 6 + awayBehinds);
     const totalScore = homeScore + awayScore;
-    const margin = homeScore - awayScore;
+    const margin = predMargin || homeScore - awayScore;
 
-    const homeProb = gp.home_win_prob ?? 0.5;
-    const awayProb = 1 - homeProb;
-
-    // Build match outcomes with approximate distributions
+    // Build match outcomes
     const matchOutcomes = {
       home_win_pct: homeProb,
       away_win_pct: awayProb,
@@ -119,7 +110,7 @@ export async function GET(
       avg_home_score: homeScore,
       avg_away_score: awayScore,
       avg_total: totalScore,
-      avg_margin: gp.predicted_margin ?? margin,
+      avg_margin: margin,
       score_distribution: {
         home: {
           p10: Math.round(homeScore * 0.7),
@@ -160,20 +151,39 @@ export async function GET(
     };
 
     // Build per-player simulation data
+    // If we have real MC data, use it. Otherwise fall back to direct model probs.
+    const mcLookup = new Map<string, any>();
+    if (hasRealMC) {
+      for (const row of mcRows!) {
+        mcLookup.set(`${row.player}|${row.team}`, row);
+      }
+    }
+
     const buildSimPlayer = (p: any, isHome: boolean) => {
+      const mc = mcLookup.get(`${p.player}|${p.team}`);
       const gl = p.predicted_goals ?? 0;
       const di = p.predicted_disposals ?? 0;
       const mk = p.predicted_marks ?? 0;
+
+      // Use real MC probabilities if available, otherwise fall back to direct model
+      const p1plus = mc?.mc_p_1plus_goals ?? p.p_scorer ?? (gl > 0.3 ? Math.min(0.95, 1 - Math.exp(-gl)) : 0);
+      const p2plus = mc?.mc_p_2plus_goals ?? p.p_2plus_goals ?? Math.max(0, 1 - Math.exp(-gl) * (1 + gl));
+      const p3plus = mc?.mc_p_3plus_goals ?? p.p_3plus_goals ?? Math.max(0, 1 - Math.exp(-gl) * (1 + gl + gl * gl / 2));
+      const p15d = mc?.mc_p_15plus_disp ?? p.p_15plus_disp;
+      const p20d = mc?.mc_p_20plus_disp ?? p.p_20plus_disp;
+      const p25d = mc?.mc_p_25plus_disp ?? p.p_25plus_disp;
+      const p30d = mc?.mc_p_30plus_disp ?? p.p_30plus_disp;
 
       return {
         player: p.player,
         team: p.team,
         is_home: isHome,
+        has_mc: !!mc,
         goals: {
           avg: +gl.toFixed(2),
-          p_1plus: p.p_scorer ?? (gl > 0.3 ? Math.min(0.95, 1 - Math.exp(-gl)) : 0),
-          p_2plus: p.p_2plus_goals ?? Math.max(0, 1 - Math.exp(-gl) * (1 + gl)),
-          p_3plus: p.p_3plus_goals ?? Math.max(0, 1 - Math.exp(-gl) * (1 + gl + gl * gl / 2)),
+          p_1plus: +Number(p1plus).toFixed(4),
+          p_2plus: +Number(p2plus).toFixed(4),
+          p_3plus: +Number(p3plus).toFixed(4),
           distribution: [
             +Math.exp(-gl).toFixed(3),
             +(gl * Math.exp(-gl)).toFixed(3),
@@ -184,11 +194,11 @@ export async function GET(
         },
         disposals: {
           avg: +di.toFixed(1),
-          p_10plus: +(di > 10 ? Math.min(0.95, 0.5 + (di - 10) * 0.05) : Math.max(0.05, di / 20)).toFixed(3),
-          p_15plus: p.p_15plus_disp ?? +(di > 15 ? Math.min(0.9, 0.5 + (di - 15) * 0.05) : Math.max(0.05, di / 30)).toFixed(3),
-          p_20plus: p.p_20plus_disp ?? +(di > 20 ? Math.min(0.85, 0.5 + (di - 20) * 0.04) : Math.max(0.02, di / 40)).toFixed(3),
-          p_25plus: p.p_25plus_disp ?? +(di > 25 ? Math.min(0.8, 0.5 + (di - 25) * 0.03) : Math.max(0.01, di / 50)).toFixed(3),
-          p_30plus: p.p_30plus_disp ?? +(di > 30 ? Math.min(0.7, 0.5 + (di - 30) * 0.02) : Math.max(0.005, di / 60)).toFixed(3),
+          p_10plus: mc?.mc_p_10plus_disp ?? +(di > 10 ? Math.min(0.95, 0.5 + (di - 10) * 0.05) : Math.max(0.05, di / 20)).toFixed(3),
+          p_15plus: +(p15d ?? (di > 15 ? Math.min(0.9, 0.5 + (di - 15) * 0.05) : Math.max(0.05, di / 30))).toFixed(3),
+          p_20plus: +(p20d ?? (di > 20 ? Math.min(0.85, 0.5 + (di - 20) * 0.04) : Math.max(0.02, di / 40))).toFixed(3),
+          p_25plus: +(p25d ?? (di > 25 ? Math.min(0.8, 0.5 + (di - 25) * 0.03) : Math.max(0.01, di / 50))).toFixed(3),
+          p_30plus: +(p30d ?? (di > 30 ? Math.min(0.7, 0.5 + (di - 30) * 0.02) : Math.max(0.005, di / 60))).toFixed(3),
           percentiles: {
             p10: Math.round(di * 0.55),
             p25: Math.round(di * 0.75),
@@ -199,8 +209,8 @@ export async function GET(
         },
         marks: {
           avg: +mk.toFixed(1),
-          p_3plus: p.p_3plus_mk ?? +(mk > 3 ? Math.min(0.9, 0.5 + (mk - 3) * 0.1) : Math.max(0.05, mk / 6)).toFixed(3),
-          p_5plus: p.p_5plus_mk ?? +(mk > 5 ? Math.min(0.85, 0.5 + (mk - 5) * 0.08) : Math.max(0.02, mk / 10)).toFixed(3),
+          p_3plus: +(p.p_3plus_mk ?? (mk > 3 ? Math.min(0.9, 0.5 + (mk - 3) * 0.1) : Math.max(0.05, mk / 6))).toFixed(3),
+          p_5plus: +(p.p_5plus_mk ?? (mk > 5 ? Math.min(0.85, 0.5 + (mk - 5) * 0.08) : Math.max(0.02, mk / 10))).toFixed(3),
           p_7plus: +(mk > 7 ? Math.min(0.75, 0.5 + (mk - 7) * 0.06) : Math.max(0.01, mk / 14)).toFixed(3),
           p_10plus: +(mk > 10 ? Math.min(0.6, 0.5 + (mk - 10) * 0.04) : Math.max(0.005, mk / 20)).toFixed(3),
           percentiles: {
@@ -219,59 +229,18 @@ export async function GET(
       ...awayPlayers.map((p: any) => buildSimPlayer(p, false)),
     ];
 
-    // Build suggested multis from top players
-    const topGoalScorers = [...preds]
-      .filter((p: any) => (p.p_scorer ?? 0) > 0.4)
-      .sort((a: any, b: any) => (b.p_scorer ?? 0) - (a.p_scorer ?? 0))
-      .slice(0, 3);
-
-    const topDisposalGetters = [...preds]
-      .filter((p: any) => (p.p_20plus_disp ?? 0) > 0.4)
-      .sort((a: any, b: any) => (b.p_20plus_disp ?? 0) - (a.p_20plus_disp ?? 0))
-      .slice(0, 2);
-
-    const multiLegs = [
-      ...topGoalScorers.map((p: any) => ({
-        player: p.player,
-        team: p.team,
-        type: "goals",
-        threshold: 1,
-        label: `${p.player.split(",")[0]} 1+ goals`,
-        solo_prob: p.p_scorer ?? 0,
-        book_implied_prob: Math.min(0.95, (p.p_scorer ?? 0) * 0.9),
-      })),
-      ...topDisposalGetters.map((p: any) => ({
-        player: p.player,
-        team: p.team,
-        type: "disposals",
-        threshold: 20,
-        label: `${p.player.split(",")[0]} 20+ disposals`,
-        solo_prob: p.p_20plus_disp ?? 0,
-        book_implied_prob: Math.min(0.95, (p.p_20plus_disp ?? 0) * 0.9),
-      })),
-    ];
-
-    const suggestedMultis =
-      multiLegs.length >= 2
-        ? [
-            {
-              legs: multiLegs.slice(0, 3),
-              n_legs: Math.min(3, multiLegs.length),
-              joint_prob: multiLegs.slice(0, 3).reduce((p, l) => p * l.solo_prob, 1),
-              indep_prob: multiLegs.slice(0, 3).reduce((p, l) => p * l.solo_prob, 1),
-              correlation_lift: 1.0,
-            },
-          ]
-        : [];
+    const mcPlayerCount = simPlayers.filter((p: any) => p.has_mc).length;
 
     return NextResponse.json({
-      match_id: id || null,
+      match_id: matchIdResolved,
       home_team: homeTeam,
       away_team: awayTeam,
-      n_sims: 10000,
+      n_sims: hasRealMC ? 10000 : 0,
+      has_real_mc: hasRealMC,
+      mc_players: mcPlayerCount,
       match_outcomes: matchOutcomes,
       players: simPlayers,
-      suggested_multis: suggestedMultis,
+      suggested_multis: [],
     });
   } catch (err) {
     console.error("Simulation error:", err);
