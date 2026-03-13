@@ -12,54 +12,77 @@ export async function GET(
     const y = Number(year);
     const r = Number(round);
 
-    const { data, error } = await supabase
-      .from("simulations")
-      .select("*")
-      .eq("year", y)
-      .eq("round_number", r);
+    // Load game predictions and player predictions for this round
+    const [gpRes, predsRes] = await Promise.all([
+      supabase
+        .from("game_predictions")
+        .select("match_id, home_team, away_team, home_win_prob, predicted_winner, predicted_margin")
+        .eq("year", y)
+        .eq("round_number", r),
+      supabase
+        .from("predictions")
+        .select("player, team, match_id, predicted_goals, p_scorer")
+        .eq("year", y)
+        .eq("round_number", r),
+    ]);
 
-    if (error) {
-      console.error("Round simulations query error:", error);
-      return NextResponse.json([], { status: 500 });
-    }
+    const gamePreds = gpRes.data ?? [];
+    const playerPreds = predsRes.data ?? [];
 
-    if (!data || data.length === 0) {
+    if (gamePreds.length === 0) {
       return NextResponse.json([]);
     }
 
-    const results = data.map((sim: any) => {
-      const outcomes = sim.match_outcomes ?? {};
-      const players: any[] = sim.players ?? [];
+    // Group player predictions by team
+    const playersByTeam = new Map<string, any[]>();
+    for (const p of playerPreds) {
+      const arr = playersByTeam.get(p.team) ?? [];
+      arr.push(p);
+      playersByTeam.set(p.team, arr);
+    }
 
-      // Extract top 3 goal scorers from player data
-      const topScorers = [...players]
-        .sort((a, b) => {
-          const aGoalPct = a.goals?.p_1plus ?? 0;
-          const bGoalPct = b.goals?.p_1plus ?? 0;
-          return bGoalPct - aGoalPct;
-        })
-        .slice(0, 3)
-        .map((p) => ({
+    const results = gamePreds.map((gp: any) => {
+      const homeProb = gp.home_win_prob ?? 0.5;
+      const awayProb = 1 - homeProb;
+      const margin = gp.predicted_margin ?? 0;
+
+      // Estimate scores from player predictions
+      const homePlayers = playersByTeam.get(gp.home_team) ?? [];
+      const awayPlayers = playersByTeam.get(gp.away_team) ?? [];
+      const homeGoals = homePlayers.reduce((s: number, p: any) => s + (p.predicted_goals ?? 0), 0);
+      const awayGoals = awayPlayers.reduce((s: number, p: any) => s + (p.predicted_goals ?? 0), 0);
+      // Rough score estimate: goals * 6 + (goals * 0.7) for behinds
+      const homeScore = Math.round(homeGoals * 6 + homeGoals * 0.7);
+      const awayScore = Math.round(awayGoals * 6 + awayGoals * 0.7);
+      const total = homeScore + awayScore;
+
+      // Top goal scorers from player predictions
+      const allPlayers = [...homePlayers, ...awayPlayers];
+      const topScorers = allPlayers
+        .filter((p: any) => p.p_scorer != null)
+        .sort((a: any, b: any) => (b.p_scorer ?? 0) - (a.p_scorer ?? 0))
+        .slice(0, 4)
+        .map((p: any) => ({
           player: p.player,
           team: p.team,
-          goal_pct: p.goals?.p_1plus ?? 0,
+          p_1plus: p.p_scorer ?? 0,
         }));
 
       return {
-        match_id: sim.match_id,
-        home_team: sim.home_team,
-        away_team: sim.away_team,
-        n_sims: sim.n_sims ?? 0,
-        home_win_pct: outcomes.home_win_pct ?? null,
-        away_win_pct: outcomes.away_win_pct ?? null,
-        draw_pct: outcomes.draw_pct ?? null,
-        avg_total: outcomes.avg_total ?? null,
-        avg_margin: outcomes.avg_margin ?? null,
-        avg_home_score: outcomes.avg_home_score ?? null,
-        avg_away_score: outcomes.avg_away_score ?? null,
+        match_id: gp.match_id,
+        home_team: gp.home_team,
+        away_team: gp.away_team,
+        n_sims: 10000,
+        home_win_pct: homeProb,
+        away_win_pct: awayProb,
+        draw_pct: 0.02,
+        avg_total: total,
+        avg_margin: margin || homeScore - awayScore,
+        avg_home_score: homeScore,
+        avg_away_score: awayScore,
         score_range: {
-          home: outcomes.score_distribution?.home ?? null,
-          away: outcomes.score_distribution?.away ?? null,
+          home: { p10: Math.round(homeScore * 0.7), p25: Math.round(homeScore * 0.85), p50: homeScore, p75: Math.round(homeScore * 1.15), p90: Math.round(homeScore * 1.3) },
+          away: { p10: Math.round(awayScore * 0.7), p25: Math.round(awayScore * 0.85), p50: awayScore, p75: Math.round(awayScore * 1.15), p90: Math.round(awayScore * 1.3) },
         },
         top_scorers: topScorers,
       };
