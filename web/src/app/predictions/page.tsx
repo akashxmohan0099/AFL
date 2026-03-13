@@ -145,7 +145,7 @@ export default function PredictionsPage() {
   if (error) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold">Predictions</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Predictions</h1>
         <Card>
           <CardContent className="pt-6">
             <p className="text-destructive">{error}</p>
@@ -158,7 +158,7 @@ export default function PredictionsPage() {
   if (!upcoming || upcoming.predictions.length === 0) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold">Predictions</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Predictions</h1>
         <Card>
           <CardContent className="pt-6">
             <p className="text-muted-foreground">
@@ -222,9 +222,9 @@ export default function PredictionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold">Predictions</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Predictions</h1>
           <Badge variant="secondary" className="text-sm">
             Round {upcoming.round_number}, {upcoming.year}
           </Badge>

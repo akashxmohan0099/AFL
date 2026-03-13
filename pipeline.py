@@ -1288,6 +1288,20 @@ def _predict_from_fixtures(model, fixtures, year, round_num, disp_model=None, ma
         player_names_by_team[t] = names
     team_lists = _load_team_lists(year, round_num, player_names_by_team)
 
+    # Load injury list to exclude injured players from fallback lineups.
+    # Only filter when using Tier 2/3 (roster/last match) — Tier 0/1 already
+    # reflect actual selections so injured players aren't in them.
+    injured_players = set()
+    injuries_path = config.BASE_STORE_DIR / "injuries.parquet"
+    if injuries_path.exists():
+        inj_df = pd.read_parquet(injuries_path)
+        # Severity >= 2 means 2+ weeks out — almost certainly not playing
+        inj_df = inj_df[inj_df["severity"] >= 2]
+        for _, row in inj_df.iterrows():
+            injured_players.add((row["team"], row["player"]))
+        if injured_players:
+            print(f"  Injury filter: {len(injured_players)} players ruled out (severity >= 2)")
+
     # Build synthetic "future match" rows (one per player per fixture team),
     # then run build_features on history + synthetic rows so rolling features are non-empty.
     synthetic_rows = []
@@ -1301,19 +1315,31 @@ def _predict_from_fixtures(model, fixtures, year, round_num, disp_model=None, ma
 
         # Get lineup: Tier 0 → CSV players, Tier 1 → scraped team list,
         #             Tier 2 → roster JSON, Tier 3 → last match
+        # Tiers 0 & 1 are actual selections (injured players already excluded).
+        # Tiers 2 & 3 are fallbacks — filter out injured players.
+        need_injury_filter = False
         if "players" in fixture and pd.notna(fixture.get("players")):
             players = [p.strip() for p in str(fixture["players"]).split(",")]
         elif team_lists and team in team_lists:
             players = team_lists[team]
         elif rosters and team in rosters:
             players = rosters[team]
+            need_injury_filter = True
         else:
             recent = stats_real[stats_real["team"] == team].sort_values(date_col)
             last_match = recent["match_id"].iloc[-1] if len(recent) > 0 else None
             if last_match:
                 players = recent[recent["match_id"] == last_match]["player"].tolist()
+                need_injury_filter = True
             else:
                 continue
+
+        if need_injury_filter and injured_players:
+            before = len(players)
+            players = [p for p in players if (team, p) not in injured_players]
+            excluded = before - len(players)
+            if excluded > 0:
+                print(f"    {team}: excluded {excluded} injured player(s) from lineup")
 
         # For each player, create a synthetic future row using their last match as a schema template.
         for player in players:

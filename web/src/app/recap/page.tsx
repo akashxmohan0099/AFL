@@ -136,7 +136,7 @@ export default function RecapPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold">Round Recap</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Round Recap</h1>
           <div className="flex gap-1">
             {AVAILABLE_YEARS.slice(0, 3).map((y) => (
               <Button

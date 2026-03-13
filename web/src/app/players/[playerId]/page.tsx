@@ -100,7 +100,7 @@ export default function PlayerProfilePage() {
           { label: profile.name },
         ]} />
         <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="text-2xl font-bold">{profile.name}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">{profile.name}</h1>
           <Badge style={{ backgroundColor: teamColor, color: "#fff", borderColor: teamColor }}>{profile.team}</Badge>
           <Badge variant="outline">{profile.total_games} games</Badge>
         </div>

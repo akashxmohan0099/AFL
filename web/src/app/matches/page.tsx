@@ -521,8 +521,8 @@ export default function MatchesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Matches</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold">Matches</h1>
         <div className="flex items-center gap-2">
           {upcomingRounds.length > 0 && (
             <Badge variant="outline" className="text-xs font-mono">

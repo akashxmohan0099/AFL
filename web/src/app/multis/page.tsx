@@ -196,7 +196,7 @@ export default function MultisPage() {
     return (
       <div className="space-y-6">
         <div className="flex items-start justify-between">
-          <h1 className="text-2xl font-bold">Multi-Bet Backtest</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Multi-Bet Backtest</h1>
           <div className="flex items-center gap-2">
             {AVAILABLE_YEARS.map((y) => (
               <button
@@ -294,7 +294,7 @@ export default function MultisPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Multi-Bet Backtest</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Multi-Bet Backtest</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {year} season &middot; {summary.overall.total_combos} combos across {roundNumbers.length} rounds
           </p>

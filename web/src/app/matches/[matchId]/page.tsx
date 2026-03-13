@@ -97,7 +97,7 @@ export default function MatchDetailPage() {
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-48 w-full" />
         <Skeleton className="h-24 w-full" />
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Skeleton className="h-96" />
           <Skeleton className="h-96" />
         </div>
@@ -224,7 +224,7 @@ export default function MatchDetailPage() {
           { label: "Matches", href: "/matches" },
           { label: `${homeAbbr} vs ${awayAbbr}` },
         ]} />
-        <h1 className="text-2xl font-bold">
+        <h1 className="text-xl sm:text-2xl font-bold">
           {homeAbbr} vs {awayAbbr}
         </h1>
         {!showAsPlayed && hasComparison && (

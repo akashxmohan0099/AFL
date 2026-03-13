@@ -183,7 +183,7 @@ export default function TeamProfilePage() {
             className="w-4 h-4 rounded-full shrink-0"
             style={{ backgroundColor: teamColor }}
           />
-          <h1 className="text-2xl font-bold">{teamName}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">{teamName}</h1>
           <Badge variant="outline" className="text-xs">
             {teamAbbrev}
           </Badge>

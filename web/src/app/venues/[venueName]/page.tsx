@@ -74,7 +74,7 @@ export default function VenueDetailPage() {
         ]} />
         <div className="flex items-center gap-2">
           <MapPin className="w-5 h-5 text-muted-foreground" />
-          <h1 className="text-2xl font-bold">{displayVenue(venue.venue)}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">{displayVenue(venue.venue)}</h1>
         </div>
         <div className="flex gap-2 mt-2 flex-wrap">
           <Badge variant="outline">{venue.total_games} games</Badge>

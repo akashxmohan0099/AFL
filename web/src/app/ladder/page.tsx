@@ -71,9 +71,9 @@ export default function LadderPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold">Ladder</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Ladder</h1>
           <div className="flex gap-1">
             {AVAILABLE_YEARS.slice(0, 5).map((y) => (
               <Button
@@ -145,14 +145,14 @@ export default function LadderPage() {
                     <TableHead>Team</TableHead>
                     <TableHead className="text-center">P</TableHead>
                     <TableHead className="text-center">W</TableHead>
-                    <TableHead className="text-center">L</TableHead>
-                    <TableHead className="text-center">D</TableHead>
+                    <TableHead className="text-center hidden sm:table-cell">L</TableHead>
+                    <TableHead className="text-center hidden md:table-cell">D</TableHead>
                     <TableHead className="text-center font-semibold">Pts</TableHead>
-                    <TableHead className="text-right">PF</TableHead>
-                    <TableHead className="text-right">PA</TableHead>
+                    <TableHead className="text-right hidden lg:table-cell">PF</TableHead>
+                    <TableHead className="text-right hidden lg:table-cell">PA</TableHead>
                     <TableHead className="text-right">%</TableHead>
-                    <TableHead className="text-right">Avg Mgn</TableHead>
-                    <TableHead className="text-center">Form</TableHead>
+                    <TableHead className="text-right hidden md:table-cell">Avg Mgn</TableHead>
+                    <TableHead className="text-center hidden sm:table-cell">Form</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -179,10 +179,13 @@ export default function LadderPage() {
                                     TEAM_COLORS[team.team]?.primary || "#666",
                                 }}
                               />
-                              <span className="font-medium text-sm">
+                              <span className="font-medium text-sm hidden sm:inline">
                                 {team.team}
                               </span>
-                              <span className="text-xs text-muted-foreground">
+                              <span className="font-medium text-sm sm:hidden">
+                                {TEAM_ABBREVS[team.team] || team.team}
+                              </span>
+                              <span className="text-xs text-muted-foreground hidden sm:inline">
                                 {TEAM_ABBREVS[team.team]}
                               </span>
                             </span>
@@ -194,25 +197,25 @@ export default function LadderPage() {
                         <TableCell className="text-center tabular-nums text-sm font-medium text-emerald-600">
                           {team.wins}
                         </TableCell>
-                        <TableCell className="text-center tabular-nums text-sm text-red-500">
+                        <TableCell className="text-center tabular-nums text-sm text-red-500 hidden sm:table-cell">
                           {team.losses}
                         </TableCell>
-                        <TableCell className="text-center tabular-nums text-sm text-muted-foreground">
+                        <TableCell className="text-center tabular-nums text-sm text-muted-foreground hidden md:table-cell">
                           {team.draws}
                         </TableCell>
                         <TableCell className="text-center tabular-nums text-sm font-bold">
                           {team.points}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums text-sm">
+                        <TableCell className="text-right tabular-nums text-sm hidden lg:table-cell">
                           {team.points_for}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums text-sm">
+                        <TableCell className="text-right tabular-nums text-sm hidden lg:table-cell">
                           {team.points_against}
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-sm font-medium">
                           {team.percentage.toFixed(1)}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums text-sm">
+                        <TableCell className="text-right tabular-nums text-sm hidden md:table-cell">
                           <span
                             className={cn(
                               team.avg_margin > 0
@@ -226,7 +229,7 @@ export default function LadderPage() {
                             {team.avg_margin.toFixed(1)}
                           </span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden sm:table-cell">
                           <div className="flex items-center justify-center gap-0.5">
                             {team.form.map((r, i) => (
                               <FormBadge key={i} result={r} />

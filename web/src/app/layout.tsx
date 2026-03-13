@@ -39,23 +39,23 @@ export default function RootLayout({
           <Sidebar />
           <NewsPanelProvider>
             {/* Top bar — brand green header */}
-            <header className="h-11 border-b border-[oklch(0.30_0.06_170)] bg-[oklch(0.35_0.08_170)] flex items-center justify-between px-4 md:px-5 sticky top-0 z-40">
-              <div className="flex items-center gap-3">
+            <header className="h-11 border-b border-[oklch(0.30_0.06_170)] bg-[oklch(0.35_0.08_170)] flex items-center justify-between px-3 md:px-5 sticky top-0 z-40">
+              <div className="flex items-center gap-2 md:gap-3 min-w-0">
                 <MobileSidebar />
-                <span className="text-xs font-bold text-[oklch(0.90_0.15_95)] uppercase tracking-widest">
+                <span className="text-xs font-bold text-[oklch(0.90_0.15_95)] uppercase tracking-widest whitespace-nowrap">
                   AFL Predict Pro
                 </span>
               </div>
-              <div className="flex items-center gap-4 text-[11px] text-white/70 font-mono">
-                <LastUpdated />
-                <span className="w-px h-3 bg-white/20" />
-                <span>Season <span className="text-white font-semibold">2026</span></span>
+              <div className="flex items-center gap-2 md:gap-4 text-[11px] text-white/70 font-mono shrink-0">
+                <span className="hidden sm:inline"><LastUpdated /></span>
+                <span className="hidden sm:block w-px h-3 bg-white/20" />
+                <span className="hidden md:inline">Season <span className="text-white font-semibold">2026</span></span>
                 <ThemeToggle />
                 <span className="w-px h-3 bg-white/20" />
                 <NewsToggleButton />
               </div>
             </header>
-            <main className="flex-1 p-5 overflow-auto">
+            <main className="flex-1 p-3 md:p-5 overflow-auto">
               <div className="max-w-[1400px] mx-auto">{children}</div>
             </main>
           </NewsPanelProvider>

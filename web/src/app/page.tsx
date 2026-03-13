@@ -136,9 +136,9 @@ export default function DashboardPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
         <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold tracking-tight">{CURRENT_YEAR} Season Overview</h1>
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight">{CURRENT_YEAR} Season Overview</h1>
           {summary?.current_round != null && (
             <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
               R{summary.current_round}
@@ -146,12 +146,8 @@ export default function DashboardPage() {
           )}
         </div>
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-mono">
-          {health?.latest_data && (
-            <>
-              <span>Data: {health.latest_data}</span>
-              <span className="w-px h-3 bg-border" />
-            </>
-          )}
+          <span className="hidden sm:inline">{health?.latest_data ? `Data: ${health.latest_data}` : ""}</span>
+          <span className="hidden sm:block w-px h-3 bg-border" />
           <span>{summary?.completed_rounds ?? 0}/{summary?.total_rounds ?? 0} rounds</span>
           <span className="w-px h-3 bg-border" />
           <span>{summary?.total_matches ?? 0} matches</span>

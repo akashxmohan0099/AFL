@@ -113,7 +113,7 @@ export default function OddsPage() {
   if (error) {
     return (
       <div className="space-y-4">
-        <h1 className="text-2xl font-bold">Odds Comparison</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">Odds Comparison</h1>
         <Card>
           <CardContent className="pt-6">
             <p className="text-destructive">{error}</p>
@@ -125,7 +125,7 @@ export default function OddsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Odds Comparison</h1>
+      <h1 className="text-xl sm:text-2xl font-bold">Odds Comparison</h1>
 
       {/* Filters */}
       <div className="flex gap-2 flex-wrap items-center">
@@ -267,10 +267,10 @@ export default function OddsPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Player</TableHead>
-                        <TableHead>Team</TableHead>
-                        <TableHead>Stat Type</TableHead>
+                        <TableHead className="hidden sm:table-cell">Team</TableHead>
+                        <TableHead className="hidden md:table-cell">Stat Type</TableHead>
                         <TableHead className="text-right">Line</TableHead>
-                        <TableHead className="text-right">Market Prob</TableHead>
+                        <TableHead className="text-right hidden sm:table-cell">Market</TableHead>
                         <TableHead className="text-right">Our Prob</TableHead>
                         <TableHead className="text-right">Edge</TableHead>
                       </TableRow>
@@ -281,7 +281,7 @@ export default function OddsPage() {
                           <TableCell className="font-medium">
                             <Link href={`/players/${encodeURIComponent(`${o.player}_${o.team}`)}`} className="hover:text-primary transition-colors">{o.player}</Link>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden sm:table-cell">
                             <span className="flex items-center gap-1.5">
                               <span
                                 className="w-2 h-2 rounded-full"
@@ -293,7 +293,7 @@ export default function OddsPage() {
                               {TEAM_ABBREVS[o.team] || o.team}
                             </span>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden md:table-cell">
                             <Badge variant="outline" className="text-[10px]">
                               {o.market_type}
                             </Badge>
@@ -301,7 +301,7 @@ export default function OddsPage() {
                           <TableCell className="text-right tabular-nums">
                             {o.market_line?.toFixed(1) ?? "-"}
                           </TableCell>
-                          <TableCell className="text-right tabular-nums">
+                          <TableCell className="text-right tabular-nums hidden sm:table-cell">
                             {o.market_implied_prob != null
                               ? (o.market_implied_prob * 100).toFixed(1) + "%"
                               : "-"}

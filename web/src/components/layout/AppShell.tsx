@@ -48,10 +48,10 @@ export function NewsPanelProvider({ children }: { children: React.ReactNode }) {
             <aside
               className={cn(
                 "border-l border-sidebar-border bg-sidebar flex flex-col shrink-0",
-                // Mobile: fixed overlay
-                "fixed right-0 top-0 h-screen w-80 z-50 shadow-2xl",
+                // Mobile: fixed overlay, narrower on small screens
+                "fixed right-0 top-0 h-screen w-[85vw] max-w-80 z-50 shadow-2xl",
                 // Desktop: inline in flex layout
-                "xl:relative xl:w-80 xl:shadow-none xl:z-auto xl:h-screen xl:sticky xl:top-0"
+                "xl:relative xl:w-80 xl:max-w-80 xl:shadow-none xl:z-auto xl:h-screen xl:sticky xl:top-0"
               )}
             >
               {/* Close button (mobile only) */}

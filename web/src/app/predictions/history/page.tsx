@@ -91,9 +91,9 @@ export default function PredictionHistoryPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold">Predictions vs Actuals</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Predictions vs Actuals</h1>
           <Badge variant="secondary" className="text-sm">{year}</Badge>
           {summary && (
             <Badge variant="outline" className="text-sm">
@@ -191,20 +191,21 @@ export default function PredictionHistoryPage() {
                 <TableHeader>
                   <TableRow>
                     {[
-                      { key: "round", label: "Rd", tip: "Round number" },
-                      { key: "player", label: "Player", tip: "Player name" },
-                      { key: "team", label: "Team", tip: "Player's team" },
-                      { key: "opponent", label: "Opp", tip: "Opposition team" },
-                      { key: "venue", label: "Venue", tip: "Match venue" },
-                      { key: "actual_goals", label: "Goals", tip: "Goals scored (actual) vs model prediction" },
-                      { key: "actual_disposals", label: "Disposals", tip: "Total disposals (actual) vs model prediction" },
-                      { key: "actual_marks", label: "Marks", tip: "Marks taken (actual) vs model prediction" },
+                      { key: "round", label: "Rd", tip: "Round number", hide: "" },
+                      { key: "player", label: "Player", tip: "Player name", hide: "" },
+                      { key: "team", label: "Team", tip: "Player's team", hide: "hidden sm:table-cell" },
+                      { key: "opponent", label: "Opp", tip: "Opposition team", hide: "hidden md:table-cell" },
+                      { key: "venue", label: "Venue", tip: "Match venue", hide: "hidden lg:table-cell" },
+                      { key: "actual_goals", label: "Goals", tip: "Goals scored (actual) vs model prediction", hide: "" },
+                      { key: "actual_disposals", label: "Disp", tip: "Total disposals (actual) vs model prediction", hide: "" },
+                      { key: "actual_marks", label: "Marks", tip: "Marks taken (actual) vs model prediction", hide: "hidden sm:table-cell" },
                     ].map((c) => (
                       <TableHead
                         key={c.key}
                         className={cn(
                           "cursor-pointer hover:bg-muted/50 select-none",
-                          c.key.startsWith("actual") ? "text-right" : ""
+                          c.key.startsWith("actual") ? "text-right" : "",
+                          c.hide
                         )}
                         onClick={() => handleSort(c.key)}
                         title={c.tip}
@@ -223,7 +224,7 @@ export default function PredictionHistoryPage() {
                       <TableCell className="font-medium text-sm">
                         <Link href={`/players/${encodeURIComponent(`${e.player}_${e.team}`)}`} className="hover:text-primary transition-colors">{e.player}</Link>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         <span className="flex items-center gap-1.5">
                           <span
                             className="w-2 h-2 rounded-full"
@@ -232,8 +233,8 @@ export default function PredictionHistoryPage() {
                           {TEAM_ABBREVS[e.team] || e.team}
                         </span>
                       </TableCell>
-                      <TableCell>{TEAM_ABBREVS[e.opponent] || e.opponent}</TableCell>
-                      <TableCell className="text-xs truncate max-w-[100px]">{e.venue}</TableCell>
+                      <TableCell className="hidden md:table-cell">{TEAM_ABBREVS[e.opponent] || e.opponent}</TableCell>
+                      <TableCell className="text-xs truncate max-w-[100px] hidden lg:table-cell">{e.venue}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-baseline gap-1 justify-end">
                           <span className={cn("font-bold tabular-nums", predColor(e.actual_goals, e.predicted_goals, 1))}>
@@ -256,7 +257,7 @@ export default function PredictionHistoryPage() {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right hidden sm:table-cell">
                         <div className="flex items-baseline gap-1 justify-end">
                           <span className={cn("font-bold tabular-nums", predColor(e.actual_marks, e.predicted_marks, 2))}>
                             {e.actual_marks}
