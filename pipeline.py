@@ -562,13 +562,23 @@ def cmd_daily(args):
     print(f"  LIVE LEARNING PIPELINE — {year}")
     print(f"{'='*70}")
 
-    # ── Step 1: Scrape new match results ──
+    # ── Step 1: Scrape new match results + refresh fixtures ──
     print("\n[1/7] Scraping new match results from FootyWire...")
     result = scrape_season(year, incremental=True)
     if result is None:
         print("  No new data scraped.")
     else:
         print(f"  Saved to {result}")
+
+    # Refresh fixture CSVs (catches rescheduling, new finals matchups)
+    try:
+        from scrape_fixtures import scrape_fixtures, write_fixture_csvs
+        fixtures = scrape_fixtures(year)
+        if fixtures:
+            paths = write_fixture_csvs(fixtures, year)
+            print(f"  Fixtures refreshed: {sum(len(m) for m in fixtures.values())} matches across {len(paths)} rounds")
+    except Exception as e:
+        print(f"  Fixture refresh failed (non-fatal): {e}")
 
     # ── Step 2: Rebuild clean data & features ──
     print("\n[2/7] Rebuilding clean data...")

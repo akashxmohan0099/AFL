@@ -139,7 +139,7 @@ jobs:
 
       - name: Seed results to Supabase
         run: |
-          for table in matches player_games team_matches predictions outcomes game_predictions weather news mc_simulations fixtures; do
+          for table in matches player_games team_matches predictions outcomes game_predictions weather news mc_simulations fixtures umpires coaches experiments; do
             echo "--- Seeding $table ---"
             python supabase/seed.py --table "$table" || echo "Warning: $table seed failed, continuing..."
           done
