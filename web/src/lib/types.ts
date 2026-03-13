@@ -910,12 +910,14 @@ export interface RoundSimSummary {
   draw_pct: number;
   avg_total: number;
   avg_margin: number;
-  median_total: number;
+  avg_home_score?: number;
+  avg_away_score?: number;
+  median_total?: number;
   score_range: {
     home: SimPercentiles;
     away: SimPercentiles;
   };
-  top_scorers: { player: string; team: string; p_1plus: number; avg_goals: number }[];
+  top_scorers: { player: string; team: string; p_1plus: number; avg_goals?: number }[];
 }
 
 // --- Multi-Bet Backtest ---

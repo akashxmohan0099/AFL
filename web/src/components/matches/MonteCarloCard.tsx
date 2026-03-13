@@ -463,14 +463,6 @@ export function MonteCarloCard({
         />
       </div>
 
-      {/* Multi-bet suggestions */}
-      <MultiSuggestionsCard
-        suggestions={simulation.suggested_multis}
-        homeTeam={homeTeam}
-        awayTeam={awayTeam}
-        homeColor={homeColor}
-        awayColor={awayColor}
-      />
     </div>
   );
 }

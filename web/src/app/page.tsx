@@ -18,21 +18,9 @@ import type {
   UpcomingRound,
   HealthStatus,
 } from "@/lib/types";
-import { TEAM_ABBREVS, TEAM_COLORS, CURRENT_YEAR, CHART_COLORS, displayVenue } from "@/lib/constants";
+import { TEAM_ABBREVS, TEAM_COLORS, CURRENT_YEAR, displayVenue } from "@/lib/constants";
 import { ArrowRight, ChevronRight } from "lucide-react";
 
-function StatTicker({ label, value, color, suffix = "", tip, subtitle }: { label: string; value: string; color: string; suffix?: string; tip?: string; subtitle?: string }) {
-  return (
-    <div className="flex items-center gap-3 px-4 py-3 border border-border/50 rounded-lg bg-card/50 cursor-help" title={tip}>
-      <div className="w-1 h-8 rounded-full" style={{ backgroundColor: color }} />
-      <div>
-        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
-        <p className="text-xl font-bold tabular-nums font-mono" style={{ color }}>{value}{suffix}</p>
-        {subtitle && <p className="text-[10px] text-muted-foreground/60 mt-0.5">{subtitle}</p>}
-      </div>
-    </div>
-  );
-}
 
 function MatchTicker({ match }: { match: SeasonMatch }) {
   const homeAbbr = TEAM_ABBREVS[match.home_team] || match.home_team;
@@ -124,14 +112,10 @@ export default function DashboardPage() {
     );
   }
 
-  const acc = summary?.accuracy;
   const completedMatches = matches
     .filter((m) => m.home_score != null)
     .sort((a, b) => (b.round_number ?? 0) - (a.round_number ?? 0))
     .slice(0, 8);
-  const played = matches.filter((m) => m.correct != null);
-  const correctCount = played.filter((m) => m.correct).length;
-  const winRate = played.length > 0 ? (correctCount / played.length) * 100 : 0;
 
   return (
     <div className="space-y-5">
@@ -152,40 +136,6 @@ export default function DashboardPage() {
           <span className="w-px h-3 bg-border" />
           <span>{summary?.total_matches ?? 0} matches</span>
         </div>
-      </div>
-
-      {/* Stat Ticker Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatTicker
-          label="Goal Accuracy"
-          value={acc?.goals_mae != null ? acc.goals_mae.toFixed(2) : "--"}
-          color={CHART_COLORS.goals}
-          subtitle="Avg error per player (goals)"
-          tip="Mean Absolute Error for goal predictions. Lower is better — 0.5 means we're off by half a goal per player on average."
-        />
-        <StatTicker
-          label="Disposal Accuracy"
-          value={acc?.disposals_mae != null ? acc.disposals_mae.toFixed(1) : "--"}
-          color={CHART_COLORS.disposals}
-          subtitle="Avg error per player (disposals)"
-          tip="Mean Absolute Error for disposal predictions. Lower is better — measures average prediction error per player."
-        />
-        <StatTicker
-          label="Goal Scorer Calls"
-          value={acc?.scorer_accuracy != null ? acc.scorer_accuracy.toFixed(1) : "--"}
-          color={CHART_COLORS.marks}
-          suffix="%"
-          subtitle="Correct 1+ goal predictions"
-          tip="How often we correctly predict whether a player will kick at least 1 goal. Higher is better."
-        />
-        <StatTicker
-          label="Match Winner"
-          value={played.length > 0 ? winRate.toFixed(1) : acc?.game_winner_accuracy != null ? acc.game_winner_accuracy.toFixed(1) : "--"}
-          color={CHART_COLORS.behinds}
-          suffix="%"
-          subtitle="Correct winner predictions"
-          tip="Percentage of matches where we correctly predicted the winning team. Higher is better."
-        />
       </div>
 
       {/* Recent Results */}
@@ -301,7 +251,7 @@ export default function DashboardPage() {
       {/* Quick Navigation */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         {[
-          { href: "/predictions", label: "Predictions", sub: "Next round" },
+          { href: "/matches", label: "Matches", sub: "All rounds" },
           { href: "/predictions/history", label: "Pred vs Actual", sub: "Track record" },
           { href: "/players", label: "Players", sub: "Search & stats" },
           { href: "/venues", label: "Venues", sub: "Ground data" },

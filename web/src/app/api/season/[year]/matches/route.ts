@@ -11,8 +11,8 @@ export async function GET(
     const { year } = await params;
     const y = Number(year);
 
-    // Load completed matches, fixtures, game predictions, and player predictions
-    const [matchesRes, fixRes, gpRes, predsRes] = await Promise.all([
+    // Load completed matches, fixtures, game predictions, player predictions, and team stats
+    const [matchesRes, fixRes, gpRes, predsRes, tmRes] = await Promise.all([
       supabase
         .from("matches")
         .select("match_id, home_team, away_team, date, round_number, venue, home_score, away_score")
@@ -29,7 +29,11 @@ export async function GET(
         .eq("year", y),
       supabase
         .from("predictions")
-        .select("team, match_id, round_number, predicted_goals, predicted_disposals")
+        .select("team, match_id, round_number, predicted_goals, predicted_disposals, predicted_marks")
+        .eq("year", y),
+      supabase
+        .from("team_matches")
+        .select("match_id, team, gl, di, mk")
         .eq("year", y),
     ]);
 
@@ -37,6 +41,7 @@ export async function GET(
     const fixtures = fixRes.data ?? [];
     const gamePreds = gpRes.data ?? [];
     const playerPreds = predsRes.data ?? [];
+    const teamMatches = tmRes.data ?? [];
 
     // Build set of completed match keys
     const completedKeys = new Set<string>();
@@ -52,14 +57,25 @@ export async function GET(
       gpByTeams.set(`${gp.home_team}_${gp.away_team}_${gp.round_number}`, gp);
     }
 
-    // Aggregate player predictions per team per round
-    const teamPredAgg = new Map<string, { goals: number; disposals: number }>();
+    // Aggregate player predictions per team per match/round
+    const teamPredAgg = new Map<string, { goals: number; disposals: number; marks: number }>();
     for (const p of playerPreds) {
       const key = `${p.team}|${p.match_id ?? p.round_number}`;
-      const existing = teamPredAgg.get(key) ?? { goals: 0, disposals: 0 };
+      const existing = teamPredAgg.get(key) ?? { goals: 0, disposals: 0, marks: 0 };
       existing.goals += p.predicted_goals ?? 0;
       existing.disposals += p.predicted_disposals ?? 0;
+      existing.marks += p.predicted_marks ?? 0;
       teamPredAgg.set(key, existing);
+    }
+
+    // Build actual team stats lookup: match_id|team -> { gl, di, mk }
+    const teamActualMap = new Map<string, { gl: number; di: number; mk: number }>();
+    for (const tm of teamMatches) {
+      teamActualMap.set(`${tm.match_id}|${tm.team}`, {
+        gl: tm.gl ?? 0,
+        di: tm.di ?? 0,
+        mk: tm.mk ?? 0,
+      });
     }
 
     // Build results from completed matches
@@ -95,6 +111,10 @@ export async function GET(
       const homePred = teamPredAgg.get(homeKey1) ?? teamPredAgg.get(homeKey2);
       const awayPred = teamPredAgg.get(awayKey1) ?? teamPredAgg.get(awayKey2);
 
+      // Actual team stats
+      const homeActual = teamActualMap.get(`${m.match_id}|${m.home_team}`);
+      const awayActual = teamActualMap.get(`${m.match_id}|${m.away_team}`);
+
       return {
         match_id: m.match_id,
         home_team: m.home_team,
@@ -108,10 +128,10 @@ export async function GET(
         predicted_winner: predictedWinner,
         predicted_margin: gp?.predicted_margin ?? null,
         correct,
-        home_predicted_goals: homePred ? +homePred.goals.toFixed(1) : null,
-        away_predicted_goals: awayPred ? +awayPred.goals.toFixed(1) : null,
-        home_predicted_disposals: homePred ? +homePred.disposals.toFixed(1) : null,
-        away_predicted_disposals: awayPred ? +awayPred.disposals.toFixed(1) : null,
+        home_pred: homePred ? { pred_gl: +homePred.goals.toFixed(1), pred_di: +homePred.disposals.toFixed(0), pred_mk: +homePred.marks.toFixed(0) } : null,
+        away_pred: awayPred ? { pred_gl: +awayPred.goals.toFixed(1), pred_di: +awayPred.disposals.toFixed(0), pred_mk: +awayPred.marks.toFixed(0) } : null,
+        home_actual: homeActual ? { actual_gl: homeActual.gl, actual_di: homeActual.di, actual_mk: homeActual.mk } : null,
+        away_actual: awayActual ? { actual_gl: awayActual.gl, actual_di: awayActual.di, actual_mk: awayActual.mk } : null,
       };
     });
 
@@ -142,10 +162,10 @@ export async function GET(
         predicted_winner: predictedWinner,
         predicted_margin: gp?.predicted_margin ?? null,
         correct: null,
-        home_predicted_goals: homePred ? +homePred.goals.toFixed(1) : null,
-        away_predicted_goals: awayPred ? +awayPred.goals.toFixed(1) : null,
-        home_predicted_disposals: homePred ? +homePred.disposals.toFixed(1) : null,
-        away_predicted_disposals: awayPred ? +awayPred.disposals.toFixed(1) : null,
+        home_pred: homePred ? { pred_gl: +homePred.goals.toFixed(1), pred_di: +homePred.disposals.toFixed(0), pred_mk: +homePred.marks.toFixed(0) } : null,
+        away_pred: awayPred ? { pred_gl: +awayPred.goals.toFixed(1), pred_di: +awayPred.disposals.toFixed(0), pred_mk: +awayPred.marks.toFixed(0) } : null,
+        home_actual: null,
+        away_actual: null,
       });
     }
 

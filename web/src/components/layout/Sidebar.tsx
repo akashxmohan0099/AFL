@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   Trophy,
   Swords,
-  TrendingUp,
   History,
   Users,
   MapPin,
@@ -17,9 +16,8 @@ import {
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/ladder", label: "Ladder", icon: Trophy },
   { href: "/matches", label: "Matches", icon: Swords },
-  { href: "/predictions", label: "Predictions", icon: TrendingUp },
+  { href: "/ladder", label: "Ladder", icon: Trophy },
   { href: "/predictions/history", label: "Pred vs Actual", icon: History },
   { href: "/players", label: "Players", icon: Users },
   { href: "/venues", label: "Venues", icon: MapPin },
@@ -45,9 +43,7 @@ function NavContent({ onNavigate }: { onNavigate?: () => void }) {
           const isActive =
             item.href === "/"
               ? pathname === "/"
-              : item.href === "/predictions"
-                ? pathname === "/predictions"
-                : pathname.startsWith(item.href);
+              : pathname.startsWith(item.href);
           const Icon = item.icon;
 
           return (
