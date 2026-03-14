@@ -1,0 +1,57 @@
+name: Seed Table
+
+# One-shot workflow to push a local JSON file into a Supabase table.
+# Usage: commit a JSON file to supabase/<table>_seed.json then trigger this workflow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      table:
+        description: "Table name to seed (must have supabase/<table>_seed.json)"
+        required: true
+        default: "game_predictions"
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install supabase
+
+      - name: Seed table from JSON
+        run: |
+          python - <<'PYEOF'
+          import json, os
+          from supabase import create_client
+
+          table = os.environ["TABLE"]
+          seed_file = f"supabase/{table}_seed.json"
+
+          with open(seed_file) as f:
+              records = json.load(f)
+
+          print(f"Loaded {len(records)} rows from {seed_file}")
+
+          client = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_KEY"])
+
+          # Upsert in batches of 500
+          batch_size = 500
+          for i in range(0, len(records), batch_size):
+              batch = records[i:i+batch_size]
+              client.table(table).upsert(batch).execute()
+              print(f"  Upserted {len(batch)} rows (batch {i//batch_size + 1})")
+
+          print(f"Done: {len(records)} rows seeded into {table}")
+          PYEOF
+        env:
+          TABLE: ${{ github.event.inputs.table }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
