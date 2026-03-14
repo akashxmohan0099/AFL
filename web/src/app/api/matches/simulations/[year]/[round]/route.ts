@@ -55,6 +55,21 @@ export async function GET(
       playersByTeam.set(p.team, arr);
     }
 
+    // Compute average raw goal total across all games for relative scaling.
+    // Per-player predicted_goals are calibrated for prop markets and inflate ~2x,
+    // but the ratio BETWEEN games carries signal about which will be higher-scoring.
+    const AVG_TOTAL = 165;
+    let sumRawTotal = 0;
+    let gamesWithPreds = 0;
+    for (const gp of gamePreds) {
+      const hp = playersByTeam.get(gp.home_team) ?? [];
+      const ap = playersByTeam.get(gp.away_team) ?? [];
+      const raw = hp.reduce((s: number, p: any) => s + (p.predicted_goals ?? 0), 0)
+                + ap.reduce((s: number, p: any) => s + (p.predicted_goals ?? 0), 0);
+      if (raw > 0) { sumRawTotal += raw; gamesWithPreds++; }
+    }
+    const avgRawTotal = gamesWithPreds > 0 ? sumRawTotal / gamesWithPreds : 0;
+
     const results = gamePreds.map((gp: any) => {
       const homeProb = gp.home_win_prob ?? 0.5;
       const awayProb = 1 - homeProb;
@@ -68,12 +83,17 @@ export async function GET(
       const awayMC = mcByTeam.get(gp.away_team) ?? [];
       const hasMC = homeMC.length > 0 || awayMC.length > 0;
 
-      // Derive scores from predicted_margin + league-average total (~165 pts).
-      // Per-player predicted_goals are calibrated for individual prop markets
-      // and sum to ~2x realistic team totals, so we don't use them for scores.
-      const AVG_TOTAL = 165;
-      const homeScore = Math.round(AVG_TOTAL / 2 + margin / 2);
-      const awayScore = Math.round(AVG_TOTAL / 2 - margin / 2);
+      // Game-specific total: use raw goal sum ratio for per-game variation.
+      // The ratio between games reflects which matchups are higher/lower scoring.
+      const homeRawGoals = homePlayers.reduce((s: number, p: any) => s + (p.predicted_goals ?? 0), 0);
+      const awayRawGoals = awayPlayers.reduce((s: number, p: any) => s + (p.predicted_goals ?? 0), 0);
+      const rawTotal = homeRawGoals + awayRawGoals;
+      const scaleFactor = avgRawTotal > 0
+        ? Math.max(0.70, Math.min(1.40, rawTotal / avgRawTotal))
+        : 1;
+      const gameTotal = Math.round(AVG_TOTAL * scaleFactor);
+      const homeScore = Math.round(gameTotal / 2 + margin / 2);
+      const awayScore = Math.round(gameTotal / 2 - margin / 2);
       const total = homeScore + awayScore;
 
       // Score ranges: wider spread for MC (real variance), narrower for estimates

@@ -183,10 +183,18 @@ export default function DashboardPage() {
                 const predMargin = mExt.predicted_margin ?? 0;
                 const homePreds = upcoming.predictions.filter((p) => p.team === m.home_team);
                 const awayPreds = upcoming.predictions.filter((p) => p.team === m.away_team);
-                // Derive scores from margin + league-average total (~165 pts)
+                // Game-specific total: use raw goal sums for per-game variation
                 const AVG_TOTAL = 165;
-                const homeScore = Math.round(AVG_TOTAL / 2 + predMargin / 2);
-                const awayScore = Math.round(AVG_TOTAL / 2 - predMargin / 2);
+                const homeRawGoals = homePreds.reduce((s, p) => s + (p.predicted_goals ?? 0), 0);
+                const awayRawGoals = awayPreds.reduce((s, p) => s + (p.predicted_goals ?? 0), 0);
+                const rawTotal = homeRawGoals + awayRawGoals;
+                const AVG_RAW = 54;
+                const scaleFactor = rawTotal > 0
+                  ? Math.max(0.70, Math.min(1.40, rawTotal / AVG_RAW))
+                  : 1;
+                const gameTotal = Math.round(AVG_TOTAL * scaleFactor);
+                const homeScore = Math.round(gameTotal / 2 + predMargin / 2);
+                const awayScore = Math.round(gameTotal / 2 - predMargin / 2);
                 const favored = homeProb != null ? (homeProb > 0.5 ? "home" : "away") : (predMargin > 0 ? "home" : "away");
 
                 // Top goal scorers

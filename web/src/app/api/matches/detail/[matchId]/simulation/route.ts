@@ -92,13 +92,20 @@ export async function GET(
     const homePlayers = preds.filter((p: any) => p.team === homeTeam);
     const awayPlayers = preds.filter((p: any) => p.team === awayTeam);
 
-    // Derive scores from predicted_margin + league-average total (~165 pts).
-    // Per-player predicted_goals are calibrated for individual prop markets
-    // and sum to ~2x realistic team totals, so we don't use them for scores.
+    // Game-specific total: use raw goal sum ratio vs league-average baseline.
     const AVG_TOTAL = 165;
     const margin = predMargin;
-    const homeScore = Math.round(AVG_TOTAL / 2 + margin / 2);
-    const awayScore = Math.round(AVG_TOTAL / 2 - margin / 2);
+    const homeRawGoals = homePlayers.reduce((s: number, p: any) => s + (p.predicted_goals ?? 0), 0);
+    const awayRawGoals = awayPlayers.reduce((s: number, p: any) => s + (p.predicted_goals ?? 0), 0);
+    const rawTotal = homeRawGoals + awayRawGoals;
+    // ~27 raw goals per team on average = ~54 per game (inflated by ~2x)
+    const AVG_RAW = 54;
+    const scaleFactor = rawTotal > 0
+      ? Math.max(0.70, Math.min(1.40, rawTotal / AVG_RAW))
+      : 1;
+    const gameTotal = Math.round(AVG_TOTAL * scaleFactor);
+    const homeScore = Math.round(gameTotal / 2 + margin / 2);
+    const awayScore = Math.round(gameTotal / 2 - margin / 2);
     const totalScore = homeScore + awayScore;
 
     // Build match outcomes

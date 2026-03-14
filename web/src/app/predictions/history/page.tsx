@@ -168,7 +168,7 @@ export default function PredictionHistoryPage() {
           <Card className="cursor-help" title="How often we correctly predict whether a player will score at least 1 goal. Higher is better.">
             <CardContent className="pt-5 pb-4">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Scorer Accuracy</p>
-              <p className="text-2xl font-bold mt-1 tabular-nums">{summary.scorer_accuracy.toFixed(1)}%</p>
+              <p className="text-2xl font-bold mt-1 tabular-nums">{(summary.scorer_accuracy * 100).toFixed(1)}%</p>
             </CardContent>
           </Card>
         </div>
