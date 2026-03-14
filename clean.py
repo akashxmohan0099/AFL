@@ -228,6 +228,42 @@ def load_player_stats(data_dir=None):
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
+    # Deduplicate: when both AFLTables and FootyWire CSVs exist for the same
+    # year, the same game can appear with different match_ids and round numbers.
+    # (e.g. AFLTables tags Opening Round as round=1, FootyWire correctly uses 0)
+    # Fix: remap all match_ids to the canonical (lowest) ID per game, then dedup.
+    if "date_iso" in df.columns:
+        dedup_date = pd.to_datetime(df["date_iso"], errors="coerce").dt.date
+        df["_dedup_date"] = dedup_date
+        # Build mapping: (date, team) → canonical (lowest) match_id
+        game_key = df.groupby(["_dedup_date", "team"])["match_id"].min().reset_index()
+        game_key.columns = ["_dedup_date", "team", "_canonical_mid"]
+        df = df.merge(game_key, on=["_dedup_date", "team"], how="left")
+        remapped = (df["match_id"] != df["_canonical_mid"]).sum()
+        if remapped > 0:
+            # Take the round_number from the original canonical rows (lowest match_id)
+            # These have the correct round assignment (e.g. 0 for Opening Round)
+            canon_rows = df[df["match_id"] == df["_canonical_mid"]]
+            canon_round = canon_rows.drop_duplicates("_canonical_mid")[["_canonical_mid", "round_number"]].copy()
+            canon_round.columns = ["_canonical_mid", "_canon_round"]
+            df = df.merge(canon_round, on="_canonical_mid", how="left")
+            df["round_number"] = df["_canon_round"].fillna(df["round_number"])
+            # Also fix the raw round string for downstream label generation
+            canon_rnd_str = canon_rows.drop_duplicates("_canonical_mid")[["_canonical_mid", "round"]].copy()
+            canon_rnd_str.columns = ["_canonical_mid", "_canon_round_str"]
+            df = df.merge(canon_rnd_str, on="_canonical_mid", how="left")
+            df["round"] = df["_canon_round_str"].fillna(df["round"])
+            df["match_id"] = df["_canonical_mid"]
+            df = df.drop(columns=["_canon_round", "_canon_round_str"])
+            print(f"  Remapped {remapped} rows to canonical match_ids")
+        df = df.drop(columns=["_canonical_mid", "_dedup_date"])
+        # Drop exact duplicates (same match_id + team + player)
+        n_before = len(df)
+        df = df.drop_duplicates(subset=["match_id", "team", "player"], keep="first")
+        n_dropped = n_before - len(df)
+        if n_dropped > 0:
+            print(f"  Dropped {n_dropped} duplicate player rows")
+
     df = df.sort_values(["date_iso", "match_id", "team", "player"]).reset_index(drop=True)
     return df
 

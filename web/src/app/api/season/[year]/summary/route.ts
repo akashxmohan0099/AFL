@@ -89,9 +89,9 @@ export async function GET(
         actualsMap.set(`${pg.player}|${pg.team}|${pg.match_id}`, pg);
       }
 
-      let goalErrors: number[] = [];
-      let dispErrors: number[] = [];
-      let markErrors: number[] = [];
+      const goalErrors: number[] = [];
+      const dispErrors: number[] = [];
+      const markErrors: number[] = [];
       let scorerCorrect = 0;
       let scorerTotal = 0;
 

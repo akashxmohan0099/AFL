@@ -57,7 +57,6 @@ export async function GET(req: NextRequest) {
   const byType: Record<string, number> = {};
   const byTeam: Record<string, number> = {};
   let breakingCount = 0;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const s of signals) {
     const t = s.signal_type ?? "other";
     byType[t] = (byType[t] ?? 0) + 1;

@@ -64,9 +64,9 @@ export async function GET(
 
     // Build entries and compute MAE
     const entries: any[] = [];
-    let goalErrors: number[] = [];
-    let dispErrors: number[] = [];
-    let markErrors: number[] = [];
+    const goalErrors: number[] = [];
+    const dispErrors: number[] = [];
+    const markErrors: number[] = [];
     let scorerCorrect = 0;
     let scorerTotal = 0;
 

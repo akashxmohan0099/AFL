@@ -1005,9 +1005,39 @@ def cmd_daily(args):
                                 shared_id = tm_round.loc[h_mask, "match_id"].iloc[0]
                                 tm_round.loc[a_mask, "match_id"] = shared_id
 
+                        # Load Step 5's player predictions for this round and
+                        # remap their match_ids to match tm_round's synthetic IDs
+                        # so build_game_features can join them.
+                        combined_player_preds = player_preds_for_gw.copy() if not player_preds_for_gw.empty else pd.DataFrame()
+                        try:
+                            step5_preds = store.load_predictions(year, r_pred)
+                            if step5_preds is not None and not step5_preds.empty:
+                                # Build (team) → Step 6 match_id mapping from tm_round
+                                team_to_mid = dict(zip(
+                                    tm_round["team"].astype(str),
+                                    tm_round["match_id"],
+                                ))
+                                step5_subset = step5_preds[["team"]].copy()
+                                pred_cols = [c for c in ["predicted_goals", "predicted_disposals", "predicted_marks"]
+                                             if c in step5_preds.columns]
+                                if pred_cols:
+                                    for c in pred_cols:
+                                        step5_subset[c] = step5_preds[c].values
+                                    step5_subset["match_id"] = step5_subset["team"].astype(str).map(team_to_mid)
+                                    step5_subset = step5_subset.dropna(subset=["match_id"])
+                                    step5_subset["match_id"] = step5_subset["match_id"].astype(int)
+                                    if not step5_subset.empty:
+                                        combined_player_preds = pd.concat(
+                                            [combined_player_preds, step5_subset[["match_id", "team"] + pred_cols]],
+                                            ignore_index=True,
+                                        )
+                                        print(f"    Loaded {len(step5_subset)} player predictions from Step 5 for R{r_pred}")
+                        except Exception as e:
+                            print(f"    Warning: Could not load Step 5 predictions for R{r_pred}: {e}")
+
                         game_preds = _predict_games_for_round(
                             winner_model, tm_train, tm_round,
-                            player_predictions_df=player_preds_for_gw if not player_preds_for_gw.empty else None,
+                            player_predictions_df=combined_player_preds if not combined_player_preds.empty else None,
                             store=store,
                         )
                         if not game_preds.empty:

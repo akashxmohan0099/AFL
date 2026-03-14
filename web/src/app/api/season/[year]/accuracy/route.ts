@@ -91,9 +91,9 @@ export async function GET(
       const roundPreds = predsByRound.get(rn) ?? [];
       const roundGps = gpByRound.get(rn) ?? [];
 
-      let goalErrors: number[] = [];
-      let dispErrors: number[] = [];
-      let markErrors: number[] = [];
+      const goalErrors: number[] = [];
+      const dispErrors: number[] = [];
+      const markErrors: number[] = [];
       let scorerCorrect = 0;
       let scorerTotal = 0;
 

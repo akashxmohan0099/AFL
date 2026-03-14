@@ -20,7 +20,7 @@ export async function GET(
     let awayTeam = awayParam;
     let roundNumber = roundParam ? Number(roundParam) : null;
     let year: number | null = null;
-    let matchIdResolved = id > 0 ? id : null;
+    const matchIdResolved = id > 0 ? id : null;
 
     if (id > 0) {
       const { data: matchRow } = await supabase

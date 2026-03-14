@@ -57,15 +57,25 @@ export async function GET(
       gpByTeams.set(`${gp.home_team}_${gp.away_team}_${gp.round_number}`, gp);
     }
 
-    // Aggregate player predictions per team per match/round
+    // Aggregate player predictions per team per round
+    // Use round_number as the primary key (team plays once per round).
+    // Also index by match_id for completed games with real IDs.
     const teamPredAgg = new Map<string, { goals: number; disposals: number; marks: number }>();
     for (const p of playerPreds) {
-      const key = `${p.team}|${p.match_id ?? p.round_number}`;
-      const existing = teamPredAgg.get(key) ?? { goals: 0, disposals: 0, marks: 0 };
+      // Always aggregate by round_number (reliable for all rounds)
+      const roundKey = `${p.team}|${p.round_number}`;
+      const existing = teamPredAgg.get(roundKey) ?? { goals: 0, disposals: 0, marks: 0 };
       existing.goals += p.predicted_goals ?? 0;
       existing.disposals += p.predicted_disposals ?? 0;
       existing.marks += p.predicted_marks ?? 0;
-      teamPredAgg.set(key, existing);
+      teamPredAgg.set(roundKey, existing);
+      // Also index by real match_id if available (positive IDs only)
+      if (p.match_id != null && p.match_id > 0) {
+        const midKey = `${p.team}|${p.match_id}`;
+        if (!teamPredAgg.has(midKey)) {
+          teamPredAgg.set(midKey, existing);
+        }
+      }
     }
 
     // Build actual team stats lookup: match_id|team -> { gl, di, mk }

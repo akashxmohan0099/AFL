@@ -181,7 +181,27 @@ def main():
 
     round_complete = False
     if current_round:
-        expected = fixture_counts.get(current_round, 9)  # default 9 games per round
+        # Use fixture table count; fall back to local CSV; last resort: count from FW
+        if current_round in fixture_counts:
+            expected = fixture_counts[current_round]
+        else:
+            # Try local fixture CSV
+            local_fix = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                "data", "fixtures", f"round_{current_round}_{YEAR}.csv",
+            )
+            if os.path.exists(local_fix):
+                try:
+                    with open(local_fix) as f:
+                        lines = f.read().strip().splitlines()
+                    # Count rows where is_home==1 (header + data rows)
+                    header = lines[0].split(",")
+                    ih = header.index("is_home") if "is_home" in header else -1
+                    expected = sum(1 for l in lines[1:] if ih >= 0 and l.split(",")[ih].strip() == "1") or 9
+                except Exception:
+                    expected = 9
+            else:
+                expected = max(fixture_counts.values(), default=9)
         actual = fw.get(current_round, 0)
         if actual >= expected and expected > 0:
             round_complete = True
