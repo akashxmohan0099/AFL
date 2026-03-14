@@ -4,7 +4,7 @@ import { setTimeout as delay } from "node:timers/promises";
 const port = process.env.SMOKE_PORT || "3105";
 const host = "127.0.0.1";
 const baseUrl = `http://${host}:${port}`;
-const routes = ["/", "/schedule", "/matches", "/players", "/odds", "/predictions"];
+const routes = ["/", "/schedule", "/matches", "/players", "/odds", "/predictions/history"];
 
 function isReady(output) {
   return output.includes("Ready") || output.includes(`http://${host}:${port}`);
