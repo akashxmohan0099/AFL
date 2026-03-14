@@ -92,15 +92,14 @@ export async function GET(
     const homePlayers = preds.filter((p: any) => p.team === homeTeam);
     const awayPlayers = preds.filter((p: any) => p.team === awayTeam);
 
-    // Aggregate team scores
-    const homeGoals = homePlayers.reduce((s: number, p: any) => s + (p.predicted_goals ?? 0), 0);
-    const awayGoals = awayPlayers.reduce((s: number, p: any) => s + (p.predicted_goals ?? 0), 0);
-    const homeBehinds = homePlayers.reduce((s: number, p: any) => s + (p.predicted_behinds ?? (p.predicted_goals ?? 0) * 0.7), 0);
-    const awayBehinds = awayPlayers.reduce((s: number, p: any) => s + (p.predicted_behinds ?? (p.predicted_goals ?? 0) * 0.7), 0);
-    const homeScore = Math.round(homeGoals * 6 + homeBehinds);
-    const awayScore = Math.round(awayGoals * 6 + awayBehinds);
+    // Derive scores from predicted_margin + league-average total (~165 pts).
+    // Per-player predicted_goals are calibrated for individual prop markets
+    // and sum to ~2x realistic team totals, so we don't use them for scores.
+    const AVG_TOTAL = 165;
+    const margin = predMargin;
+    const homeScore = Math.round(AVG_TOTAL / 2 + margin / 2);
+    const awayScore = Math.round(AVG_TOTAL / 2 - margin / 2);
     const totalScore = homeScore + awayScore;
-    const margin = predMargin || homeScore - awayScore;
 
     // Build match outcomes
     const matchOutcomes = {

@@ -177,55 +177,53 @@ function UnifiedMatchCard({ match }: { match: UnifiedMatch }) {
           </div>
         )}
 
-        {/* Simulation / Monte Carlo summary */}
+        {/* Simulation / Monte Carlo summary — scores, ranges, top scorers (no duplicate win%/margin) */}
         {(() => {
-          // Use full sim data if available, otherwise generate from prediction data
           const sim = match.sim;
-          const canEstimate = !sim && homeProb != null && (hp?.pred_gl != null || ap?.pred_gl != null);
+          const canEstimate = !sim && homeProb != null && match.predicted_margin != null;
           if (!sim && !canEstimate) return null;
 
-          const homeGoals = sim ? 0 : (hp?.pred_gl ?? 0);
-          const awayGoals = sim ? 0 : (ap?.pred_gl ?? 0);
-          const estHomeScore = sim ? sim.avg_home_score ?? 0 : Math.round(homeGoals * 6 + homeGoals * 0.7);
-          const estAwayScore = sim ? sim.avg_away_score ?? 0 : Math.round(awayGoals * 6 + awayGoals * 0.7);
-          const estTotal = sim ? sim.avg_total : estHomeScore + estAwayScore;
-          const estMargin = sim ? sim.avg_margin : (match.predicted_margin ?? estHomeScore - estAwayScore);
-          const winPct = sim ? sim.home_win_pct : (homeProb ?? 0.5);
-          const awayWinPct = sim ? sim.away_win_pct : 1 - winPct;
+          // Derive scores from margin + league-average total (~165 pts)
+          const AVG_TOTAL = 165;
+          const fallbackMargin = match.predicted_margin ?? 0;
+          const estHomeScore = sim ? sim.avg_home_score ?? 0 : Math.round(AVG_TOTAL / 2 + fallbackMargin / 2);
+          const estAwayScore = sim ? sim.avg_away_score ?? 0 : Math.round(AVG_TOTAL / 2 - fallbackMargin / 2);
+          const estTotal = estHomeScore + estAwayScore;
+          const isMC = sim?.has_mc ?? false;
           const homeP25 = sim ? sim.score_range.home.p25 : Math.round(estHomeScore * 0.85);
           const homeP75 = sim ? sim.score_range.home.p75 : Math.round(estHomeScore * 1.15);
 
           return (
-            <div className="border-t border-border/40 pt-2.5 space-y-2">
+            <div className={cn(
+              "border-t border-border/40 pt-2.5 space-y-2",
+              !isMC && "opacity-70"
+            )}>
               <p className="text-[11px] font-mono text-muted-foreground/70 uppercase tracking-wider font-semibold">
-                Monte Carlo {sim && <span className="normal-case text-muted-foreground/50 font-normal">({sim.n_sims.toLocaleString()} sims)</span>}
+                {isMC
+                  ? <>Monte Carlo <span className="normal-case text-muted-foreground/50 font-normal">(10,000 sims)</span></>
+                  : "Estimated"
+                }
               </p>
-              {/* Win prob bar */}
-              <div className="w-full h-2 rounded-full bg-muted/50 overflow-hidden flex">
-                <div className="h-full rounded-l-full" style={{ width: `${Math.round(winPct * 100)}%`, backgroundColor: homeColor }} />
-              </div>
-              <div className="flex justify-between text-xs font-mono tabular-nums text-foreground/80 font-semibold">
-                <span>{homeAbbr} {Math.round(winPct * 100)}%</span>
-                <span>{Math.round(awayWinPct * 100)}% {awayAbbr}</span>
-              </div>
-              {/* Key stats row */}
+              {/* Score line: HOME score - AWAY score   Total */}
               <div className="flex items-center justify-between text-xs font-mono">
+                <div className="flex items-center gap-1">
+                  <span className="font-bold text-foreground/90">{homeAbbr}</span>
+                  <span className="tabular-nums font-bold text-foreground/90">{estHomeScore}</span>
+                  <span className="text-muted-foreground/50 mx-0.5">-</span>
+                  <span className="tabular-nums font-bold text-foreground/90">{estAwayScore}</span>
+                  <span className="font-bold text-foreground/90">{awayAbbr}</span>
+                </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-muted-foreground/70">Total</span>
-                  <span className="tabular-nums font-bold text-foreground/90">{estTotal.toFixed(0)}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-muted-foreground/70">Margin</span>
-                  <span className="tabular-nums font-bold text-foreground/90">
-                    {estMargin > 0 ? "+" : ""}{Math.round(estMargin)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-muted-foreground/70">Score</span>
-                  <span className="tabular-nums font-semibold text-foreground/80">{homeP25}-{homeP75}</span>
+                  <span className="tabular-nums font-bold text-foreground/90">{estTotal}</span>
                 </div>
               </div>
-              {/* Top scorers (only from full sim data) */}
+              {/* Score range */}
+              <div className="flex items-center gap-1.5 text-xs font-mono">
+                <span className="text-muted-foreground/70">Range</span>
+                <span className="tabular-nums text-foreground/80">{homeP25}-{homeP75}</span>
+              </div>
+              {/* Top scorers */}
               {sim?.top_scorers && sim.top_scorers.length > 0 && (
                 <div className="flex gap-1.5 flex-wrap">
                   {sim.top_scorers.map((s) => (

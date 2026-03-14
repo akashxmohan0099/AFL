@@ -178,14 +178,16 @@ export default function DashboardPage() {
                 const homeAbbr = TEAM_ABBREVS[m.home_team] || m.home_team;
                 const awayAbbr = TEAM_ABBREVS[m.away_team] || m.away_team;
                 const homeColor = TEAM_COLORS[m.home_team]?.primary || "#555";
-                const homeProb = (m as unknown as { home_win_prob?: number | null }).home_win_prob ?? null;
+                const mExt = m as unknown as { home_win_prob?: number | null; predicted_margin?: number | null };
+                const homeProb = mExt.home_win_prob ?? null;
+                const predMargin = mExt.predicted_margin ?? 0;
                 const homePreds = upcoming.predictions.filter((p) => p.team === m.home_team);
                 const awayPreds = upcoming.predictions.filter((p) => p.team === m.away_team);
-                const homeGoals = homePreds.reduce((s, p) => s + (p.predicted_goals ?? 0), 0);
-                const awayGoals = awayPreds.reduce((s, p) => s + (p.predicted_goals ?? 0), 0);
-                const homeScore = Math.round(homeGoals * 6 + homeGoals * 0.7);
-                const awayScore = Math.round(awayGoals * 6 + awayGoals * 0.7);
-                const favored = homeProb != null ? (homeProb > 0.5 ? "home" : "away") : (homeGoals > awayGoals ? "home" : "away");
+                // Derive scores from margin + league-average total (~165 pts)
+                const AVG_TOTAL = 165;
+                const homeScore = Math.round(AVG_TOTAL / 2 + predMargin / 2);
+                const awayScore = Math.round(AVG_TOTAL / 2 - predMargin / 2);
+                const favored = homeProb != null ? (homeProb > 0.5 ? "home" : "away") : (predMargin > 0 ? "home" : "away");
 
                 // Top goal scorers
                 const allPreds = [...homePreds, ...awayPreds]
@@ -223,7 +225,7 @@ export default function DashboardPage() {
                       </div>
                     )}
                     {/* Predicted scores */}
-                    {(homeGoals > 0 || awayGoals > 0) && (
+                    {predMargin !== 0 && (
                       <div className="flex justify-between text-[11px] font-mono text-muted-foreground/70">
                         <span>Est. {homeScore}-{awayScore}</span>
                         <span>{displayVenue(m.venue)}</span>

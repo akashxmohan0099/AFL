@@ -552,11 +552,11 @@ def build_candidate_legs_from_predictions(
                     home_team = gp_home
                     away_team = gp_away
 
-    # Estimate total from player predicted_score sums
-    if "predicted_score" in df.columns:
-        predicted_total = float(df["predicted_score"].sum())
-    elif "predicted_goals" in df.columns:
-        predicted_total = float(df["predicted_goals"].sum()) * _POINTS_PER_GOAL * 1.8
+    # Derive total from margin + league-average (~165 pts).
+    # Per-player predicted_score/predicted_goals are calibrated for individual
+    # prop markets and sum to ~2x realistic team totals — DO NOT use for team scores.
+    AVG_TOTAL = 165.0
+    predicted_total = AVG_TOTAL
 
     match_info = {
         "home_team": home_team,

@@ -12,11 +12,16 @@ export async function GET(
     const y = Number(year);
     const r = Number(round);
 
-    // Load game predictions and player predictions for this round
-    const [gpRes, predsRes] = await Promise.all([
+    // Load game predictions, MC simulations, and player predictions in parallel
+    const [gpRes, mcRes, predsRes] = await Promise.all([
       supabase
         .from("game_predictions")
         .select("match_id, home_team, away_team, home_win_prob, predicted_winner, predicted_margin")
+        .eq("year", y)
+        .eq("round_number", r),
+      supabase
+        .from("mc_simulations")
+        .select("player, team, opponent, predicted_goals, predicted_disposals, mc_p_1plus_goals, mc_p_2plus_goals, mc_p_3plus_goals")
         .eq("year", y)
         .eq("round_number", r),
       supabase
@@ -27,13 +32,22 @@ export async function GET(
     ]);
 
     const gamePreds = gpRes.data ?? [];
+    const mcRows = mcRes.data ?? [];
     const playerPreds = predsRes.data ?? [];
 
     if (gamePreds.length === 0) {
       return NextResponse.json([]);
     }
 
-    // Group player predictions by team
+    // Index MC rows by team
+    const mcByTeam = new Map<string, any[]>();
+    for (const row of mcRows) {
+      const arr = mcByTeam.get(row.team) ?? [];
+      arr.push(row);
+      mcByTeam.set(row.team, arr);
+    }
+
+    // Index player predictions by team
     const playersByTeam = new Map<string, any[]>();
     for (const p of playerPreds) {
       const arr = playersByTeam.get(p.team) ?? [];
@@ -46,33 +60,59 @@ export async function GET(
       const awayProb = 1 - homeProb;
       const margin = gp.predicted_margin ?? 0;
 
-      // Estimate scores from player predictions
       const homePlayers = playersByTeam.get(gp.home_team) ?? [];
       const awayPlayers = playersByTeam.get(gp.away_team) ?? [];
-      const homeGoals = homePlayers.reduce((s: number, p: any) => s + (p.predicted_goals ?? 0), 0);
-      const awayGoals = awayPlayers.reduce((s: number, p: any) => s + (p.predicted_goals ?? 0), 0);
-      // Rough score estimate: goals * 6 + (goals * 0.7) for behinds
-      const homeScore = Math.round(homeGoals * 6 + homeGoals * 0.7);
-      const awayScore = Math.round(awayGoals * 6 + awayGoals * 0.7);
+
+      // Check if MC data exists for this match
+      const homeMC = mcByTeam.get(gp.home_team) ?? [];
+      const awayMC = mcByTeam.get(gp.away_team) ?? [];
+      const hasMC = homeMC.length > 0 || awayMC.length > 0;
+
+      // Derive scores from predicted_margin + league-average total (~165 pts).
+      // Per-player predicted_goals are calibrated for individual prop markets
+      // and sum to ~2x realistic team totals, so we don't use them for scores.
+      const AVG_TOTAL = 165;
+      const homeScore = Math.round(AVG_TOTAL / 2 + margin / 2);
+      const awayScore = Math.round(AVG_TOTAL / 2 - margin / 2);
       const total = homeScore + awayScore;
 
-      // Top goal scorers from player predictions
-      const allPlayers = [...homePlayers, ...awayPlayers];
-      const topScorers = allPlayers
-        .filter((p: any) => p.p_scorer != null)
-        .sort((a: any, b: any) => (b.p_scorer ?? 0) - (a.p_scorer ?? 0))
-        .slice(0, 4)
-        .map((p: any) => ({
-          player: p.player,
-          team: p.team,
-          p_1plus: p.p_scorer ?? 0,
-        }));
+      // Score ranges: wider spread for MC (real variance), narrower for estimates
+      const hmul = hasMC
+        ? { p25: 0.78, p75: 1.22 }
+        : { p25: 0.85, p75: 1.15 };
+
+      // Top goal scorers: use MC probabilities when available, otherwise deterministic p_scorer
+      let topScorers: { player: string; team: string; p_1plus: number }[];
+      if (hasMC) {
+        const allMC = [...homeMC, ...awayMC];
+        topScorers = allMC
+          .filter((p: any) => p.mc_p_1plus_goals != null)
+          .sort((a: any, b: any) => (b.mc_p_1plus_goals ?? 0) - (a.mc_p_1plus_goals ?? 0))
+          .slice(0, 4)
+          .map((p: any) => ({
+            player: p.player,
+            team: p.team,
+            p_1plus: p.mc_p_1plus_goals ?? 0,
+          }));
+      } else {
+        const allPlayers = [...homePlayers, ...awayPlayers];
+        topScorers = allPlayers
+          .filter((p: any) => p.p_scorer != null)
+          .sort((a: any, b: any) => (b.p_scorer ?? 0) - (a.p_scorer ?? 0))
+          .slice(0, 4)
+          .map((p: any) => ({
+            player: p.player,
+            team: p.team,
+            p_1plus: p.p_scorer ?? 0,
+          }));
+      }
 
       return {
         match_id: gp.match_id,
         home_team: gp.home_team,
         away_team: gp.away_team,
-        n_sims: 10000,
+        n_sims: hasMC ? 10000 : 0,
+        has_mc: hasMC,
         home_win_pct: homeProb,
         away_win_pct: awayProb,
         draw_pct: 0.02,
@@ -81,8 +121,8 @@ export async function GET(
         avg_home_score: homeScore,
         avg_away_score: awayScore,
         score_range: {
-          home: { p10: Math.round(homeScore * 0.7), p25: Math.round(homeScore * 0.85), p50: homeScore, p75: Math.round(homeScore * 1.15), p90: Math.round(homeScore * 1.3) },
-          away: { p10: Math.round(awayScore * 0.7), p25: Math.round(awayScore * 0.85), p50: awayScore, p75: Math.round(awayScore * 1.15), p90: Math.round(awayScore * 1.3) },
+          home: { p10: Math.round(homeScore * 0.7), p25: Math.round(homeScore * hmul.p25), p50: homeScore, p75: Math.round(homeScore * hmul.p75), p90: Math.round(homeScore * 1.3) },
+          away: { p10: Math.round(awayScore * 0.7), p25: Math.round(awayScore * hmul.p25), p50: awayScore, p75: Math.round(awayScore * hmul.p75), p90: Math.round(awayScore * 1.3) },
         },
         top_scorers: topScorers,
       };

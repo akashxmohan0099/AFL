@@ -918,6 +918,7 @@ export interface RoundSimSummary {
     away: SimPercentiles;
   };
   top_scorers: { player: string; team: string; p_1plus: number; avg_goals?: number }[];
+  has_mc: boolean;
 }
 
 // --- Multi-Bet Backtest ---

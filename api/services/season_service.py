@@ -31,29 +31,34 @@ def _fallback_game_prediction_from_player_predictions(
     if team_preds.empty:
         return {}
 
-    def _team_totals(team: str) -> tuple[float | None, float | None, float | None]:
+    # Per-player predicted_goals are calibrated for individual prop markets and
+    # sum to ~2x realistic team totals. Use the RATIO to derive a margin, then
+    # scale to league-average totals (~165 pts combined).
+    AVG_TOTAL = 165.0
+
+    def _team_goal_sum(team: str) -> float | None:
         grp = team_preds[team_preds["team"] == team]
         if grp.empty:
-            return None, None, None
-        goals = float(grp["predicted_goals"].sum()) if "predicted_goals" in grp.columns else None
-        behinds = float(grp["predicted_behinds"].sum()) if "predicted_behinds" in grp.columns else None
-        score = float(grp["predicted_score"].sum()) if "predicted_score" in grp.columns else None
-        if score is None and goals is not None:
-            score = goals * 6 + (behinds or 0.0)
-        return goals, behinds, score
+            return None
+        if "predicted_goals" in grp.columns:
+            return float(grp["predicted_goals"].sum())
+        return None
 
-    _, _, home_score = _team_totals(home_team)
-    _, _, away_score = _team_totals(away_team)
-    if home_score is None or away_score is None:
+    home_raw = _team_goal_sum(home_team)
+    away_raw = _team_goal_sum(away_team)
+    if home_raw is None or away_raw is None:
         return {}
 
-    margin = home_score - away_score
-    total_score = home_score + away_score
-    if total_score <= 0:
+    raw_total = home_raw + away_raw
+    if raw_total <= 0:
         home_win_prob = 0.5
+        margin = 0.0
     else:
-        # Relative expected scoring edge -> pseudo win probability fallback.
-        margin_ratio = margin / total_score
+        # Scale to realistic totals using goal ratio
+        home_score = AVG_TOTAL * (home_raw / raw_total)
+        away_score = AVG_TOTAL * (away_raw / raw_total)
+        margin = home_score - away_score
+        margin_ratio = margin / AVG_TOTAL
         home_win_prob = 1.0 / (1.0 + np.exp(-4.0 * margin_ratio))
 
     predicted_winner = home_team if margin > 0 else away_team if margin < 0 else "Draw"

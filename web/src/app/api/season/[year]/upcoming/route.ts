@@ -25,7 +25,7 @@ export async function GET(
         .eq("year", y),
       supabase
         .from("game_predictions")
-        .select("home_team, away_team, round_number, home_win_prob, predicted_winner")
+        .select("home_team, away_team, round_number, home_win_prob, predicted_winner, predicted_margin")
         .eq("year", y),
     ]);
 
@@ -83,6 +83,7 @@ export async function GET(
         date: f.date ?? null,
         home_win_prob: gp?.home_win_prob != null ? +Number(gp.home_win_prob).toFixed(4) : null,
         predicted_winner: gp?.predicted_winner ?? null,
+        predicted_margin: gp?.predicted_margin ?? null,
       };
     });
 

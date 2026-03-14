@@ -161,29 +161,26 @@ def compute_model_residual_std(full_df, team_matches, up_to_round):
     if prior.empty or team_matches.empty:
         return 25.0, 35.0
 
-    # Compute predicted team scores by summing player predicted_score
-    if "predicted_score" not in prior.columns:
+    # Calibrate team/match score variance from actual results.
+    # Use league-average + game_predictions margin to estimate team scores
+    # (per-player predicted_score sums to ~2x actual team totals, so we don't use them).
+    if team_matches.empty:
         return 25.0, 35.0
 
-    team_pred = prior.groupby(["match_id", "team"], observed=True)["predicted_score"].sum().reset_index()
-    team_pred.columns = ["match_id", "team", "pred_team_score"]
-
-    # Merge with actual team scores
+    # Use actual score variance from completed matches
     tm_cols = team_matches[["match_id", "team", "score"]].copy()
-    merged = team_pred.merge(tm_cols, on=["match_id", "team"], how="inner")
-
-    if len(merged) < 10:
+    if len(tm_cols) < 20:
         return 25.0, 35.0
 
-    residuals = merged["score"].values - merged["pred_team_score"].values
-    team_std = float(np.std(residuals, ddof=1))
+    # Team score std from actuals (each team's score deviation from league mean)
+    AVG_TEAM_SCORE = 82.5
+    team_residuals = tm_cols["score"].values - AVG_TEAM_SCORE
+    team_std = float(np.std(team_residuals, ddof=1))
 
-    # For match totals, group by match_id
-    match_pred = merged.groupby("match_id").agg(
-        pred_total=("pred_team_score", "sum"),
-        actual_total=("score", "sum"),
-    ).reset_index()
-    match_residuals = match_pred["actual_total"].values - match_pred["pred_total"].values
+    # Match total std
+    match_totals = tm_cols.groupby("match_id")["score"].sum()
+    AVG_MATCH_TOTAL = 165.0
+    match_residuals = match_totals.values - AVG_MATCH_TOTAL
     match_std = float(np.std(match_residuals, ddof=1)) if len(match_residuals) > 1 else 35.0
 
     return max(team_std, 10.0), max(match_std, 15.0)
@@ -200,18 +197,26 @@ def compute_team_match_probs(match_df, venue, venue_history, model_team_std, mod
         team_legs: list of candidate legs for team totals
         match_legs: list of candidate legs for match totals
     """
-    # Sum predicted_score per team
-    if "predicted_score" not in match_df.columns:
+    # Derive team scores from league-average total + relative goal ratio.
+    # Per-player predicted_score sums to ~2x real team totals — use ratio only.
+    AVG_TOTAL = 165.0
+    goal_col = "predicted_score" if "predicted_score" in match_df.columns else (
+        "predicted_goals" if "predicted_goals" in match_df.columns else None
+    )
+    if goal_col is None:
         return [], []
 
-    team_scores = match_df.groupby("team", observed=True)["predicted_score"].sum()
+    raw_team = match_df.groupby("team", observed=True)[goal_col].sum()
     match_id = match_df["match_id"].iloc[0]
-    teams = list(team_scores.index)
+    teams = list(raw_team.index)
 
     if len(teams) < 2:
         return [], []
 
-    predicted_total = float(team_scores.sum())
+    raw_total = float(raw_team.sum())
+    # Scale each team's share to the realistic total
+    team_scores = raw_team * (AVG_TOTAL / raw_total) if raw_total > 0 else raw_team
+    predicted_total = AVG_TOTAL
     venue_info = venue_history.get(venue) if venue else None
 
     team_legs = []
