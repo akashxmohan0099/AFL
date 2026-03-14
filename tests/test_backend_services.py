@@ -603,7 +603,9 @@ class TestSeasonService(unittest.TestCase):
 
         self.assertIsNotNone(comparison)
         self.assertEqual(comparison["game_prediction"]["predicted_winner"], "Team A")
-        self.assertAlmostEqual(comparison["game_prediction"]["predicted_margin"], 13.0)
+        # Margin derived from goal ratio scaled to AVG_TOTAL=165:
+        # home_raw=3.0, away_raw=1.0 → home_score=123.75, away_score=41.25 → margin=82.5
+        self.assertAlmostEqual(comparison["game_prediction"]["predicted_margin"], 82.5)
         self.assertIn("home_win_prob", comparison["game_prediction"])
         self.assertTrue(comparison["game_prediction"]["correct"])
 
